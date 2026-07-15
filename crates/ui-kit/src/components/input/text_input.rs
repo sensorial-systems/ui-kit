@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 
 #[component]
-pub fn Input(
+pub fn TextInput(
     #[props(into)] value: String,
     oninput: EventHandler<FormEvent>,
     #[props(into, default)] label: Option<String>,

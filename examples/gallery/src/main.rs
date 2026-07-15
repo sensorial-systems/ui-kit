@@ -137,7 +137,7 @@ fn App() -> Element {
                             div {
                                 style: "display: flex; flex-direction: column; gap: 24px; max-width: 500px;",
                                 div {
-                                    Input {
+                                    TextInput {
                                         value: input_val.read().clone(),
                                         oninput: move |e: FormEvent| input_val.set(e.value()),
                                         label: "Username",
