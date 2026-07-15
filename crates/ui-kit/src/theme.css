@@ -38,7 +38,7 @@
     --uikit-error-bg: rgba(239, 68, 68, 0.1);
     --uikit-info: #06b6d4;
     --uikit-info-bg: rgba(6, 182, 212, 0.1);
-    --uikit-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+    --uikit-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     --uikit-ring: rgba(59, 130, 246, 0.3);
     --uikit-select-arrow: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f4f4f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
 }
@@ -94,7 +94,7 @@
     --uikit-error-bg: rgba(220, 38, 38, 0.08);
     --uikit-info: #0284c7;
     --uikit-info-bg: rgba(2, 132, 199, 0.08);
-    --uikit-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.05);
+    --uikit-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
     --uikit-ring: rgba(59, 130, 246, 0.3);
     --uikit-select-arrow: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2309090b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
 }
@@ -393,6 +393,10 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
+.uikit-theme-white .uikit-switch-thumb {
+    background-color: var(--uikit-primary);
+}
+
 .uikit-switch-input:checked+.uikit-switch-track {
     background-color: var(--uikit-primary);
     border-color: var(--uikit-primary);
@@ -421,9 +425,29 @@
     box-shadow: var(--uikit-shadow);
 }
 
+.uikit-card-hoverable {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.uikit-card-hoverable:hover {
+    transform: translateY(-2px);
+}
+
+.uikit-theme-neutral .uikit-card-hoverable:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+}
+
+.uikit-theme-black .uikit-card-hoverable:hover {
+    box-shadow: 0 0 0 1px #444444, 0 10px 20px rgba(0, 0, 0, 0.8);
+}
+
+.uikit-theme-white .uikit-card-hoverable:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+
 .uikit-card-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--uikit-border);
+    padding: 20px 20px 0 20px;
     font-size: 16px;
     font-weight: 600;
 }
@@ -488,6 +512,22 @@
     color: var(--uikit-info);
     border: 1px solid rgba(6, 182, 212, 0.2);
 }
+
+.uikit-badge-normal {
+    padding: 3px 8px;
+    font-size: 12px;
+}
+
+.uikit-badge-lg {
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.uikit-badge-borderless {
+    border: none !important;
+}
+
 
 
 /* --- Select --- */
@@ -614,4 +654,147 @@
     background-color: var(--uikit-error-bg);
     color: var(--uikit-error);
     border-color: rgba(239, 68, 68, 0.2);
+}
+
+/* --- ProgressBar --- */
+.uikit-progress-bar-container {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.uikit-progress-bar-track {
+    background-color: var(--uikit-border);
+    border-radius: var(--uikit-radius-full);
+    height: 8px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.uikit-progress-bar-fill {
+    background-color: var(--uikit-primary);
+    height: 100%;
+    border-radius: var(--uikit-radius-full);
+    transition: width 0.3s ease;
+}
+
+.uikit-progress-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--uikit-muted);
+    margin-top: 4px;
+}
+
+/* --- Sparkline --- */
+.uikit-sparkline-svg {
+    width: 100%;
+    height: 50px;
+    overflow: visible;
+    display: block;
+}
+
+.uikit-sparkline-grid {
+    stroke: var(--uikit-border);
+    stroke-width: 0.5px;
+    stroke-dasharray: 2 2;
+}
+
+.uikit-sparkline-path {
+    fill: none;
+    stroke: var(--uikit-primary);
+    stroke-width: 2px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.uikit-sparkline-fill {
+    stroke: none;
+}
+
+.uikit-sparkline-gradient-start {
+    stop-color: var(--uikit-primary);
+    stop-opacity: 0.15;
+}
+
+.uikit-sparkline-gradient-stop {
+    stop-color: var(--uikit-primary);
+    stop-opacity: 0;
+}
+
+.uikit-sparkline-no-data {
+    color: var(--uikit-muted);
+    font-size: 12px;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 50px;
+    background-color: var(--uikit-muted-bg);
+    border-radius: var(--uikit-radius-md);
+    border: 1px dashed var(--uikit-border);
+}
+
+/* --- MetricCard --- */
+.uikit-metric-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.uikit-metric-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    width: 100%;
+}
+
+.uikit-metric-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--uikit-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.uikit-metric-value-container {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-bottom: 4px;
+    font-size: 28px;
+}
+
+/* --- Unit --- */
+.uikit-value-with-unit {
+    display: inline-flex;
+    align-items: baseline;
+    line-height: 1.1;
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+.uikit-value {
+    font-size: inherit;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--uikit-fg);
+}
+
+.uikit-unit {
+    font-size: 0.5em;
+    color: var(--uikit-muted);
+    font-weight: 500;
+    margin-left: 0.05em;
+}
+
+.uikit-metric-progress-wrapper {
+    margin-top: 8px;
+    width: 100%;
+}
+
+.uikit-metric-sparkline-wrapper {
+    margin-top: 12px;
+    width: 100%;
 }

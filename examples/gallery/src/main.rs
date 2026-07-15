@@ -7,7 +7,7 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    let mut theme_sig = use_signal(|| AppTheme::Neutral);
+    let mut theme_sig = use_signal(AppTheme::default);
 
     // Interactive states for components
     let mut btn_loading = use_signal(|| false);
@@ -194,14 +194,27 @@ fn App() -> Element {
                             div {
                                 style: "display: flex; flex-direction: column; gap: 24px;",
                                 div {
-                                    h4 { style: "margin: 0 0 12px 0; color: var(--uikit-muted);", "Badges" }
+                                    h4 { style: "margin: 0 0 12px 0; color: var(--uikit-muted);", "Badges (Variants, Sizes & Styles)" }
                                     div {
-                                        style: "display: flex; gap: 10px; flex-wrap: wrap;",
-                                        Badge { variant: BadgeVariant::Default, "Default" }
-                                        Badge { variant: BadgeVariant::Success, "Success" }
-                                        Badge { variant: BadgeVariant::Warning, "Warning" }
-                                        Badge { variant: BadgeVariant::Error, "Error" }
-                                        Badge { variant: BadgeVariant::Info, "Info" }
+                                        style: "display: flex; flex-direction: column; gap: 16px;",
+                                        div {
+                                            style: "display: flex; gap: 10px; flex-wrap: wrap; align-items: center;",
+                                            span { style: "font-size: 13px; color: var(--uikit-muted); margin-right: 8px;", "Normal:" }
+                                            Badge { variant: BadgeVariant::Default, "Default" }
+                                            Badge { variant: BadgeVariant::Success, "Success" }
+                                            Badge { variant: BadgeVariant::Warning, "Warning" }
+                                            Badge { variant: BadgeVariant::Error, "Error" }
+                                            Badge { variant: BadgeVariant::Info, "Info" }
+                                        }
+                                        div {
+                                            style: "display: flex; gap: 10px; flex-wrap: wrap; align-items: center;",
+                                            span { style: "font-size: 13px; color: var(--uikit-muted); margin-right: 8px;", "Large & Borderless (Metrics Style):" }
+                                            Badge { variant: BadgeVariant::Default, size: BadgeSize::Large, borderless: true, "Default" }
+                                            Badge { variant: BadgeVariant::Success, size: BadgeSize::Large, borderless: true, "Success" }
+                                            Badge { variant: BadgeVariant::Warning, size: BadgeSize::Large, borderless: true, "Warning" }
+                                            Badge { variant: BadgeVariant::Error, size: BadgeSize::Large, borderless: true, "Error" }
+                                            Badge { variant: BadgeVariant::Info, size: BadgeSize::Large, borderless: true, "Info" }
+                                        }
                                     }
                                 }
                                 div {
@@ -246,6 +259,159 @@ fn App() -> Element {
                                     variant: ButtonVariant::Primary,
                                     onclick: move |_| modal_open.set(true),
                                     "Open Interactive Modal"
+                                }
+                            }
+                        }
+                    }
+
+                    // Metric & Data Visualization Section
+                    section {
+                        style: "display: flex; flex-direction: column; gap: 16px;",
+                        h2 { style: "margin: 0; font-size: 20px; border-left: 4px solid var(--uikit-primary); padding-left: 12px;", "5. Metric & Data Visualization" }
+                        Card {
+                            div {
+                                style: "display: flex; flex-direction: column; gap: 32px;",
+                                
+                                // Metric Cards Grid
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 16px;",
+                                    h4 { style: "margin: 0 0 4px 0; color: var(--uikit-muted);", "Metric Cards (Directly using Card)" }
+                                    div {
+                                        style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;",
+                                        
+                                        // Counter Card
+                                        Card {
+                                            shadowed: true,
+                                            hoverable: true,
+                                            header: rsx! {
+                                                div { style: "display: flex; justify-content: space-between; align-items: center; width: 100%;",
+                                                    span { class: "uikit-metric-label", "Requests Count" }
+                                                }
+                                            },
+                                            div { class: "uikit-metric-value-container",
+                                                Unit { value: "1,234", unit: "reqs" }
+                                            }
+                                        }
+
+                                        // Gauge Card
+                                        Card {
+                                            shadowed: true,
+                                            hoverable: true,
+                                            header: rsx! {
+                                                div { style: "display: flex; justify-content: space-between; align-items: center; width: 100%;",
+                                                    span { class: "uikit-metric-label", "CPU Usage" }
+                                                }
+                                            },
+                                            div { style: "display: flex; flex-direction: column; gap: 8px;",
+                                                div { class: "uikit-metric-value-container",
+                                                    Unit { value: "75.4", unit: "%" }
+                                                }
+                                                ProgressBar {
+                                                    value: 75.4,
+                                                    min_label: "0.0",
+                                                    max_label: "100.0"
+                                                }
+                                            }
+                                        }
+
+                                        // Status Card
+                                        Card {
+                                            shadowed: true,
+                                            hoverable: true,
+                                            header: rsx! {
+                                                div { style: "display: flex; justify-content: space-between; align-items: center; width: 100%;",
+                                                    span { class: "uikit-metric-label", "System Status" }
+                                                    Badge {
+                                                        variant: BadgeVariant::Success,
+                                                        size: BadgeSize::Large,
+                                                        borderless: true,
+                                                        "Healthy"
+                                                    }
+                                                }
+                                            },
+                                            div { class: "uikit-metric-value-container",
+                                                Unit { value: "Operational" }
+                                            }
+                                        }
+
+                                        // TimeSeries Card
+                                        Card {
+                                            shadowed: true,
+                                            hoverable: true,
+                                            header: rsx! {
+                                                div { style: "display: flex; justify-content: space-between; align-items: center; width: 100%;",
+                                                    span { class: "uikit-metric-label", "Memory Load" }
+                                                }
+                                            },
+                                            div { style: "display: flex; flex-direction: column; gap: 12px;",
+                                                div { class: "uikit-metric-value-container",
+                                                    Unit { value: "4.2", unit: "GB" }
+                                                }
+                                                Sparkline {
+                                                    data: vec![1.2, 1.5, 2.0, 1.8, 2.4, 3.1, 2.8, 3.5, 4.2],
+                                                    fill: true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Raw Progress Bars Demo
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 16px;",
+                                    h4 { style: "margin: 0; color: var(--uikit-muted);", "Progress Bars" }
+                                    div {
+                                        style: "display: flex; flex-direction: column; gap: 16px; max-width: 400px;",
+                                        ProgressBar { value: 30.0 }
+                                        ProgressBar {
+                                            value: 65.0,
+                                            min_label: "Start",
+                                            max_label: "Goal"
+                                        }
+                                    }
+                                }
+
+                                // Raw Sparklines Demo
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 16px;",
+                                    h4 { style: "margin: 0; color: var(--uikit-muted);", "Sparklines (Trend Lines)" }
+                                    div {
+                                        style: "display: flex; gap: 24px; flex-wrap: wrap;",
+                                        div {
+                                            style: "flex: 1; min-width: 200px;",
+                                            span { style: "font-size: 12px; color: var(--uikit-muted); display: block; margin-bottom: 8px;", "Default Sparkline" }
+                                            Sparkline { data: vec![10.0, 15.0, 8.0, 25.0, 18.0, 30.0] }
+                                        }
+                                        div {
+                                            style: "flex: 1; min-width: 200px;",
+                                            span { style: "font-size: 12px; color: var(--uikit-muted); display: block; margin-bottom: 8px;", "Filled Sparkline" }
+                                            Sparkline { data: vec![30.0, 25.0, 40.0, 35.0, 50.0, 45.0, 60.0], fill: true }
+                                        }
+                                    }
+                                }
+
+                                // Raw Units Demo
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 16px;",
+                                    h4 { style: "margin: 0; color: var(--uikit-muted);", "Units (Reusable Values)" }
+                                    div {
+                                        style: "display: flex; gap: 40px; flex-wrap: wrap; align-items: center;",
+                                        div {
+                                            style: "font-size: 16px;",
+                                            span { style: "font-size: 12px; color: var(--uikit-muted); display: block; margin-bottom: 8px;", "Small size (16px)" }
+                                            Unit { value: "1,245", unit: "reqs" }
+                                        }
+                                        div {
+                                            style: "font-size: 24px;",
+                                            span { style: "font-size: 12px; color: var(--uikit-muted); display: block; margin-bottom: 8px;", "Medium size (24px)" }
+                                            Unit { value: "75.4", unit: "%" }
+                                        }
+                                        div {
+                                            style: "font-size: 36px;",
+                                            span { style: "font-size: 12px; color: var(--uikit-muted); display: block; margin-bottom: 8px;", "Large size (36px)" }
+                                            Unit { value: "4.2", unit: "GB" }
+                                        }
+                                    }
                                 }
                             }
                         }

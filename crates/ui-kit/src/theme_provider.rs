@@ -8,8 +8,8 @@ pub fn ThemeProvider(
     #[props(default)] theme: Option<Signal<AppTheme>>,
     children: Element,
 ) -> Element {
-    // If no signal is provided, manage the theme internally (default to Neutral)
-    let active_theme = theme.unwrap_or_else(|| use_signal(|| AppTheme::Neutral));
+    // If no signal is provided, manage the theme internally (default to AppTheme::default())
+    let active_theme = theme.unwrap_or_else(|| use_signal(AppTheme::default));
 
     // Provide active theme signal to children components
     use_context_provider(|| active_theme);

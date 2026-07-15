@@ -1,8 +1,8 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AppTheme {
-    #[default]
     Neutral,
     Black,
+    #[default]
     White,
 }
 
