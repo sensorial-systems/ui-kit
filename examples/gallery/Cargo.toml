@@ -1,0 +1,9 @@
+[package]
+name = "gallery"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+dioxus = { version = "0.7.1", features = ["web"] }
+ui-kit = { path = "../../crates/ui-kit" }

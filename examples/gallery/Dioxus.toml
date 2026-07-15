@@ -1,0 +1,12 @@
+[application]
+name = "gallery"
+
+[web.app]
+title = "Dioxus Component Gallery"
+
+[web.resource]
+style = []
+script = []
+
+[web.resource.dev]
+script = []

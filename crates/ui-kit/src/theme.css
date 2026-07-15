@@ -1,0 +1,617 @@
+/* Theme Stylesheet for Dioxus UI Kit */
+
+:root {
+    --uikit-transition-fast: all 0.15s ease;
+    --uikit-transition-normal: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --uikit-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --uikit-radius-sm: 4px;
+    --uikit-radius-md: 8px;
+    --uikit-radius-lg: 12px;
+    --uikit-radius-full: 9999px;
+}
+
+.uikit-root,
+.uikit-root * {
+    box-sizing: border-box;
+}
+
+/* 1. Neutral Theme */
+.uikit-theme-neutral {
+    --uikit-bg: #121214;
+    --uikit-fg: #f4f4f5;
+    --uikit-card-bg: #1a1a1e;
+    --uikit-primary: #3b82f6;
+    --uikit-primary-hover: #2563eb;
+    --uikit-primary-fg: #ffffff;
+    --uikit-secondary: #27272a;
+    --uikit-secondary-hover: #3f3f46;
+    --uikit-secondary-fg: #fafafa;
+    --uikit-border: #2e2e33;
+    --uikit-border-hover: #3f3f46;
+    --uikit-muted: #8b8b93;
+    --uikit-muted-bg: #202024;
+    --uikit-success: #10b981;
+    --uikit-success-bg: rgba(16, 185, 129, 0.1);
+    --uikit-warning: #f59e0b;
+    --uikit-warning-bg: rgba(245, 158, 11, 0.1);
+    --uikit-error: #ef4444;
+    --uikit-error-bg: rgba(239, 68, 68, 0.1);
+    --uikit-info: #06b6d4;
+    --uikit-info-bg: rgba(6, 182, 212, 0.1);
+    --uikit-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+    --uikit-ring: rgba(59, 130, 246, 0.3);
+    --uikit-select-arrow: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f4f4f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
+/* 2. Black Theme */
+.uikit-theme-black {
+    --uikit-bg: #000000;
+    --uikit-fg: #ffffff;
+    --uikit-card-bg: #0a0a0a;
+    --uikit-primary: #ffffff;
+    --uikit-primary-hover: #e4e4e7;
+    --uikit-primary-fg: #000000;
+    --uikit-secondary: #121212;
+    --uikit-secondary-hover: #1c1c1c;
+    --uikit-secondary-fg: #ffffff;
+    --uikit-border: #222222;
+    --uikit-border-hover: #333333;
+    --uikit-muted: #888888;
+    --uikit-muted-bg: #0d0d0d;
+    --uikit-success: #00ff66;
+    --uikit-success-bg: rgba(0, 255, 102, 0.08);
+    --uikit-warning: #ffd700;
+    --uikit-warning-bg: rgba(255, 215, 0, 0.08);
+    --uikit-error: #ff3333;
+    --uikit-error-bg: rgba(255, 51, 51, 0.08);
+    --uikit-info: #33ccff;
+    --uikit-info-bg: rgba(51, 204, 255, 0.08);
+    --uikit-shadow: 0 0 0 1px #222222;
+    --uikit-ring: rgba(255, 255, 255, 0.4);
+    --uikit-select-arrow: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
+/* 3. White Theme */
+.uikit-theme-white {
+    --uikit-bg: #ffffff;
+    --uikit-fg: #09090b;
+    --uikit-card-bg: #ffffff;
+    --uikit-primary: #3b82f6;
+    --uikit-primary-hover: #2563eb;
+    --uikit-primary-fg: #ffffff;
+    --uikit-secondary: #f4f4f5;
+    --uikit-secondary-hover: #e4e4e7;
+    --uikit-secondary-fg: #18181b;
+    --uikit-border: #e4e4e7;
+    --uikit-border-hover: #d4d4d8;
+    --uikit-muted: #71717a;
+    --uikit-muted-bg: #fafafa;
+    --uikit-success: #10b981;
+    --uikit-success-bg: rgba(16, 185, 129, 0.08);
+    --uikit-warning: #d97706;
+    --uikit-warning-bg: rgba(217, 119, 6, 0.08);
+    --uikit-error: #dc2626;
+    --uikit-error-bg: rgba(220, 38, 38, 0.08);
+    --uikit-info: #0284c7;
+    --uikit-info-bg: rgba(2, 132, 199, 0.08);
+    --uikit-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.05);
+    --uikit-ring: rgba(59, 130, 246, 0.3);
+    --uikit-select-arrow: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2309090b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
+/* Component CSS Rules */
+
+/* --- Button --- */
+.uikit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--uikit-font-sans);
+    font-weight: 500;
+    border-radius: var(--uikit-radius-md);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: var(--uikit-transition-fast);
+    outline: none;
+    text-decoration: none;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.uikit-btn:focus-visible {
+    box-shadow: 0 0 0 2px var(--uikit-bg), 0 0 0 4px var(--uikit-ring);
+}
+
+.uikit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.uikit-btn:not(:disabled):active {
+    transform: scale(0.96);
+    transition: transform 0.05s ease;
+}
+
+.uikit-btn-primary:not(:disabled):active {
+    background-color: var(--uikit-primary-hover);
+    opacity: 0.9;
+}
+
+.uikit-btn-secondary:not(:disabled):active {
+    background-color: var(--uikit-secondary-hover);
+}
+
+.uikit-btn-outline:not(:disabled):active {
+    background-color: var(--uikit-secondary);
+}
+
+.uikit-btn-text:not(:disabled):active {
+    background-color: var(--uikit-secondary);
+}
+
+/* Button Variants */
+.uikit-btn-primary {
+    background-color: var(--uikit-primary);
+    color: var(--uikit-primary-fg);
+}
+
+.uikit-btn-primary:not(:disabled):hover {
+    background-color: var(--uikit-primary-hover);
+}
+
+.uikit-btn-secondary {
+    background-color: var(--uikit-secondary);
+    color: var(--uikit-secondary-fg);
+    border-color: var(--uikit-border);
+}
+
+.uikit-btn-secondary:not(:disabled):hover {
+    background-color: var(--uikit-secondary-hover);
+    border-color: var(--uikit-border-hover);
+}
+
+.uikit-btn-outline {
+    background-color: transparent;
+    color: var(--uikit-fg);
+    border-color: var(--uikit-border);
+}
+
+.uikit-btn-outline:not(:disabled):hover {
+    background-color: var(--uikit-secondary);
+    border-color: var(--uikit-border-hover);
+}
+
+.uikit-btn-text {
+    background-color: transparent;
+    color: var(--uikit-fg);
+}
+
+.uikit-btn-text:not(:disabled):hover {
+    background-color: var(--uikit-secondary);
+}
+
+/* Button Sizes */
+.uikit-btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+    height: 32px;
+}
+
+.uikit-btn-md {
+    padding: 8px 16px;
+    font-size: 14px;
+    height: 40px;
+}
+
+.uikit-btn-lg {
+    padding: 10px 20px;
+    font-size: 16px;
+    height: 48px;
+}
+
+/* Loading Spinners */
+.uikit-btn-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: uikit-spin 0.6s linear infinite;
+    margin-right: 8px;
+}
+
+@keyframes uikit-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* --- Input --- */
+.uikit-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: var(--uikit-font-sans);
+    width: 100%;
+}
+
+.uikit-input-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--uikit-fg);
+}
+
+.uikit-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.uikit-input {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 14px;
+    background-color: var(--uikit-bg);
+    color: var(--uikit-fg);
+    border: 1px solid var(--uikit-border);
+    border-radius: var(--uikit-radius-md);
+    outline: none;
+    transition: var(--uikit-transition-fast);
+}
+
+.uikit-input:hover {
+    border-color: var(--uikit-border-hover);
+}
+
+.uikit-input:focus {
+    border-color: var(--uikit-primary);
+    box-shadow: 0 0 0 3px var(--uikit-ring);
+}
+
+.uikit-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.uikit-input-error .uikit-input {
+    border-color: var(--uikit-error);
+}
+
+.uikit-input-error .uikit-input:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+.uikit-input-help {
+    font-size: 12px;
+    color: var(--uikit-muted);
+}
+
+.uikit-input-err-text {
+    font-size: 12px;
+    color: var(--uikit-error);
+}
+
+
+/* --- Checkbox --- */
+.uikit-checkbox-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--uikit-font-sans);
+    cursor: pointer;
+    user-select: none;
+}
+
+.uikit-checkbox-container.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.uikit-checkbox-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.uikit-checkbox-box {
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--uikit-border);
+    border-radius: var(--uikit-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--uikit-bg);
+    transition: var(--uikit-transition-fast);
+    flex-shrink: 0;
+    color: var(--uikit-primary-fg);
+}
+
+.uikit-checkbox-container:hover .uikit-checkbox-box {
+    border-color: var(--uikit-border-hover);
+}
+
+.uikit-checkbox-input:checked+.uikit-checkbox-box {
+    background-color: var(--uikit-primary);
+    border-color: var(--uikit-primary);
+}
+
+.uikit-checkbox-input:focus-visible+.uikit-checkbox-box {
+    box-shadow: 0 0 0 2px var(--uikit-bg), 0 0 0 4px var(--uikit-ring);
+}
+
+.uikit-checkbox-checkmark {
+    width: 10px;
+    height: 10px;
+    fill: currentColor;
+}
+
+
+/* --- Switch / Toggle --- */
+.uikit-switch-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--uikit-font-sans);
+    cursor: pointer;
+    user-select: none;
+}
+
+.uikit-switch-container.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.uikit-switch-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.uikit-switch-track {
+    width: 40px;
+    height: 22px;
+    background-color: var(--uikit-secondary);
+    border: 1px solid var(--uikit-border);
+    border-radius: var(--uikit-radius-full);
+    display: flex;
+    align-items: center;
+    padding: 0 2px;
+    transition: var(--uikit-transition-normal);
+    flex-shrink: 0;
+}
+
+.uikit-switch-thumb {
+    width: 16px;
+    height: 16px;
+    background-color: var(--uikit-fg);
+    border-radius: 50%;
+    transition: var(--uikit-transition-normal);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.uikit-switch-input:checked+.uikit-switch-track {
+    background-color: var(--uikit-primary);
+    border-color: var(--uikit-primary);
+}
+
+.uikit-switch-input:checked+.uikit-switch-track .uikit-switch-thumb {
+    transform: translateX(18px);
+    background-color: var(--uikit-primary-fg);
+}
+
+.uikit-switch-input:focus-visible+.uikit-switch-track {
+    box-shadow: 0 0 0 2px var(--uikit-bg), 0 0 0 4px var(--uikit-ring);
+}
+
+
+/* --- Card --- */
+.uikit-card {
+    background-color: var(--uikit-card-bg);
+    border: 1px solid var(--uikit-border);
+    border-radius: var(--uikit-radius-lg);
+    font-family: var(--uikit-font-sans);
+    overflow: hidden;
+}
+
+.uikit-card-shadowed {
+    box-shadow: var(--uikit-shadow);
+}
+
+.uikit-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--uikit-border);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.uikit-card-body {
+    padding: 20px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.uikit-card-footer {
+    padding: 14px 20px;
+    background-color: var(--uikit-muted-bg);
+    border-top: 1px solid var(--uikit-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+
+/* --- Badge --- */
+.uikit-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: var(--uikit-radius-full);
+    font-family: var(--uikit-font-sans);
+    line-height: 1;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.uikit-badge-default {
+    background-color: var(--uikit-secondary);
+    color: var(--uikit-fg);
+    border: 1px solid var(--uikit-border);
+}
+
+.uikit-badge-success {
+    background-color: var(--uikit-success-bg);
+    color: var(--uikit-success);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.uikit-badge-warning {
+    background-color: var(--uikit-warning-bg);
+    color: var(--uikit-warning);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.uikit-badge-error {
+    background-color: var(--uikit-error-bg);
+    color: var(--uikit-error);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.uikit-badge-info {
+    background-color: var(--uikit-info-bg);
+    color: var(--uikit-info);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+
+/* --- Select --- */
+.uikit-select {
+    width: 100%;
+    height: 40px;
+    padding: 0 36px 0 14px;
+    font-size: 14px;
+    background-color: var(--uikit-bg);
+    color: var(--uikit-fg);
+    border: 1px solid var(--uikit-border);
+    border-radius: var(--uikit-radius-md);
+    outline: none;
+    transition: var(--uikit-transition-fast);
+    cursor: pointer;
+    font-family: var(--uikit-font-sans);
+    
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    
+    background-image: var(--uikit-select-arrow);
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+}
+
+.uikit-select:hover {
+    border-color: var(--uikit-border-hover);
+}
+
+.uikit-select:focus {
+    border-color: var(--uikit-primary);
+    box-shadow: 0 0 0 3px var(--uikit-ring);
+}
+
+
+/* --- Modal --- */
+.uikit-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    animation: uikit-fade-in 0.2s ease-out;
+}
+
+.uikit-modal-content {
+    background-color: var(--uikit-card-bg);
+    border: 1px solid var(--uikit-border);
+    border-radius: var(--uikit-radius-lg);
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    animation: uikit-scale-up 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes uikit-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes uikit-scale-up {
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+
+/* --- Notification --- */
+.uikit-notification {
+    padding: 12px 16px;
+    border-radius: var(--uikit-radius-md);
+    font-family: var(--uikit-font-sans);
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: 1px solid transparent;
+}
+
+.uikit-notification-title {
+    font-weight: 600;
+}
+
+.uikit-notification-info {
+    background-color: var(--uikit-info-bg);
+    color: var(--uikit-info);
+    border-color: rgba(6, 182, 212, 0.2);
+}
+
+.uikit-notification-success {
+    background-color: var(--uikit-success-bg);
+    color: var(--uikit-success);
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.uikit-notification-warning {
+    background-color: var(--uikit-warning-bg);
+    color: var(--uikit-warning);
+    border-color: rgba(245, 158, 11, 0.2);
+}
+
+.uikit-notification-error {
+    background-color: var(--uikit-error-bg);
+    color: var(--uikit-error);
+    border-color: rgba(239, 68, 68, 0.2);
+}
