@@ -1,6 +1,8 @@
 /* Theme Stylesheet for Dioxus UI Kit */
 
-:root {
+:root,
+:host,
+.uikit-root {
     --uikit-transition-fast: all 0.15s ease;
     --uikit-transition-normal: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     --uikit-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -88,8 +90,8 @@
     --uikit-muted-bg: #fafafa;
     --uikit-success: #10b981;
     --uikit-success-bg: rgba(16, 185, 129, 0.08);
-    --uikit-warning: #d97706;
-    --uikit-warning-bg: rgba(217, 119, 6, 0.08);
+    --uikit-warning: rgb(245, 158, 11);
+    --uikit-warning-bg: rgba(245, 158, 11, 0.08);
     --uikit-error: #dc2626;
     --uikit-error-bg: rgba(220, 38, 38, 0.08);
     --uikit-info: #0284c7;
@@ -519,8 +521,8 @@
 }
 
 .uikit-badge-lg {
-    padding: 6px 12px;
-    font-size: 13px;
+    padding: 8px 16px;
+    font-size: 16px;
     font-weight: 700;
 }
 
@@ -544,11 +546,11 @@
     transition: var(--uikit-transition-fast);
     cursor: pointer;
     font-family: var(--uikit-font-sans);
-    
+
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    
+
     background-image: var(--uikit-select-arrow);
     background-repeat: no-repeat;
     background-position: right 12px center;
@@ -758,21 +760,23 @@
     letter-spacing: 0.05em;
 }
 
-.uikit-metric-value-container {
-    display: flex;
-    align-items: baseline;
-    gap: 4px;
-    margin-bottom: 4px;
-    font-size: 28px;
-}
-
 /* --- Unit --- */
 .uikit-value-with-unit {
     display: inline-flex;
     align-items: baseline;
     line-height: 1.1;
-    font-size: inherit;
-    font-weight: inherit;
+}
+
+.uikit-value-with-unit-sm {
+    font-size: 14px;
+}
+
+.uikit-value-with-unit-md {
+    font-size: 20px;
+}
+
+.uikit-value-with-unit-lg {
+    font-size: 28px;
 }
 
 .uikit-value {

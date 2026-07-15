@@ -15,6 +15,7 @@ pub use components::{
     ProgressBar,
     Sparkline,
     Unit,
+    UnitSize,
 };
 pub use theme::AppTheme;
 pub use theme_provider::ThemeProvider;

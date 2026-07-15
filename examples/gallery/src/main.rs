@@ -271,14 +271,14 @@ fn App() -> Element {
                         Card {
                             div {
                                 style: "display: flex; flex-direction: column; gap: 32px;",
-                                
+
                                 // Metric Cards Grid
                                 div {
                                     style: "display: flex; flex-direction: column; gap: 16px;",
                                     h4 { style: "margin: 0 0 4px 0; color: var(--uikit-muted);", "Metric Cards (Directly using Card)" }
                                     div {
                                         style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;",
-                                        
+
                                         // Counter Card
                                         Card {
                                             shadowed: true,
@@ -288,9 +288,7 @@ fn App() -> Element {
                                                     span { class: "uikit-metric-label", "Requests Count" }
                                                 }
                                             },
-                                            div { class: "uikit-metric-value-container",
-                                                Unit { value: "1,234", unit: "reqs" }
-                                            }
+                                            Unit { value: "1,234", unit: "reqs" }
                                         }
 
                                         // Gauge Card
@@ -303,9 +301,7 @@ fn App() -> Element {
                                                 }
                                             },
                                             div { style: "display: flex; flex-direction: column; gap: 8px;",
-                                                div { class: "uikit-metric-value-container",
-                                                    Unit { value: "75.4", unit: "%" }
-                                                }
+                                                Unit { value: "75.4", unit: "%" }
                                                 ProgressBar {
                                                     value: 75.4,
                                                     min_label: "0.0",
@@ -321,16 +317,13 @@ fn App() -> Element {
                                             header: rsx! {
                                                 div { style: "display: flex; justify-content: space-between; align-items: center; width: 100%;",
                                                     span { class: "uikit-metric-label", "System Status" }
-                                                    Badge {
-                                                        variant: BadgeVariant::Success,
-                                                        size: BadgeSize::Large,
-                                                        borderless: true,
-                                                        "Healthy"
-                                                    }
                                                 }
                                             },
-                                            div { class: "uikit-metric-value-container",
-                                                Unit { value: "Operational" }
+                                            Badge {
+                                                variant: BadgeVariant::Success,
+                                                size: BadgeSize::Large,
+                                                borderless: true,
+                                                "Healthy"
                                             }
                                         }
 
@@ -344,9 +337,7 @@ fn App() -> Element {
                                                 }
                                             },
                                             div { style: "display: flex; flex-direction: column; gap: 12px;",
-                                                div { class: "uikit-metric-value-container",
-                                                    Unit { value: "4.2", unit: "GB" }
-                                                }
+                                                Unit { value: "4.2", unit: "GB" }
                                                 Sparkline {
                                                     data: vec![1.2, 1.5, 2.0, 1.8, 2.4, 3.1, 2.8, 3.5, 4.2],
                                                     fill: true
@@ -397,19 +388,16 @@ fn App() -> Element {
                                     div {
                                         style: "display: flex; gap: 40px; flex-wrap: wrap; align-items: center;",
                                         div {
-                                            style: "font-size: 16px;",
-                                            span { style: "font-size: 12px; color: var(--uikit-muted); display: block; margin-bottom: 8px;", "Small size (16px)" }
-                                            Unit { value: "1,245", unit: "reqs" }
+                                            span { style: "font-size: 12px; color: var(--uikit-muted); display: block; margin-bottom: 8px;", "Small size (14px)" }
+                                            Unit { value: "1,245", unit: "reqs", size: UnitSize::Small }
                                         }
                                         div {
-                                            style: "font-size: 24px;",
-                                            span { style: "font-size: 12px; color: var(--uikit-muted); display: block; margin-bottom: 8px;", "Medium size (24px)" }
-                                            Unit { value: "75.4", unit: "%" }
+                                            span { style: "font-size: 12px; color: var(--uikit-muted); display: block; margin-bottom: 8px;", "Medium size (20px)" }
+                                            Unit { value: "75.4", unit: "%", size: UnitSize::Medium }
                                         }
                                         div {
-                                            style: "font-size: 36px;",
-                                            span { style: "font-size: 12px; color: var(--uikit-muted); display: block; margin-bottom: 8px;", "Large size (36px)" }
-                                            Unit { value: "4.2", unit: "GB" }
+                                            span { style: "font-size: 12px; color: var(--uikit-muted); display: block; margin-bottom: 8px;", "Large size (28px)" }
+                                            Unit { value: "4.2", unit: "GB", size: UnitSize::Large }
                                         }
                                     }
                                 }

@@ -4,4 +4,4 @@ pub mod unit;
 
 pub use progress_bar::ProgressBar;
 pub use sparkline::Sparkline;
-pub use unit::Unit;
+pub use unit::{Unit, UnitSize};
