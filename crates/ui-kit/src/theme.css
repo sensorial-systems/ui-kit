@@ -230,13 +230,46 @@
 
 
 /* --- Input --- */
+.uikit-field-container,
 .uikit-input-container {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
     font-family: var(--uikit-font-sans);
     width: 100%;
 }
+
+.uikit-field-layout-top,
+.uikit-input-container {
+    flex-direction: column;
+    gap: 6px;
+}
+
+.uikit-field-layout-left {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+}
+
+.uikit-field-layout-left.uikit-field-has-extra {
+    align-items: flex-start;
+}
+
+/* Left layout label adjustments */
+.uikit-field-layout-left .uikit-input-label {
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+
+.uikit-field-layout-left.uikit-field-has-extra .uikit-input-label {
+    margin-top: 10px; /* Align with input when error or helper text pushes content down */
+}
+
+.uikit-field-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-grow: 1;
+}
+
 
 .uikit-input-label {
     font-size: 13px;
@@ -801,4 +834,51 @@
 .uikit-metric-sparkline-wrapper {
     margin-top: 12px;
     width: 100%;
+}
+
+/* --- Heading / Typography --- */
+.uikit-heading {
+    margin: 0;
+    font-family: var(--uikit-font-sans);
+    color: var(--uikit-fg);
+    line-height: 1.2;
+}
+
+.uikit-heading-h1 {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.uikit-heading-h2 {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.uikit-heading-h3 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.uikit-heading-h4 {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.uikit-heading-h5 {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.uikit-heading-h6 {
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.uikit-heading-bordered {
+    border-left: 4px solid var(--uikit-primary);
+    padding-left: 12px;
+}
+
+.uikit-heading-muted {
+    color: var(--uikit-muted);
 }

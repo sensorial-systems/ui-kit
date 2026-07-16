@@ -45,12 +45,11 @@ fn App() -> Element {
                 header {
                     style: "display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--uikit-border); padding-bottom: 20px; flex-wrap: wrap; gap: 20px;",
                     div {
-                        h1 { style: "margin: 0; font-size: 28px; font-weight: 700;", "Dioxus Component Gallery" }
+                        Heading { level: HeadingLevel::H1, "Dioxus Component Gallery" }
                         p { style: "margin: 8px 0 0 0; color: var(--uikit-muted); font-size: 14px;", "A premium collection of reusable and highly customizable components." }
                     }
                     div {
-                        style: "display: flex; align-items: center; gap: 10px;",
-                        span { style: "font-size: 14px; font-weight: 500; white-space: nowrap;", "Select Theme:" }
+                        style: "max-width: 260px; flex-grow: 1;",
                         Select {
                             value: theme_sig.read().class_name().to_string(),
                             onchange: move |val: String| {
@@ -66,7 +65,9 @@ fn App() -> Element {
                                 ("uikit-theme-neutral".to_string(), "Neutral".to_string()),
                                 ("uikit-theme-black".to_string(), "Black".to_string()),
                                 ("uikit-theme-white".to_string(), "White".to_string()),
-                            ]
+                            ],
+                            label: "Select Theme",
+                            label_layout: LabelLayout::Top
                         }
                     }
                 }
@@ -78,12 +79,12 @@ fn App() -> Element {
                     // Buttons Section
                     section {
                         style: "display: flex; flex-direction: column; gap: 16px;",
-                        h2 { style: "margin: 0; font-size: 20px; border-left: 4px solid var(--uikit-primary); padding-left: 12px;", "1. Buttons" }
+                        Heading { level: HeadingLevel::H2, bordered: true, "1. Buttons" }
                         Card {
                             div {
                                 style: "display: flex; flex-direction: column; gap: 24px;",
                                 div {
-                                    h4 { style: "margin: 0 0 12px 0; color: var(--uikit-muted);", "Variants" }
+                                    Heading { level: HeadingLevel::H4, muted: true, style: "margin-bottom: 12px;", "Variants" }
                                     div {
                                         style: "display: flex; gap: 12px; flex-wrap: wrap;",
                                         Button { variant: ButtonVariant::Primary, "Primary" }
@@ -93,7 +94,7 @@ fn App() -> Element {
                                     }
                                 }
                                 div {
-                                    h4 { style: "margin: 0 0 12px 0; color: var(--uikit-muted);", "Sizes" }
+                                    Heading { level: HeadingLevel::H4, muted: true, style: "margin-bottom: 12px;", "Sizes" }
                                     div {
                                         style: "display: flex; align-items: center; gap: 12px; flex-wrap: wrap;",
                                         Button { size: ButtonSize::Small, "Small" }
@@ -102,7 +103,7 @@ fn App() -> Element {
                                     }
                                 }
                                 div {
-                                    h4 { style: "margin: 0 0 12px 0; color: var(--uikit-muted);", "States" }
+                                    Heading { level: HeadingLevel::H4, muted: true, style: "margin-bottom: 12px;", "States" }
                                     div {
                                         style: "display: flex; gap: 12px; flex-wrap: wrap; align-items: center;",
                                         Button { disabled: true, "Disabled" }
@@ -132,7 +133,7 @@ fn App() -> Element {
                     // Form Controls Section
                     section {
                         style: "display: flex; flex-direction: column; gap: 16px;",
-                        h2 { style: "margin: 0; font-size: 20px; border-left: 4px solid var(--uikit-primary); padding-left: 12px;", "2. Form Controls" }
+                        Heading { level: HeadingLevel::H2, bordered: true, "2. Form Controls" }
                         Card {
                             div {
                                 style: "display: flex; flex-direction: column; gap: 24px; max-width: 500px;",
@@ -141,9 +142,31 @@ fn App() -> Element {
                                         value: input_val.read().clone(),
                                         oninput: move |e: FormEvent| input_val.set(e.value()),
                                         label: "Username",
+                                        label_layout: LabelLayout::Left,
+                                        alignment: 140.0,
                                         placeholder: "Enter username...",
                                         error: input_err.read().clone(),
-                                        help_text: "Must be at least 3 characters long."
+                                        help_text: "Must be at least 3 characters long.",
+                                    }
+                                }
+                                div {
+                                    TextInput {
+                                        value: "user@example.com".to_string(),
+                                        oninput: move |_| {},
+                                        label: "Email",
+                                        label_layout: LabelLayout::Left,
+                                        alignment: 140.0,
+                                        placeholder: "Enter email...",
+                                    }
+                                }
+                                div {
+                                    Select {
+                                        value: select_val.read().clone(),
+                                        onchange: move |val| select_val.set(val),
+                                        options: select_options.clone(),
+                                        label: "Preferred Language",
+                                        label_layout: LabelLayout::Left,
+                                        alignment: 140.0,
                                     }
                                 }
                                 div {
@@ -174,14 +197,6 @@ fn App() -> Element {
                                         label: "Disabled Switch"
                                     }
                                 }
-                                div {
-                                    Select {
-                                        value: select_val.read().clone(),
-                                        onchange: move |val| select_val.set(val),
-                                        options: select_options.clone(),
-                                        label: "Preferred Language"
-                                    }
-                                }
                             }
                         }
                     }
@@ -189,12 +204,12 @@ fn App() -> Element {
                     // Display Components
                     section {
                         style: "display: flex; flex-direction: column; gap: 16px;",
-                        h2 { style: "margin: 0; font-size: 20px; border-left: 4px solid var(--uikit-primary); padding-left: 12px;", "3. Feedback & Badges" }
+                        Heading { level: HeadingLevel::H2, bordered: true, "3. Feedback & Badges" }
                         Card {
                             div {
                                 style: "display: flex; flex-direction: column; gap: 24px;",
                                 div {
-                                    h4 { style: "margin: 0 0 12px 0; color: var(--uikit-muted);", "Badges (Variants, Sizes & Styles)" }
+                                    Heading { level: HeadingLevel::H4, muted: true, style: "margin-bottom: 12px;", "Badges (Variants, Sizes & Styles)" }
                                     div {
                                         style: "display: flex; flex-direction: column; gap: 16px;",
                                         div {
@@ -218,7 +233,7 @@ fn App() -> Element {
                                     }
                                 }
                                 div {
-                                    h4 { style: "margin: 0 0 12px 0; color: var(--uikit-muted);", "Notifications" }
+                                    Heading { level: HeadingLevel::H4, muted: true, style: "margin-bottom: 12px;", "Notifications" }
                                     div {
                                         style: "display: flex; flex-direction: column; gap: 12px;",
                                         Notification {
@@ -250,7 +265,7 @@ fn App() -> Element {
                     // Overlay / Interactive Modal
                     section {
                         style: "display: flex; flex-direction: column; gap: 16px;",
-                        h2 { style: "margin: 0; font-size: 20px; border-left: 4px solid var(--uikit-primary); padding-left: 12px;", "4. Modals & Dialogs" }
+                        Heading { level: HeadingLevel::H2, bordered: true, "4. Modals & Dialogs" }
                         Card {
                             div {
                                 style: "display: flex; flex-direction: column; gap: 12px; align-items: flex-start;",
@@ -267,7 +282,7 @@ fn App() -> Element {
                     // Metric & Data Visualization Section
                     section {
                         style: "display: flex; flex-direction: column; gap: 16px;",
-                        h2 { style: "margin: 0; font-size: 20px; border-left: 4px solid var(--uikit-primary); padding-left: 12px;", "5. Metric & Data Visualization" }
+                        Heading { level: HeadingLevel::H2, bordered: true, "5. Metric & Data Visualization" }
                         Card {
                             div {
                                 style: "display: flex; flex-direction: column; gap: 32px;",
@@ -275,7 +290,7 @@ fn App() -> Element {
                                 // Metric Cards Grid
                                 div {
                                     style: "display: flex; flex-direction: column; gap: 16px;",
-                                    h4 { style: "margin: 0 0 4px 0; color: var(--uikit-muted);", "Metric Cards (Directly using Card)" }
+                                    Heading { level: HeadingLevel::H4, muted: true, style: "margin-bottom: 4px;", "Metric Cards (Directly using Card)" }
                                     div {
                                         style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;",
 
@@ -350,7 +365,7 @@ fn App() -> Element {
                                 // Raw Progress Bars Demo
                                 div {
                                     style: "display: flex; flex-direction: column; gap: 16px;",
-                                    h4 { style: "margin: 0; color: var(--uikit-muted);", "Progress Bars" }
+                                    Heading { level: HeadingLevel::H4, muted: true, "Progress Bars" }
                                     div {
                                         style: "display: flex; flex-direction: column; gap: 16px; max-width: 400px;",
                                         ProgressBar { value: 30.0 }
@@ -365,7 +380,7 @@ fn App() -> Element {
                                 // Raw Sparklines Demo
                                 div {
                                     style: "display: flex; flex-direction: column; gap: 16px;",
-                                    h4 { style: "margin: 0; color: var(--uikit-muted);", "Sparklines (Trend Lines)" }
+                                    Heading { level: HeadingLevel::H4, muted: true, "Sparklines (Trend Lines)" }
                                     div {
                                         style: "display: flex; gap: 24px; flex-wrap: wrap;",
                                         div {
@@ -384,7 +399,7 @@ fn App() -> Element {
                                 // Raw Units Demo
                                 div {
                                     style: "display: flex; flex-direction: column; gap: 16px;",
-                                    h4 { style: "margin: 0; color: var(--uikit-muted);", "Units (Reusable Values)" }
+                                    Heading { level: HeadingLevel::H4, muted: true, "Units (Reusable Values)" }
                                     div {
                                         style: "display: flex; gap: 40px; flex-wrap: wrap; align-items: center;",
                                         div {

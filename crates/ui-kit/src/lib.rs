@@ -6,6 +6,8 @@ pub use components::{
     Badge, BadgeVariant, BadgeSize,
     Button, ButtonSize, ButtonVariant,
     Card,
+    Heading, HeadingLevel,
+    FormField, LabelLayout,
     Modal,
     Notification, NotificationVariant,
     Checkbox,
@@ -19,4 +21,6 @@ pub use components::{
 };
 pub use theme::AppTheme;
 pub use theme_provider::ThemeProvider;
+
+
 

@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use super::{FormField, LabelLayout};
 
 #[component]
 pub fn Select(
@@ -6,14 +7,15 @@ pub fn Select(
     onchange: EventHandler<String>,
     options: Vec<(String, String)>,
     #[props(into, default)] label: Option<String>,
+    #[props(default)] label_layout: LabelLayout,
+    #[props(into, default)] alignment: Option<f32>,
     #[props(default)] disabled: bool,
 ) -> Element {
     rsx! {
-        div {
-            class: "uikit-input-container",
-            if let Some(ref label_text) = label {
-                label { class: "uikit-input-label", "{label_text}" }
-            }
+        FormField {
+            label: label,
+            layout: label_layout,
+            alignment: alignment,
             select {
                 class: "uikit-select",
                 value: "{value}",
@@ -30,3 +32,4 @@ pub fn Select(
         }
     }
 }
+
