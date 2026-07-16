@@ -22,6 +22,8 @@ pub use components::{
     Spinner,
     SpinnerSize,
     SpinnerVariant,
+    Gauge,
+    Slider,
 };
 pub use theme::AppTheme;
 pub use theme_provider::ThemeProvider;

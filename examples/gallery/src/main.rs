@@ -18,6 +18,7 @@ fn App() -> Element {
     let mut select_val = use_signal(|| "rust".to_string());
     let mut modal_open = use_signal(|| false);
     let mut otp_val = use_signal(|| "".to_string());
+    let mut slider_val = use_signal(|| 50.0);
 
     let select_options = vec![
         ("rust".to_string(), "Rust".to_string()),
@@ -209,6 +210,28 @@ fn App() -> Element {
                                         help_text: format!("Current value in parent state: '{}'", otp_val.read()),
                                     }
                                 }
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--uikit-border); padding-top: 16px;",
+                                    span { class: "uikit-input-label", "Slider (Value: {slider_val.read():.1})" }
+                                    Slider {
+                                        value: *slider_val.read(),
+                                        min: 0.0,
+                                        max: 100.0,
+                                        step: 0.5,
+                                        on_change: move |val| slider_val.set(val),
+                                    }
+                                }
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 8px;",
+                                    span { class: "uikit-input-label", "Disabled Slider" }
+                                    Slider {
+                                        value: 30.0,
+                                        min: 0.0,
+                                        max: 100.0,
+                                        disabled: true,
+                                        on_change: move |_| {},
+                                    }
+                                }
                             }
                         }
                     }
@@ -352,7 +375,7 @@ fn App() -> Element {
                                             },
                                             div { style: "display: flex; flex-direction: column; gap: 8px;",
                                                 Unit { value: "75.4", unit: "%" }
-                                                ProgressBar {
+                                                Gauge {
                                                     value: 75.4,
                                                     min_label: "0.0",
                                                     max_label: "100.0"

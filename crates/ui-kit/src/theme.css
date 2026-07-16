@@ -779,7 +779,7 @@
 /* --- ProgressBar --- */
 .uikit-progress-bar-container {
     width: 100%;
-    margin-top: 8px;
+    margin-top: 0;
 }
 
 .uikit-progress-bar-track {
@@ -966,4 +966,106 @@
 
 .uikit-heading-muted {
     color: var(--uikit-muted);
+}
+
+/* --- Shared Bar Component --- */
+.uikit-bar-container {
+    width: 100%;
+}
+
+.uikit-bar-track {
+    background-color: var(--uikit-border);
+    border-radius: var(--uikit-radius-full);
+    height: 8px;
+    position: relative;
+    width: 100%;
+}
+
+.uikit-bar-fill {
+    background-color: var(--uikit-primary);
+    height: 100%;
+    border-radius: var(--uikit-radius-full);
+    transition: width 0.15s ease;
+}
+
+/* --- Gauge Component --- */
+.uikit-gauge-container {
+    width: 100%;
+    margin-top: 0;
+}
+
+.uikit-gauge-bar .uikit-bar-track {
+    background-color: var(--uikit-secondary);
+}
+
+.uikit-gauge-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--uikit-muted);
+    margin-top: 6px;
+}
+
+/* --- Slider Component --- */
+.uikit-slider-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 24px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.uikit-slider-container.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.uikit-slider-bar {
+    width: 100%;
+}
+
+.uikit-slider-bar .uikit-bar-track {
+    height: 6px;
+    background-color: var(--uikit-secondary);
+}
+
+.uikit-slider-thumb {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    background-color: var(--uikit-primary-fg);
+    border: 2px solid var(--uikit-primary);
+    border-radius: 50%;
+    z-index: 1;
+    transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.15s ease;
+    pointer-events: none;
+}
+
+.uikit-slider-container:hover:not(.disabled) .uikit-slider-thumb {
+    transform: translate(-50%, -50%) scale(1.15);
+}
+
+.uikit-slider-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    cursor: inherit;
+    z-index: 2;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* Focus ring decoration on the thumb when the hidden input is focused */
+.uikit-slider-input:focus-visible ~ .uikit-slider-bar .uikit-slider-thumb {
+    box-shadow: 0 0 0 2px var(--uikit-bg), 0 0 0 4px var(--uikit-ring);
 }
