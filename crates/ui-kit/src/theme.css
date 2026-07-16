@@ -212,14 +212,77 @@
 }
 
 /* Loading Spinners */
-.uikit-btn-spinner {
-    width: 16px;
-    height: 16px;
+.uikit-spinner {
+    display: inline-block;
     border: 2px solid transparent;
-    border-top-color: currentColor;
     border-radius: 50%;
     animation: uikit-spin 0.6s linear infinite;
+    flex-shrink: 0;
+}
+
+/* Spinner Sizes */
+.uikit-spinner-sm {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+}
+
+.uikit-spinner-md {
+    width: 24px;
+    height: 24px;
+    border-width: 2.5px;
+}
+
+.uikit-spinner-lg {
+    width: 36px;
+    height: 36px;
+    border-width: 3px;
+}
+
+/* Spinner Variants */
+.uikit-spinner-inherit {
+    border-top-color: currentColor;
+}
+
+.uikit-spinner-primary {
+    border-top-color: var(--uikit-primary);
+}
+
+.uikit-spinner-secondary {
+    border-top-color: var(--uikit-muted);
+}
+
+.uikit-spinner-success {
+    border-top-color: var(--uikit-success);
+}
+
+.uikit-spinner-warning {
+    border-top-color: var(--uikit-warning);
+}
+
+.uikit-spinner-error {
+    border-top-color: var(--uikit-error);
+}
+
+.uikit-spinner-info {
+    border-top-color: var(--uikit-info);
+}
+
+.uikit-btn-spinner {
     margin-right: 8px;
+}
+
+/* Screen reader only utility (for accessibility) */
+.uikit-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
 }
 
 @keyframes uikit-spin {

@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use crate::components::info::{Spinner, SpinnerSize, SpinnerVariant};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ButtonVariant {
@@ -64,7 +65,11 @@ pub fn Button(
             disabled: disabled || loading,
             onclick: handle_click,
             if loading {
-                span { class: "uikit-btn-spinner" }
+                Spinner {
+                    size: SpinnerSize::Small,
+                    variant: SpinnerVariant::Inherit,
+                    class: "uikit-btn-spinner",
+                }
             }
             {children}
         }

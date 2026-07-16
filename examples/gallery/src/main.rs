@@ -270,6 +270,29 @@ fn App() -> Element {
                                         }
                                     }
                                 }
+                                div {
+                                    Heading { level: HeadingLevel::H4, muted: true, style: "margin-bottom: 12px;", "Spinners (Sizes & Variants)" }
+                                    div {
+                                        style: "display: flex; flex-direction: column; gap: 20px;",
+                                        div {
+                                            style: "display: flex; gap: 24px; flex-wrap: wrap; align-items: center;",
+                                            span { style: "font-size: 13px; color: var(--uikit-muted); min-width: 80px;", "Sizes:" }
+                                            div { style: "display: flex; align-items: center; gap: 8px;", Spinner { size: SpinnerSize::Small }, span { style: "font-size: 13px; color: var(--uikit-muted);", "Small" } }
+                                            div { style: "display: flex; align-items: center; gap: 8px;", Spinner { size: SpinnerSize::Medium }, span { style: "font-size: 13px; color: var(--uikit-muted);", "Medium" } }
+                                            div { style: "display: flex; align-items: center; gap: 8px;", Spinner { size: SpinnerSize::Large }, span { style: "font-size: 13px; color: var(--uikit-muted);", "Large" } }
+                                        }
+                                        div {
+                                            style: "display: flex; gap: 24px; flex-wrap: wrap; align-items: center;",
+                                            span { style: "font-size: 13px; color: var(--uikit-muted); min-width: 80px;", "Variants:" }
+                                            div { style: "display: flex; align-items: center; gap: 8px;", Spinner { variant: SpinnerVariant::Primary }, span { style: "font-size: 13px; color: var(--uikit-muted);", "Primary" } }
+                                            div { style: "display: flex; align-items: center; gap: 8px;", Spinner { variant: SpinnerVariant::Secondary }, span { style: "font-size: 13px; color: var(--uikit-muted);", "Secondary" } }
+                                            div { style: "display: flex; align-items: center; gap: 8px;", Spinner { variant: SpinnerVariant::Success }, span { style: "font-size: 13px; color: var(--uikit-muted);", "Success" } }
+                                            div { style: "display: flex; align-items: center; gap: 8px;", Spinner { variant: SpinnerVariant::Warning }, span { style: "font-size: 13px; color: var(--uikit-muted);", "Warning" } }
+                                            div { style: "display: flex; align-items: center; gap: 8px;", Spinner { variant: SpinnerVariant::Error }, span { style: "font-size: 13px; color: var(--uikit-muted);", "Error" } }
+                                            div { style: "display: flex; align-items: center; gap: 8px;", Spinner { variant: SpinnerVariant::Info }, span { style: "font-size: 13px; color: var(--uikit-muted);", "Info" } }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
