@@ -328,6 +328,28 @@
 }
 
 
+/* --- OtpInput --- */
+.uikit-otp-input-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.uikit-otp-input-field {
+    width: 48px;
+    height: 48px;
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 600;
+    padding: 0;
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.uikit-otp-input-field:focus {
+    transform: scale(1.06);
+    z-index: 1;
+}
+
 /* --- Checkbox --- */
 .uikit-checkbox-container {
     display: inline-flex;

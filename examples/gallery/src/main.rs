@@ -17,6 +17,7 @@ fn App() -> Element {
     let mut switch_val = use_signal(|| true);
     let mut select_val = use_signal(|| "rust".to_string());
     let mut modal_open = use_signal(|| false);
+    let mut otp_val = use_signal(|| "".to_string());
 
     let select_options = vec![
         ("rust".to_string(), "Rust".to_string()),
@@ -195,6 +196,17 @@ fn App() -> Element {
                                         onchange: move |_| {},
                                         disabled: true,
                                         label: "Disabled Switch"
+                                    }
+                                }
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--uikit-border); padding-top: 16px;",
+                                    OtpInput {
+                                        value: otp_val.read().clone(),
+                                        onchange: move |val: String| otp_val.set(val),
+                                        length: 6,
+                                        label: "One-Time Password (OTP)",
+                                        label_layout: LabelLayout::Top,
+                                        help_text: format!("Current value in parent state: '{}'", otp_val.read()),
                                     }
                                 }
                             }
