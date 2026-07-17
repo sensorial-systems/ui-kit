@@ -12,6 +12,7 @@ pub use components::{
     Notification, NotificationVariant,
     Checkbox,
     TextInput,
+    EditableText,
     OtpInput,
     Select,
     Switch,

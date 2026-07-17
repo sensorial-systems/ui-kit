@@ -1506,3 +1506,147 @@
 .uikit-graph-node-plain.uikit-graph-node-selected {
     outline: 1px dashed var(--uikit-primary);
 }
+
+/* --- WysiwygEditor --- */
+.uikit-wysiwyg-wrapper {
+    width: 100%;
+}
+
+.uikit-wysiwyg-container {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--uikit-border);
+    border-radius: var(--uikit-radius-md);
+    background-color: var(--uikit-bg);
+    overflow: hidden;
+    transition: var(--uikit-transition-fast);
+}
+
+.uikit-wysiwyg-container:focus-within {
+    border-color: var(--uikit-primary);
+    box-shadow: 0 0 0 3px var(--uikit-ring);
+}
+
+.uikit-wysiwyg-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    background-color: var(--uikit-muted-bg);
+    border-bottom: 1px solid var(--uikit-border);
+}
+
+.uikit-wysiwyg-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--uikit-radius-sm);
+    color: var(--uikit-fg);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: var(--uikit-transition-fast);
+    user-select: none;
+}
+
+.uikit-wysiwyg-btn:hover {
+    background-color: var(--uikit-secondary);
+    border-color: var(--uikit-border);
+}
+
+.uikit-wysiwyg-btn:active {
+    background-color: var(--uikit-secondary-hover);
+}
+
+.uikit-wysiwyg-btn.text-font-btn {
+    width: auto;
+    padding: 0 6px;
+    font-family: var(--uikit-font-sans);
+}
+
+.uikit-wysiwyg-divider {
+    width: 1px;
+    height: 18px;
+    background-color: var(--uikit-border);
+    margin: 0 4px;
+}
+
+.uikit-wysiwyg-action-btn {
+    opacity: 0.85;
+}
+
+.uikit-wysiwyg-action-btn:hover {
+    opacity: 1;
+    background-color: var(--uikit-secondary);
+}
+
+.uikit-wysiwyg-editor {
+    min-height: 120px;
+    max-height: 400px;
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.6;
+    background-color: var(--uikit-bg);
+    color: var(--uikit-fg);
+    outline: none;
+    overflow-y: auto;
+    font-family: var(--uikit-font-sans);
+}
+
+.uikit-wysiwyg-editor:empty::before {
+    content: attr(data-placeholder);
+    color: var(--uikit-muted);
+    font-style: italic;
+    pointer-events: none;
+}
+
+.uikit-wysiwyg-viewer-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.uikit-wysiwyg-viewer {
+    min-height: 40px;
+    padding: 10px 14px;
+    border: 1px dashed transparent;
+    border-radius: var(--uikit-radius-md);
+    cursor: pointer;
+    font-family: var(--uikit-font-sans);
+    font-size: 14px;
+    line-height: 1.6;
+    background-color: transparent;
+    color: var(--uikit-fg);
+    transition: var(--uikit-transition-fast);
+}
+
+.uikit-wysiwyg-viewer:hover {
+    border-color: var(--uikit-border-hover);
+    background-color: var(--uikit-muted-bg);
+}
+
+.uikit-wysiwyg-viewer-empty {
+    color: var(--uikit-muted);
+    font-style: italic;
+}
+
+.uikit-wysiwyg-hint {
+    position: absolute;
+    right: 8px;
+    bottom: -18px;
+    font-size: 10px;
+    color: var(--uikit-muted);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.uikit-wysiwyg-viewer-wrapper:hover .uikit-wysiwyg-hint {
+    opacity: 0.8;
+}
+

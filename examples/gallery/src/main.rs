@@ -41,6 +41,7 @@ fn App() -> Element {
     let mut otp_val = use_signal(|| "".to_string());
     let mut slider_val = use_signal(|| 50.0);
     let mut datetime_val = use_signal(|| "2026-07-16 18:00".to_string());
+    let mut wysiwyg_val = use_signal(|| "<p>Hello <b>World</b>! This is a <i>WYSIWYG</i> editor.</p><p>Double-click this text block to edit formatting.</p>".to_string());
 
     let mut flow_active = use_signal(|| Some("build".to_string()));
     let mut tree_active = use_signal(|| Some("root".to_string()));
@@ -465,6 +466,24 @@ fn App() -> Element {
                                         on_change: move |_| {},
                                         label: "Disabled Date & Time Picker",
                                         disabled: true,
+                                    }
+                                }
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--uikit-border); padding-top: 16px;",
+                                    EditableText {
+                                        value: wysiwyg_val.read().clone(),
+                                        onchange: move |val| wysiwyg_val.set(val),
+                                        label: "WYSIWYG Rich Text Editor (Double-click to edit)",
+                                        label_layout: LabelLayout::Top,
+                                        help_text: "Supports formatting (Bold, Italic, Underline, Strikethrough), Paragraph/Headings, Lists, Alignments. Ctrl+Enter to save, Esc to cancel.",
+                                    }
+                                }
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--uikit-border); padding-top: 16px;",
+                                    span { class: "uikit-input-label", "Live HTML Output" }
+                                    pre {
+                                        style: "padding: 10px; background-color: var(--uikit-muted-bg); border: 1px solid var(--uikit-border); border-radius: var(--uikit-radius-md); font-family: monospace; font-size: 12px; overflow-x: auto; white-space: pre-wrap; margin: 0; color: var(--uikit-muted);",
+                                        "{wysiwyg_val.read()}"
                                     }
                                 }
                             }

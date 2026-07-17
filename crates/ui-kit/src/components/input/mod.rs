@@ -8,6 +8,7 @@ pub mod text_input;
 
 pub mod slider;
 pub mod date_time_picker;
+pub mod editable_text;
 
 pub use button::{Button, ButtonSize, ButtonVariant};
 pub use checkbox::Checkbox;
@@ -18,4 +19,5 @@ pub use slider::Slider;
 pub use date_time_picker::DateTimePicker;
 pub use switch::Switch;
 pub use text_input::TextInput;
+pub use editable_text::EditableText;
 
