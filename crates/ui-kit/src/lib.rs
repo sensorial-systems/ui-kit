@@ -24,6 +24,7 @@ pub use components::{
     SpinnerVariant,
     Gauge,
     Slider,
+    DateTimePicker,
 };
 pub use theme::AppTheme;
 pub use theme_provider::ThemeProvider;

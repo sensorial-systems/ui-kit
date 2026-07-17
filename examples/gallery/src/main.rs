@@ -19,6 +19,7 @@ fn App() -> Element {
     let mut modal_open = use_signal(|| false);
     let mut otp_val = use_signal(|| "".to_string());
     let mut slider_val = use_signal(|| 50.0);
+    let mut datetime_val = use_signal(|| "2026-07-16 18:00".to_string());
 
     let select_options = vec![
         ("rust".to_string(), "Rust".to_string()),
@@ -230,6 +231,23 @@ fn App() -> Element {
                                         max: 100.0,
                                         disabled: true,
                                         on_change: move |_| {},
+                                    }
+                                }
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--uikit-border); padding-top: 16px;",
+                                    DateTimePicker {
+                                        value: datetime_val.read().clone(),
+                                        on_change: move |val| datetime_val.set(val),
+                                        label: "Appointment Date & Time",
+                                    }
+                                }
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 8px;",
+                                    DateTimePicker {
+                                        value: "2026-07-16 14:00".to_string(),
+                                        on_change: move |_| {},
+                                        label: "Disabled Date & Time Picker",
+                                        disabled: true,
                                     }
                                 }
                             }

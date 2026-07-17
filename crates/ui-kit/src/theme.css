@@ -538,7 +538,7 @@
     border: 1px solid var(--uikit-border);
     border-radius: var(--uikit-radius-lg);
     font-family: var(--uikit-font-sans);
-    overflow: hidden;
+    overflow: visible;
 }
 
 .uikit-card-shadowed {
@@ -585,6 +585,8 @@
     display: flex;
     justify-content: flex-end;
     gap: 10px;
+    border-bottom-left-radius: calc(var(--uikit-radius-lg) - 1px);
+    border-bottom-right-radius: calc(var(--uikit-radius-lg) - 1px);
 }
 
 
@@ -1068,4 +1070,211 @@
 /* Focus ring decoration on the thumb when the hidden input is focused */
 .uikit-slider-input:focus-visible ~ .uikit-slider-bar .uikit-slider-thumb {
     box-shadow: 0 0 0 2px var(--uikit-bg), 0 0 0 4px var(--uikit-ring);
+}
+
+/* --- DateTimePicker --- */
+.uikit-datetime-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    font-family: var(--uikit-font-sans);
+}
+
+.uikit-datetime-container.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.uikit-datetime-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.uikit-datetime-input {
+    width: 100%;
+    padding: 10px 40px 10px 14px;
+    font-size: 14px;
+    background-color: var(--uikit-bg);
+    color: var(--uikit-fg);
+    border: 1px solid var(--uikit-border);
+    border-radius: var(--uikit-radius-md);
+    outline: none;
+    transition: var(--uikit-transition-fast);
+    cursor: inherit;
+}
+
+.uikit-datetime-container:not(.disabled):hover .uikit-datetime-input {
+    border-color: var(--uikit-border-hover);
+}
+
+.uikit-datetime-icon {
+    position: absolute;
+    right: 14px;
+    color: var(--uikit-muted);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.uikit-datetime-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 290px;
+    background-color: var(--uikit-card-bg);
+    border: 1px solid var(--uikit-border);
+    border-radius: var(--uikit-radius-lg);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.uikit-datetime-popover-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.uikit-datetime-nav-btn {
+    background: transparent;
+    border: none;
+    color: var(--uikit-fg);
+    font-size: 18px;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--uikit-radius-sm);
+    transition: var(--uikit-transition-fast);
+}
+
+.uikit-datetime-nav-btn:hover {
+    background-color: var(--uikit-secondary);
+}
+
+.uikit-datetime-month-year {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--uikit-fg);
+}
+
+.uikit-datetime-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--uikit-muted);
+    border-bottom: 1px solid var(--uikit-border);
+    padding-bottom: 6px;
+}
+
+.uikit-datetime-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.uikit-datetime-day-muted {
+    font-size: 12px;
+    color: rgba(139, 139, 147, 0.3);
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.uikit-datetime-day-btn {
+    background: transparent;
+    border: none;
+    font-size: 12px;
+    color: var(--uikit-fg);
+    height: 28px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: var(--uikit-radius-sm);
+    transition: var(--uikit-transition-fast);
+}
+
+.uikit-datetime-day-btn:hover {
+    background-color: var(--uikit-secondary);
+}
+
+.uikit-datetime-day-btn.selected {
+    background-color: var(--uikit-primary);
+    color: var(--uikit-primary-fg);
+    font-weight: 600;
+}
+
+.uikit-datetime-time-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--uikit-border);
+    padding-top: 12px;
+    margin-top: 4px;
+}
+
+.uikit-datetime-time-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--uikit-fg);
+}
+
+.uikit-datetime-time-inputs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.uikit-datetime-time-field {
+    width: 46px;
+    height: 30px;
+    border: 1px solid var(--uikit-border);
+    background-color: var(--uikit-bg);
+    color: var(--uikit-fg);
+    border-radius: var(--uikit-radius-sm);
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    outline: none;
+    transition: var(--uikit-transition-fast);
+    -moz-appearance: textfield;
+}
+
+.uikit-datetime-time-field::-webkit-outer-spin-button,
+.uikit-datetime-time-field::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.uikit-datetime-time-field:focus {
+    border-color: var(--uikit-primary);
+}
+
+.uikit-datetime-time-separator {
+    font-weight: 600;
+    color: var(--uikit-muted);
+}
+
+.uikit-datetime-popover-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    border-top: 1px solid var(--uikit-border);
+    padding-top: 12px;
 }
