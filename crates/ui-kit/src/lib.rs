@@ -25,6 +25,9 @@ pub use components::{
     Gauge,
     Slider,
     DateTimePicker,
+    Node, NodeShape, GraphNodeData,
+    Edge, EdgeType, ArrowHead, GraphEdgeData, EdgeDefs,
+    FlowGraph, HierarchyGraph, NetworkGraph,
 };
 pub use theme::AppTheme;
 pub use theme_provider::ThemeProvider;

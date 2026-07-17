@@ -1278,3 +1278,231 @@
     border-top: 1px solid var(--uikit-border);
     padding-top: 12px;
 }
+
+/* ==========================================
+   Graph Component Styles
+   ========================================== */
+
+.uikit-graph-container {
+    position: relative;
+    /*
+     * Canvas dimensions are graph coordinates. Keep the border outside those
+     * dimensions so the SVG viewBox and absolutely-positioned nodes share the
+     * exact same pixel space.
+     */
+    box-sizing: content-box;
+    width: 100%;
+    height: 480px;
+    background-color: var(--uikit-bg);
+    border: 1px solid var(--uikit-border);
+    border-radius: var(--uikit-radius-lg);
+    overflow: hidden;
+    user-select: none;
+    box-shadow: var(--uikit-shadow);
+}
+
+/* Grid background pattern */
+.uikit-graph-grid {
+    background-image: 
+        radial-gradient(var(--uikit-border) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* XMind-style canvases are intentionally quiet: no editor grid, frame, or
+   elevation around the map. HierarchyGraph props can opt back into a frame. */
+.uikit-hierarchy-graph {
+    background-image: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.uikit-hierarchy-graph .uikit-graph-node {
+    box-shadow: none;
+}
+
+.uikit-hierarchy-graph .uikit-graph-node-plain .uikit-graph-node-title {
+    color: var(--uikit-graph-node-color, var(--uikit-fg));
+}
+
+.uikit-graph-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.uikit-graph-edge-path {
+    stroke: var(--uikit-border);
+    stroke-width: 2px;
+    fill: none;
+    transition: stroke 0.2s ease, stroke-width 0.2s ease;
+}
+
+/* Animation for active paths */
+.uikit-graph-edge-path-animated {
+    stroke-dasharray: 8, 4;
+    animation: uikit-edge-dash 30s linear infinite;
+}
+
+@keyframes uikit-edge-dash {
+    from {
+        stroke-dashoffset: 1000;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.uikit-graph-edge-label-bg {
+    fill: var(--uikit-bg);
+}
+
+.uikit-graph-edge-label-text {
+    font-size: 11px;
+    font-family: var(--uikit-font-sans);
+    fill: var(--uikit-muted);
+    font-weight: 500;
+    text-anchor: middle;
+    dominant-baseline: central;
+}
+
+.uikit-graph-nodes-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.uikit-graph-node-wrapper {
+    position: absolute;
+    pointer-events: auto;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+}
+
+.uikit-graph-node-wrapper:hover {
+    transform: translate(-50%, -50%) scale(1.03);
+    z-index: 10;
+}
+
+.uikit-graph-node {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 16px;
+    background-color: var(--uikit-card-bg);
+    border: 1.5px solid var(--uikit-border);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+    transition: var(--uikit-transition-fast);
+}
+
+/* Shapes */
+.uikit-graph-node-box {
+    border-radius: var(--uikit-radius-md);
+    width: 150px;
+}
+
+.uikit-graph-node-pill {
+    border-radius: var(--uikit-radius-full);
+    padding: 8px 20px;
+    align-items: center;
+    justify-content: center;
+    width: 140px;
+}
+
+.uikit-graph-node-circle {
+    border-radius: var(--uikit-radius-full);
+    width: 70px;
+    height: 70px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+/* Selected state */
+.uikit-graph-node-selected {
+    border-color: var(--uikit-primary);
+    box-shadow: 0 0 0 3px var(--uikit-ring), 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+.uikit-graph-node-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.uikit-graph-node-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--uikit-fg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.uikit-graph-node-circle .uikit-graph-node-title {
+    font-size: 12px;
+    white-space: normal;
+    text-overflow: clip;
+}
+
+.uikit-graph-node-desc {
+    font-size: 11px;
+    color: var(--uikit-muted);
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.uikit-graph-node-status-indicator {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.uikit-status-primary { background-color: var(--uikit-primary); }
+.uikit-status-success { background-color: var(--uikit-success); }
+.uikit-status-warning { background-color: var(--uikit-warning); }
+.uikit-status-error { background-color: var(--uikit-error); }
+.uikit-status-info { background-color: var(--uikit-info); }
+
+/* XMind style underline nodes */
+.uikit-graph-node-underline {
+    background-color: transparent;
+    border: none;
+    border-bottom: 2px solid var(--uikit-border);
+    border-radius: 0;
+    box-shadow: none;
+    padding: 4px 4px;
+    width: 160px;
+}
+
+.uikit-graph-node-underline.uikit-graph-node-selected {
+    border-bottom-color: var(--uikit-primary);
+}
+
+/* Plain nodes (no borders/backgrounds, like XMind leaves without underlines) */
+.uikit-graph-node-plain {
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 4px 4px;
+    width: 160px;
+}
+.uikit-graph-node-plain.uikit-graph-node-selected {
+    outline: 1px dashed var(--uikit-primary);
+}

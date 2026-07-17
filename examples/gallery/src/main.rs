@@ -5,6 +5,27 @@ fn main() {
     dioxus::launch(App);
 }
 
+fn get_circle_connection(fx: f64, fy: f64, tx: f64, ty: f64, is_straight: bool) -> (f64, f64, f64, f64) {
+    let dx = tx - fx;
+    let dy = ty - fy;
+    let dist = (dx * dx + dy * dy).sqrt();
+    let from_radius = 35.0;
+    // Marker reference points sit on their tips, so both path endpoints belong
+    // exactly on the circle boundary—no arrow-length compensation is needed.
+    let to_radius = 35.0;
+    if is_straight {
+        if dist > 0.01 {
+            let nx = dx / dist;
+            let ny = dy / dist;
+            (fx + nx * from_radius, fy + ny * from_radius, tx - nx * to_radius, ty - ny * to_radius)
+        } else {
+            (fx, fy, tx, ty)
+        }
+    } else {
+        (fx + from_radius, fy, tx - to_radius, ty)
+    }
+}
+
 #[component]
 fn App() -> Element {
     let mut theme_sig = use_signal(AppTheme::default);
@@ -20,6 +41,202 @@ fn App() -> Element {
     let mut otp_val = use_signal(|| "".to_string());
     let mut slider_val = use_signal(|| 50.0);
     let mut datetime_val = use_signal(|| "2026-07-16 18:00".to_string());
+
+    let mut flow_active = use_signal(|| Some("build".to_string()));
+    let mut tree_active = use_signal(|| Some("root".to_string()));
+    let mut net_active = use_signal(|| Some("db".to_string()));
+
+    let flow_nodes = vec![
+        (
+            GraphNodeData { id: "checkout".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-success)".to_string()), border: None, background_color: None, shape: NodeShape::Box, selected: false },
+            rsx! {
+                div {
+                    class: "uikit-graph-node-header",
+                    span { class: "uikit-graph-node-title", "1. Checkout" }
+                    span { class: "uikit-graph-node-status-indicator uikit-status-success" }
+                }
+                span { class: "uikit-graph-node-desc", "Source Code" }
+            }
+        ),
+        (
+            GraphNodeData { id: "lint".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-success)".to_string()), border: None, background_color: None, shape: NodeShape::Box, selected: false },
+            rsx! {
+                div {
+                    class: "uikit-graph-node-header",
+                    span { class: "uikit-graph-node-title", "2a. Lint & Format" }
+                    span { class: "uikit-graph-node-status-indicator uikit-status-success" }
+                }
+                span { class: "uikit-graph-node-desc", "Cargo clippy" }
+            }
+        ),
+        (
+            GraphNodeData { id: "test".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-success)".to_string()), border: None, background_color: None, shape: NodeShape::Box, selected: false },
+            rsx! {
+                div {
+                    class: "uikit-graph-node-header",
+                    span { class: "uikit-graph-node-title", "2b. Unit Tests" }
+                    span { class: "uikit-graph-node-status-indicator uikit-status-success" }
+                }
+                span { class: "uikit-graph-node-desc", "Cargo test" }
+            }
+        ),
+        (
+            GraphNodeData { id: "build".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-primary)".to_string()), border: None, background_color: None, shape: NodeShape::Box, selected: false },
+            rsx! {
+                div {
+                    class: "uikit-graph-node-header",
+                    span { class: "uikit-graph-node-title", "3. Build Artifact" }
+                    span { class: "uikit-graph-node-status-indicator uikit-status-primary" }
+                }
+                span { class: "uikit-graph-node-desc", "Cargo build --release" }
+            }
+        ),
+        (
+            GraphNodeData { id: "deploy".to_string(), x: 0.0, y: 0.0, color: None, border: None, background_color: None, shape: NodeShape::Box, selected: false },
+            rsx! {
+                div {
+                    class: "uikit-graph-node-header",
+                    span { class: "uikit-graph-node-title", "4. Deploy" }
+                    span { class: "uikit-graph-node-status-indicator uikit-status-primary" }
+                }
+                span { class: "uikit-graph-node-desc", "Deploy to AWS" }
+            }
+        ),
+    ];
+    let flow_edges = vec![
+        GraphEdgeData { from: "checkout".to_string(), to: "lint".to_string(), label: None, edge_type: EdgeType::Orthogonal, color: Some("var(--uikit-success)".to_string()), animated: true, arrow: ArrowHead::End },
+        GraphEdgeData { from: "checkout".to_string(), to: "test".to_string(), label: None, edge_type: EdgeType::Orthogonal, color: Some("var(--uikit-success)".to_string()), animated: true, arrow: ArrowHead::End },
+        GraphEdgeData { from: "lint".to_string(), to: "build".to_string(), label: Some("Passed".to_string()), edge_type: EdgeType::Orthogonal, color: Some("var(--uikit-primary)".to_string()), animated: false, arrow: ArrowHead::End },
+        GraphEdgeData { from: "test".to_string(), to: "build".to_string(), label: Some("Passed".to_string()), edge_type: EdgeType::Orthogonal, color: Some("var(--uikit-primary)".to_string()), animated: false, arrow: ArrowHead::End },
+        GraphEdgeData { from: "build".to_string(), to: "deploy".to_string(), label: None, edge_type: EdgeType::Orthogonal, color: None, animated: false, arrow: ArrowHead::End },
+    ];
+
+    let tree_nodes = vec![
+        (
+            GraphNodeData { id: "root".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-primary)".to_string()), border: Some("none".to_string()), background_color: None, shape: NodeShape::Box, selected: false },
+            rsx! {
+                span { class: "uikit-graph-node-title", style: "font-size: 20px; font-weight: 750; text-align: center;", "Core App" }
+            }
+        ),
+        (
+            GraphNodeData { id: "ui".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-info)".to_string()), border: Some("none".to_string()), background_color: None, shape: NodeShape::Box, selected: false },
+            rsx! {
+                span { class: "uikit-graph-node-title", "UI Layer" }
+            }
+        ),
+        (
+            GraphNodeData { id: "db".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-warning)".to_string()), border: Some("none".to_string()), background_color: None, shape: NodeShape::Box, selected: false },
+            rsx! {
+                span { class: "uikit-graph-node-title", "Database" }
+            }
+        ),
+        (
+            GraphNodeData { id: "api".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-success)".to_string()), border: Some("none".to_string()), background_color: None, shape: NodeShape::Box, selected: false },
+            rsx! {
+                span { class: "uikit-graph-node-title", "GraphQL API" }
+            }
+        ),
+        (
+            GraphNodeData { id: "views".to_string(), x: 0.0, y: 0.0, color: None, border: Some("none".to_string()), background_color: None, shape: NodeShape::Box, selected: false },
+            rsx! {
+                span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Views & Pages" }
+            }
+        ),
+        (
+            GraphNodeData { id: "components".to_string(), x: 0.0, y: 0.0, color: None, border: Some("none".to_string()), background_color: None, shape: NodeShape::Box, selected: false },
+            rsx! {
+                span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Shared Parts" }
+            }
+        ),
+        (
+            GraphNodeData { id: "web".to_string(), x: 0.0, y: 0.0, color: None, border: Some("none".to_string()), background_color: Some("transparent".to_string()), shape: NodeShape::Plain, selected: false },
+            rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Web Views" } }
+        ),
+        (
+            GraphNodeData { id: "mobile".to_string(), x: 0.0, y: 0.0, color: None, border: Some("none".to_string()), background_color: Some("transparent".to_string()), shape: NodeShape::Plain, selected: false },
+            rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Mobile Views" } }
+        ),
+        (
+            GraphNodeData { id: "forms".to_string(), x: 0.0, y: 0.0, color: None, border: Some("none".to_string()), background_color: Some("transparent".to_string()), shape: NodeShape::Plain, selected: false },
+            rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Form Controls" } }
+        ),
+        (
+            GraphNodeData { id: "navigation".to_string(), x: 0.0, y: 0.0, color: None, border: Some("none".to_string()), background_color: Some("transparent".to_string()), shape: NodeShape::Plain, selected: false },
+            rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Navigation" } }
+        ),
+    ];
+    let tree_edges = vec![
+        GraphEdgeData { from: "root".to_string(), to: "ui".to_string(), label: None, edge_type: EdgeType::Bezier, color: Some("var(--uikit-info)".to_string()), animated: false, arrow: ArrowHead::None },
+        GraphEdgeData { from: "root".to_string(), to: "db".to_string(), label: None, edge_type: EdgeType::OrganicCurved, color: Some("var(--uikit-warning)".to_string()), animated: false, arrow: ArrowHead::None },
+        GraphEdgeData { from: "root".to_string(), to: "api".to_string(), label: None, edge_type: EdgeType::OrganicCurved, color: Some("var(--uikit-success)".to_string()), animated: false, arrow: ArrowHead::None },
+        GraphEdgeData { from: "ui".to_string(), to: "views".to_string(), label: None, edge_type: EdgeType::Bezier, color: None, animated: false, arrow: ArrowHead::None },
+        GraphEdgeData { from: "ui".to_string(), to: "components".to_string(), label: None, edge_type: EdgeType::Bezier, color: None, animated: false, arrow: ArrowHead::None },
+        GraphEdgeData { from: "views".to_string(), to: "web".to_string(), label: None, edge_type: EdgeType::Bezier, color: None, animated: false, arrow: ArrowHead::None },
+        GraphEdgeData { from: "views".to_string(), to: "mobile".to_string(), label: None, edge_type: EdgeType::Bezier, color: None, animated: false, arrow: ArrowHead::None },
+        GraphEdgeData { from: "components".to_string(), to: "forms".to_string(), label: None, edge_type: EdgeType::Bezier, color: None, animated: false, arrow: ArrowHead::None },
+        GraphEdgeData { from: "components".to_string(), to: "navigation".to_string(), label: None, edge_type: EdgeType::Bezier, color: None, animated: false, arrow: ArrowHead::None },
+    ];
+
+    let net_nodes = vec![
+        (
+            GraphNodeData { id: "gateway".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-info)".to_string()), border: None, background_color: None, shape: NodeShape::Circle, selected: false },
+            rsx! {
+                div {
+                    class: "uikit-graph-node-title",
+                    title: "Gateway",
+                    "Gateway"
+                }
+            }
+        ),
+        (
+            GraphNodeData { id: "auth".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-success)".to_string()), border: None, background_color: None, shape: NodeShape::Circle, selected: false },
+            rsx! {
+                div {
+                    class: "uikit-graph-node-title",
+                    title: "Auth Svc",
+                    "Auth Svc"
+                }
+            }
+        ),
+        (
+            GraphNodeData { id: "payment".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-error)".to_string()), border: None, background_color: None, shape: NodeShape::Circle, selected: false },
+            rsx! {
+                div {
+                    class: "uikit-graph-node-title",
+                    title: "Billing",
+                    "Billing"
+                }
+            }
+        ),
+        (
+            GraphNodeData { id: "db".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-warning)".to_string()), border: None, background_color: None, shape: NodeShape::Circle, selected: false },
+            rsx! {
+                div {
+                    class: "uikit-graph-node-title",
+                    title: "Shared DB",
+                    "Shared DB"
+                }
+            }
+        ),
+        (
+            GraphNodeData { id: "cache".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-primary)".to_string()), border: None, background_color: None, shape: NodeShape::Circle, selected: false },
+            rsx! {
+                div {
+                    class: "uikit-graph-node-title",
+                    title: "Redis",
+                    "Redis"
+                }
+            }
+        ),
+    ];
+    let net_edges = vec![
+        GraphEdgeData { from: "gateway".to_string(), to: "auth".to_string(), label: Some("Active".to_string()), edge_type: EdgeType::Straight, color: Some("var(--uikit-info)".to_string()), animated: true, arrow: ArrowHead::Both },
+        GraphEdgeData { from: "gateway".to_string(), to: "payment".to_string(), label: None, edge_type: EdgeType::Straight, color: Some("var(--uikit-error)".to_string()), animated: false, arrow: ArrowHead::End },
+        GraphEdgeData { from: "auth".to_string(), to: "db".to_string(), label: None, edge_type: EdgeType::Straight, color: Some("var(--uikit-success)".to_string()), animated: false, arrow: ArrowHead::End },
+        GraphEdgeData { from: "payment".to_string(), to: "db".to_string(), label: None, edge_type: EdgeType::Straight, color: Some("var(--uikit-warning)".to_string()), animated: false, arrow: ArrowHead::End },
+        GraphEdgeData { from: "db".to_string(), to: "cache".to_string(), label: Some("Sync".to_string()), edge_type: EdgeType::Straight, color: Some("var(--uikit-primary)".to_string()), animated: true, arrow: ArrowHead::Both },
+        GraphEdgeData { from: "gateway".to_string(), to: "cache".to_string(), label: None, edge_type: EdgeType::Straight, color: None, animated: false, arrow: ArrowHead::End },
+    ];
 
     let select_options = vec![
         ("rust".to_string(), "Rust".to_string()),
@@ -489,6 +706,160 @@ fn App() -> Element {
                                         div {
                                             span { style: "font-size: 12px; color: var(--uikit-muted); display: block; margin-bottom: 8px;", "Large size (28px)" }
                                             Unit { value: "4.2", unit: "GB", size: UnitSize::Large }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 9. Graph Components Section
+                    section {
+                        style: "display: flex; flex-direction: column; gap: 20px;",
+                        Heading { level: HeadingLevel::H2, bordered: true, "9. Graph Components" }
+                        p {
+                            style: "color: var(--uikit-muted); font-size: 14px; margin-top: -8px;",
+                            "Interactive graph visualization components utilizing custom CSS grids, animated SVGs, and level-based auto-layout. Click nodes to select/focus."
+                        }
+
+                        div {
+                            style: "display: flex; flex-direction: column; gap: 32px;",
+
+                            // FlowGraph Showcase
+                            Card {
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 12px;",
+                                    Heading { level: HeadingLevel::H3, "Flow Graph (CI/CD Pipeline)" }
+                                    p { style: "font-size: 13px; color: var(--uikit-muted);", "orthogonal flow lines, automated stage sorting, and glowing animated active edges." }
+                                    FlowGraph {
+                                        nodes: flow_nodes,
+                                        edges: flow_edges,
+                                        active_node_id: flow_active.read().clone(),
+                                        on_node_click: move |id| flow_active.set(Some(id))
+                                    }
+                                }
+                            }
+
+                            // HierarchyGraph Showcase
+                            Card {
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 12px;",
+                                    Heading { level: HeadingLevel::H3, "Hierarchy Graph (Mind Map / Org Structure)" }
+                                    p { style: "font-size: 13px; color: var(--uikit-muted);", "XMind-style two-sided topics with smooth branches and configurable canvas and node surfaces." }
+                                    HierarchyGraph {
+                                        nodes: tree_nodes,
+                                        edges: tree_edges,
+                                        root_edge_type: Some(EdgeType::OrganicCurved),
+                                        border: Some("none".to_string()),
+                                        background_color: Some("var(--uikit-bg)".to_string()),
+                                        active_node_id: tree_active.read().clone(),
+                                        on_node_click: move |id| tree_active.set(Some(id))
+                                    }
+                                }
+                            }
+
+                            // NetworkGraph Showcase
+                            Card {
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 12px;",
+                                    Heading { level: HeadingLevel::H3, "Network Graph (Mesh Topology)" }
+                                    p { style: "font-size: 13px; color: var(--uikit-muted);", "Hub-and-spoke automatic circular projection with direct straight mesh links." }
+                                    NetworkGraph {
+                                        nodes: net_nodes,
+                                        edges: net_edges,
+                                        active_node_id: net_active.read().clone(),
+                                        on_node_click: move |id| net_active.set(Some(id))
+                                    }
+                                }
+                            }
+
+                            // Node & Edge Variants Showcase
+                            Card {
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 24px;",
+                                    Heading { level: HeadingLevel::H3, "Node & Edge Shapes Playground" }
+                                    p { style: "font-size: 13px; color: var(--uikit-muted); margin-top: -8px;", "A playground showing all Node shapes (with default and colored styling) and Edge routing shapes." }
+
+                                    // Node Shapes Showcase
+                                    div {
+                                        style: "display: flex; flex-direction: column; gap: 12px;",
+                                        Heading { level: HeadingLevel::H4, muted: true, "Node Shapes & Colors" }
+                                        div {
+                                            style: "width: 100%; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 12px;",
+                                            div {
+                                                class: "uikit-graph-container uikit-graph-grid",
+                                                style: "position: relative; width: 900px; height: 180px; flex-shrink: 0;",
+                                                
+                                                // Default Shapes
+                                                Node { id: "n-def-p".to_string(), x: 120.0, y: 50.0, color: None, shape: NodeShape::Pill, span { "Default Pill" } }
+                                                Node { id: "n-def-b".to_string(), x: 300.0, y: 50.0, color: None, shape: NodeShape::Box, div { style: "text-align: center;", span { style: "font-weight: 600;", "Default Box" } } }
+                                                Node { id: "n-def-pl".to_string(), x: 480.0, y: 50.0, color: None, shape: NodeShape::Plain, span { style: "font-size: 13px;", "Default Plain" } }
+                                                Node { id: "n-def-c".to_string(), x: 640.0, y: 50.0, color: None, shape: NodeShape::Circle, div { style: "text-align: center; font-size: 11px;", "Default Circle" } }
+
+                                                // Colored Shapes (using different custom colors)
+                                                Node { id: "n-pri-p".to_string(), x: 120.0, y: 130.0, color: Some("var(--uikit-success)".to_string()), shape: NodeShape::Pill, span { "Success Pill" } }
+                                                Node { id: "n-pri-b".to_string(), x: 300.0, y: 130.0, color: Some("var(--uikit-warning)".to_string()), shape: NodeShape::Box, div { style: "text-align: center;", span { style: "font-weight: 600;", "Warning Box" } } }
+                                                Node { id: "n-pri-c".to_string(), x: 640.0, y: 130.0, color: Some("var(--uikit-error)".to_string()), shape: NodeShape::Circle, div { style: "text-align: center; font-size: 11px;", "Error Circle" } }
+                                            }
+                                        }
+                                    }
+
+                                    // Edge Shapes Preview
+                                    div {
+                                        style: "display: flex; flex-direction: column; gap: 12px;",
+                                        Heading { level: HeadingLevel::H4, muted: true, "Edge Routing Shapes (Straight, Bezier, Orthogonal, Curved Orthogonal, Organic Curved)" }
+                                        {
+                                            let (s1_x, s1_y, e1_x, e1_y) = get_circle_connection(50.0, 50.0, 200.0, 150.0, true);
+                                            let (s2_x, s2_y, e2_x, e2_y) = get_circle_connection(270.0, 50.0, 420.0, 150.0, false);
+                                            let (s3_x, s3_y, e3_x, e3_y) = get_circle_connection(490.0, 50.0, 640.0, 150.0, false);
+                                            let (s4_x, s4_y, e4_x, e4_y) = get_circle_connection(710.0, 50.0, 860.0, 150.0, false);
+                                            
+                                            rsx! {
+                                                div {
+                                                    style: "width: 100%; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 12px;",
+                                                    div {
+                                                        class: "uikit-graph-container uikit-graph-grid",
+                                                        style: "position: relative; width: 1120px; height: 210px; flex-shrink: 0;",
+                                                        svg {
+                                                            class: "uikit-graph-svg",
+                                                            style: "width: 100%; height: 100%; pointer-events: none;",
+                                                            view_box: "0 0 1120 210",
+                                                            EdgeDefs {}
+                                                            
+                                                            // 1. Straight Edge
+                                                            Edge { from_x: s1_x, from_y: s1_y, to_x: e1_x, to_y: e1_y, edge_type: EdgeType::Straight, arrow: ArrowHead::End, label: Some("Straight".to_string()), color: Some("var(--uikit-success)".to_string()) }
+                                                            
+                                                            // 2. Bezier Edge
+                                                            Edge { from_x: s2_x, from_y: s2_y, to_x: e2_x, to_y: e2_y, edge_type: EdgeType::Bezier, arrow: ArrowHead::End, label: Some("Bezier".to_string()), color: Some("var(--uikit-info)".to_string()) }
+                                                            
+                                                            // 3. Orthogonal Edge
+                                                            Edge { from_x: s3_x, from_y: s3_y, to_x: e3_x, to_y: e3_y, edge_type: EdgeType::Orthogonal, arrow: ArrowHead::End, label: Some("Orthogonal".to_string()), color: Some("var(--uikit-warning)".to_string()) }
+                                                            
+                                                            // 4. Curved Orthogonal Edge
+                                                            Edge { from_x: s4_x, from_y: s4_y, to_x: e4_x, to_y: e4_y, edge_type: EdgeType::CurvedOrthogonal, arrow: ArrowHead::End, label: Some("Curved Ortho".to_string()), color: Some("var(--uikit-error)".to_string()) }
+
+                                                            // 5. Long boundary-anchored XMind curve
+                                                            Edge { from_x: 970.0, from_y: 85.0, to_x: 1035.0, to_y: 150.0, from_normal: Some((0.0, 1.0)), to_normal: Some((-1.0, 0.0)), edge_type: EdgeType::OrganicCurved, arrow: ArrowHead::End, label: Some("Organic Curved".to_string()), color: Some("var(--uikit-primary)".to_string()) }
+                                                        }
+                                                        
+                                                        // Labeled Endpoint Nodes
+                                                        Node { id: "ep-s1".to_string(), x: 50.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
+                                                        Node { id: "ep-e1".to_string(), x: 200.0, y: 150.0, color: Some("var(--uikit-success)".to_string()), shape: NodeShape::Circle, span { "End" } }
+                                                        
+                                                        Node { id: "ep-s2".to_string(), x: 270.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
+                                                        Node { id: "ep-e2".to_string(), x: 420.0, y: 150.0, color: Some("var(--uikit-info)".to_string()), shape: NodeShape::Circle, span { "End" } }
+                                                        
+                                                        Node { id: "ep-s3".to_string(), x: 490.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
+                                                        Node { id: "ep-e3".to_string(), x: 640.0, y: 150.0, color: Some("var(--uikit-warning)".to_string()), shape: NodeShape::Circle, span { "End" } }
+                                                        
+                                                        Node { id: "ep-s4".to_string(), x: 710.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
+                                                        Node { id: "ep-e4".to_string(), x: 860.0, y: 150.0, color: Some("var(--uikit-error)".to_string()), shape: NodeShape::Circle, span { "End" } }
+
+                                                        Node { id: "ep-s5".to_string(), x: 970.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
+                                                        Node { id: "ep-e5".to_string(), x: 1070.0, y: 150.0, color: Some("var(--uikit-primary)".to_string()), shape: NodeShape::Circle, span { "End" } }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
