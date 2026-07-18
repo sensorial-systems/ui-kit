@@ -1322,7 +1322,7 @@
 }
 
 /* Hierarchy graphs share the standard dotted graph grid while keeping their
-   frame and elevation optional through HierarchyGraph props. */
+   frame and elevation optional through viewer/editor props. */
 .uikit-hierarchy-graph {
     border: none;
     border-radius: 0;
@@ -1336,6 +1336,14 @@
     align-items: center;
     justify-content: center;
     padding: 12px;
+}
+
+.uikit-hierarchy-graph-editor {
+    position: relative;
+}
+
+.uikit-hierarchy-graph-editor-node {
+    width: 100%;
 }
 
 .uikit-hierarchy-graph-context-menu {
@@ -1359,7 +1367,7 @@
     box-shadow: 0 0 0 4px var(--uikit-ring);
 }
 
-.uikit-hierarchy-graph-editable-label {
+.uikit-hierarchy-graph-node-label {
     width: 100%;
     min-width: 0;
     color: var(--uikit-fg);
@@ -1368,30 +1376,30 @@
     line-height: normal;
 }
 
-.uikit-hierarchy-graph-editable-label.uikit-hierarchy-graph-level-0 {
+.uikit-hierarchy-graph-node-label.uikit-hierarchy-graph-level-0 {
     font-size: 20px;
     font-weight: 750;
     text-align: center;
 }
 
-.uikit-hierarchy-graph-editable-label:not(.uikit-hierarchy-graph-level-0):not(.uikit-hierarchy-graph-level-1) {
+.uikit-hierarchy-graph-node-label:not(.uikit-hierarchy-graph-level-0):not(.uikit-hierarchy-graph-level-1) {
     font-size: 13px;
     font-weight: 500;
 }
 
-.uikit-hierarchy-graph .uikit-graph-node-plain .uikit-hierarchy-graph-editable-label {
+.uikit-hierarchy-graph .uikit-graph-node-plain .uikit-hierarchy-graph-node-label {
     color: var(--uikit-graph-node-color, var(--uikit-fg));
 }
 
-.uikit-hierarchy-graph-editable-label .uikit-field-container,
-.uikit-hierarchy-graph-editable-label .uikit-field-content,
-.uikit-hierarchy-graph-editable-label .uikit-wysiwyg-wrapper,
-.uikit-hierarchy-graph-editable-label .uikit-wysiwyg-viewer-wrapper {
+.uikit-hierarchy-graph-node-label .uikit-field-container,
+.uikit-hierarchy-graph-node-label .uikit-field-content,
+.uikit-hierarchy-graph-node-label .uikit-wysiwyg-wrapper,
+.uikit-hierarchy-graph-node-label .uikit-wysiwyg-viewer-wrapper {
     width: 100%;
     margin: 0;
 }
 
-.uikit-hierarchy-graph-editable-label .uikit-wysiwyg-viewer,
+.uikit-hierarchy-graph-node-label .uikit-wysiwyg-viewer,
 .uikit-hierarchy-graph-label-value {
     display: block;
     width: 100%;
@@ -1410,20 +1418,20 @@
     text-overflow: ellipsis;
 }
 
-.uikit-hierarchy-graph-editable-label .uikit-field-container,
-.uikit-hierarchy-graph-editable-label .uikit-field-content,
-.uikit-hierarchy-graph-editable-label .uikit-wysiwyg-wrapper,
-.uikit-hierarchy-graph-editable-label .uikit-wysiwyg-viewer-wrapper {
+.uikit-hierarchy-graph-node-label .uikit-field-container,
+.uikit-hierarchy-graph-node-label .uikit-field-content,
+.uikit-hierarchy-graph-node-label .uikit-wysiwyg-wrapper,
+.uikit-hierarchy-graph-node-label .uikit-wysiwyg-viewer-wrapper {
     min-height: 0;
     line-height: inherit;
 }
 
-.uikit-hierarchy-graph-editable-label .uikit-wysiwyg-viewer:hover {
+.uikit-hierarchy-graph-node-label .uikit-wysiwyg-viewer:hover {
     border-color: transparent;
     background: transparent;
 }
 
-.uikit-hierarchy-graph-editable-label .uikit-wysiwyg-hint {
+.uikit-hierarchy-graph-node-label .uikit-wysiwyg-hint {
     display: none;
 }
 

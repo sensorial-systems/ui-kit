@@ -7,5 +7,7 @@ pub mod network_graph;
 pub use node::{Node, NodeShape, GraphNodeData};
 pub use edge::{Edge, EdgeType, ArrowHead, GraphEdgeData, EdgeDefs};
 pub use flow_graph::FlowGraph;
-pub use hierarchy_graph::HierarchyGraph;
+pub use hierarchy_graph::{
+    HierarchyGraphEditor, HierarchyGraphModel, HierarchyGraphViewer, HierarchyNode,
+};
 pub use network_graph::NetworkGraph;

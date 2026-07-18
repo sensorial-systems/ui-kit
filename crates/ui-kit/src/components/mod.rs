@@ -9,9 +9,8 @@ pub use input::{Button, ButtonSize, ButtonVariant, Checkbox, DateTimePicker, Edi
 pub use graph::{
     Node, NodeShape, GraphNodeData,
     Edge, EdgeType, ArrowHead, GraphEdgeData, EdgeDefs,
-    FlowGraph, HierarchyGraph, NetworkGraph,
+    FlowGraph, HierarchyGraphEditor, HierarchyGraphModel, HierarchyGraphViewer, HierarchyNode, NetworkGraph,
 };
-
 
 
 

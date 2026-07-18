@@ -1,8 +1,20 @@
-use crate::components::graph::edge::{Edge, EdgeDefs, EdgeType, GraphEdgeData};
-use crate::components::graph::node::{GraphNodeData, Node};
+use crate::components::graph::edge::{ArrowHead, Edge, EdgeDefs, EdgeType, GraphEdgeData};
+use crate::components::graph::node::{GraphNodeData, Node, NodeShape};
 use crate::components::input::{Button, ButtonSize, EditableText, EditableTextVariant};
 use dioxus::prelude::*;
 use std::collections::{HashMap, HashSet};
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct HierarchyNode {
+    pub data: GraphNodeData,
+    pub label: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct HierarchyGraphModel {
+    pub nodes: Vec<HierarchyNode>,
+    pub edges: Vec<GraphEdgeData>,
+}
 
 fn leaf_count(
     node_id: &str,
@@ -196,27 +208,14 @@ fn rectangular_normal(
 }
 
 #[component]
-pub fn HierarchyGraph(
-    nodes: Vec<(GraphNodeData, Element)>,
-    edges: Vec<GraphEdgeData>,
-    /// Enables node label editing and displays the graph action menu.
-    #[props(default = false)]
-    editable: bool,
-    /// Controlled labels used by `EditableText` when `editable` is enabled.
-    /// Missing labels fall back to the node id.
+pub fn HierarchyGraphViewer(
+    graph: HierarchyGraphModel,
+    /// Optional node bodies keyed by id. The editor uses this slot to render
+    /// inline editors while retaining the viewer's exact canvas and layout.
     #[props(default)]
-    node_labels: HashMap<String, String>,
+    node_elements: Vec<(String, Element)>,
     #[props(default)] active_node_id: Option<String>,
     #[props(default)] on_node_click: EventHandler<String>,
-    /// Called with `(node_id, new_label)` after an editable label is saved.
-    #[props(default)]
-    on_node_edit: EventHandler<(String, String)>,
-    /// Requests a new child for the currently selected node.
-    #[props(default)]
-    on_create_sub_node: EventHandler<String>,
-    /// Requests deletion of the currently selected node.
-    #[props(default)]
-    on_delete_node: EventHandler<String>,
     /// Complete CSS border declaration for the graph canvas. `"none"` removes it.
     #[props(into, default)]
     border: Option<String>,
@@ -235,6 +234,24 @@ pub fn HierarchyGraph(
     root_edge_type: Option<EdgeType>,
 ) -> Element {
     let row_gap = 58.0;
+    let edges = graph.edges.clone();
+    let node_elements: HashMap<String, Element> = node_elements.into_iter().collect();
+    let nodes: Vec<(GraphNodeData, Element)> = graph
+        .nodes
+        .iter()
+        .map(|node| {
+            let element = node_elements.get(&node.data.id).cloned().unwrap_or_else(|| {
+                let label = node.label.clone();
+                rsx! {
+                    div {
+                        class: "uikit-hierarchy-graph-label-value",
+                        dangerous_inner_html: "{label}"
+                    }
+                }
+            });
+            (node.data.clone(), element)
+        })
+        .collect();
 
     let mut children: HashMap<String, Vec<String>> = HashMap::new();
     let mut parents: HashMap<String, String> = HashMap::new();
@@ -516,23 +533,10 @@ pub fn HierarchyGraph(
         })
     });
 
-    let selected_node_id = active_node_id.clone().or_else(|| {
-        nodes
-            .iter()
-            .find(|(node, _)| node.selected)
-            .map(|(node, _)| node.id.clone())
-    });
-
     let rendered_nodes = nodes.iter().map(|(node, node_element)| {
         let (x, y) = node_positions.get(&node.id).copied().unwrap_or((0.0, 0.0));
         let is_selected = active_node_id.as_ref() == Some(&node.id) || node.selected;
         let node_id = node.id.clone();
-        let label_node_id = node.id.clone();
-        let edit_node_id = node.id.clone();
-        let controlled_label = node_labels.get(&node.id).cloned();
-        let editable_label = controlled_label
-            .clone()
-            .unwrap_or_else(|| node.id.clone());
         let depth = node_depths.get(&node.id).copied().unwrap_or(0);
         let branch_id = branch_ancestor(&node.id, &parents, &node_depths);
         let base_color = branch_colors
@@ -576,31 +580,8 @@ pub fn HierarchyGraph(
                 shape: node.shape,
                 selected: is_selected,
                 onclick: move |_| on_node_click.call(node_id.clone()),
-                if editable {
-                    div {
-                        class: "uikit-hierarchy-graph-editable-label uikit-hierarchy-graph-level-{depth}",
-                        onclick: move |event| {
-                            event.stop_propagation();
-                            on_node_click.call(label_node_id.clone());
-                        },
-                        EditableText {
-                            value: editable_label,
-                            variant: EditableTextVariant::Inline,
-                            placeholder: "Node label",
-                            onchange: move |value| {
-                                on_node_edit.call((edit_node_id.clone(), value));
-                            }
-                        }
-                    }
-                } else if let Some(label) = controlled_label {
-                    div {
-                        class: "uikit-hierarchy-graph-editable-label uikit-hierarchy-graph-level-{depth}",
-                        div {
-                            class: "uikit-hierarchy-graph-label-value",
-                            dangerous_inner_html: "{label}"
-                        }
-                    }
-                } else {
+                div {
+                    class: "uikit-hierarchy-graph-node-label uikit-hierarchy-graph-level-{depth}",
                     {node_element.clone()}
                 }
             }
@@ -623,40 +604,6 @@ pub fn HierarchyGraph(
             div {
                 class: "uikit-graph-container uikit-graph-grid uikit-hierarchy-graph",
                 style: "{canvas_style}",
-                if editable {
-                    div {
-                        class: "uikit-hierarchy-graph-context-menu",
-                        role: "toolbar",
-                        aria_label: "Selected node actions",
-                        Button {
-                            size: ButtonSize::Small,
-                            disabled: selected_node_id.is_none(),
-                            onclick: {
-                                let selected_node_id = selected_node_id.clone();
-                                move |_| {
-                                    if let Some(id) = selected_node_id.as_ref() {
-                                        on_create_sub_node.call(id.clone());
-                                    }
-                                }
-                            },
-                            "Add"
-                        }
-                        Button {
-                            size: ButtonSize::Small,
-                            color: "var(--uikit-error)",
-                            disabled: selected_node_id.is_none(),
-                            onclick: {
-                                let selected_node_id = selected_node_id.clone();
-                                move |_| {
-                                    if let Some(id) = selected_node_id.as_ref() {
-                                        on_delete_node.call(id.clone());
-                                    }
-                                }
-                            },
-                            "Delete"
-                        }
-                    }
-                }
                 svg {
                     class: "uikit-graph-svg",
                     view_box: "0 0 {canvas_width} {canvas_height}",
@@ -673,13 +620,244 @@ pub fn HierarchyGraph(
     }
 }
 
+fn primary_root_id(graph: &HierarchyGraphModel) -> Option<String> {
+    let children: HashSet<&str> = graph.edges.iter().map(|edge| edge.to.as_str()).collect();
+    graph
+        .nodes
+        .iter()
+        .find(|node| !children.contains(node.data.id.as_str()))
+        .map(|node| node.data.id.clone())
+        .or_else(|| graph.nodes.first().map(|node| node.data.id.clone()))
+}
+
+fn next_node_id(graph: &HierarchyGraphModel) -> String {
+    let ids: HashSet<&str> = graph.nodes.iter().map(|node| node.data.id.as_str()).collect();
+    (1..)
+        .map(|index| format!("node-{index}"))
+        .find(|id| !ids.contains(id.as_str()))
+        .expect("an available hierarchy node id")
+}
+
+fn add_child(graph: &HierarchyGraphModel, parent_id: &str) -> (HierarchyGraphModel, String) {
+    let mut updated = graph.clone();
+    let id = next_node_id(graph);
+    let is_root_child = primary_root_id(graph).as_deref() == Some(parent_id);
+    let root_child_count = graph
+        .edges
+        .iter()
+        .filter(|edge| edge.from == parent_id)
+        .count();
+    let branch_color = is_root_child.then(|| {
+        let hue = ((root_child_count + 1) as f64 * 137.508 + 280.0) % 360.0;
+        format!("hsl({hue:.0}deg 68% 52%)")
+    });
+
+    updated.nodes.push(HierarchyNode {
+        data: GraphNodeData {
+            id: id.clone(),
+            x: 0.0,
+            y: 0.0,
+            color: branch_color.clone(),
+            border: Some("none".to_string()),
+            background_color: if is_root_child {
+                None
+            } else {
+                Some("transparent".to_string())
+            },
+            shape: if is_root_child {
+                NodeShape::Box
+            } else {
+                NodeShape::Plain
+            },
+            selected: false,
+        },
+        label: "New node".to_string(),
+    });
+    updated.edges.push(GraphEdgeData {
+        from: parent_id.to_string(),
+        to: id.clone(),
+        label: None,
+        edge_type: EdgeType::Bezier,
+        color: branch_color,
+        animated: false,
+        arrow: ArrowHead::None,
+    });
+    (updated, id)
+}
+
+fn delete_subtree(graph: &HierarchyGraphModel, node_id: &str) -> HierarchyGraphModel {
+    let mut deleted = HashSet::new();
+    let mut pending = vec![node_id.to_string()];
+    while let Some(parent_id) = pending.pop() {
+        if deleted.insert(parent_id.clone()) {
+            pending.extend(
+                graph
+                    .edges
+                    .iter()
+                    .filter(|edge| edge.from == parent_id)
+                    .map(|edge| edge.to.clone()),
+            );
+        }
+    }
+
+    HierarchyGraphModel {
+        nodes: graph
+            .nodes
+            .iter()
+            .filter(|node| !deleted.contains(&node.data.id))
+            .cloned()
+            .collect(),
+        edges: graph
+            .edges
+            .iter()
+            .filter(|edge| !deleted.contains(&edge.from) && !deleted.contains(&edge.to))
+            .cloned()
+            .collect(),
+    }
+}
+
+#[component]
+pub fn HierarchyGraphEditor(
+    graph: HierarchyGraphModel,
+    onchange: EventHandler<HierarchyGraphModel>,
+    #[props(into, default)] border: Option<String>,
+    #[props(into, default)] background_color: Option<String>,
+    #[props(default = 100.0)] core_width: f64,
+    #[props(default = 28.0)] core_height: f64,
+    #[props(default)] root_edge_type: Option<EdgeType>,
+) -> Element {
+    let initial_selection = graph.nodes.first().map(|node| node.data.id.clone());
+    let mut selected_node_id = use_signal(|| initial_selection);
+
+    let node_elements = graph
+        .nodes
+        .iter()
+        .map(|node| {
+            let node_id = node.data.id.clone();
+            let select_node_id = node_id.clone();
+            let label = node.label.clone();
+            let edit_graph = graph.clone();
+            let element = rsx! {
+                div {
+                    class: "uikit-hierarchy-graph-editor-node",
+                    onclick: move |event| {
+                        event.stop_propagation();
+                        selected_node_id.set(Some(select_node_id.clone()));
+                    },
+                    EditableText {
+                        value: label,
+                        variant: EditableTextVariant::Inline,
+                        placeholder: "Node label",
+                        onchange: move |label| {
+                            let mut updated = edit_graph.clone();
+                            if let Some(node) = updated
+                                .nodes
+                                .iter_mut()
+                                .find(|node| node.data.id == node_id)
+                            {
+                                node.label = label;
+                                onchange.call(updated);
+                            }
+                        }
+                    }
+                }
+            };
+            (node.data.id.clone(), element)
+        })
+        .collect();
+
+    let selected = selected_node_id.read().clone();
+    rsx! {
+        div {
+            class: "uikit-hierarchy-graph-editor",
+            div {
+                class: "uikit-hierarchy-graph-context-menu",
+                role: "toolbar",
+                aria_label: "Selected node actions",
+                Button {
+                    size: ButtonSize::Small,
+                    disabled: selected.is_none(),
+                    onclick: {
+                        let selected = selected.clone();
+                        let add_graph = graph.clone();
+                        move |_| {
+                            if let Some(parent_id) = selected.as_deref() {
+                                let (updated, new_node_id) = add_child(&add_graph, parent_id);
+                                selected_node_id.set(Some(new_node_id));
+                                onchange.call(updated);
+                            }
+                        }
+                    },
+                    "Add"
+                }
+                Button {
+                    size: ButtonSize::Small,
+                    color: "var(--uikit-error)",
+                    disabled: selected.is_none(),
+                    onclick: {
+                        let selected = selected.clone();
+                        let delete_graph = graph.clone();
+                        move |_| {
+                            if let Some(node_id) = selected.as_deref() {
+                                onchange.call(delete_subtree(&delete_graph, node_id));
+                                selected_node_id.set(None);
+                            }
+                        }
+                    },
+                    "Delete"
+                }
+            }
+            HierarchyGraphViewer {
+                graph,
+                node_elements,
+                active_node_id: selected,
+                on_node_click: move |id| selected_node_id.set(Some(id)),
+                border,
+                background_color,
+                core_width,
+                core_height,
+                root_edge_type
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        brighter, layout_branch, leaf_count, rectangular_connection, rectangular_normal,
-        rounded_t_paths,
+        add_child, brighter, delete_subtree, layout_branch, leaf_count, rectangular_connection,
+        rectangular_normal, rounded_t_paths, ArrowHead, EdgeType, GraphEdgeData, GraphNodeData,
+        HierarchyGraphModel, HierarchyNode, NodeShape,
     };
     use std::collections::{HashMap, HashSet};
+
+    fn model_node(id: &str) -> HierarchyNode {
+        HierarchyNode {
+            data: GraphNodeData {
+                id: id.to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: None,
+                border: None,
+                background_color: None,
+                shape: NodeShape::Plain,
+                selected: false,
+            },
+            label: id.to_string(),
+        }
+    }
+
+    fn model_edge(from: &str, to: &str) -> GraphEdgeData {
+        GraphEdgeData {
+            from: from.to_string(),
+            to: to.to_string(),
+            label: None,
+            edge_type: EdgeType::Bezier,
+            color: None,
+            animated: false,
+            arrow: ArrowHead::None,
+        }
+    }
 
     #[test]
     fn subtree_weight_counts_leaves() {
@@ -731,5 +909,47 @@ mod tests {
         assert!((diagonal.1 - 14.0).abs() < 1e-9);
         let diagonal_normal = rectangular_normal((0.0, 0.0), diagonal, 100.0, 28.0);
         assert_eq!(diagonal_normal, (0.0, 1.0));
+    }
+
+    #[test]
+    fn root_children_receive_a_branch_color() {
+        let graph = HierarchyGraphModel {
+            nodes: vec![model_node("root")],
+            edges: Vec::new(),
+        };
+        let (updated, id) = add_child(&graph, "root");
+        let node = updated
+            .nodes
+            .iter()
+            .find(|node| node.data.id == id)
+            .unwrap();
+        assert!(node.data.color.as_deref().unwrap().starts_with("hsl("));
+        assert_eq!(node.data.shape, NodeShape::Box);
+        assert_eq!(updated.edges[0].color, node.data.color);
+    }
+
+    #[test]
+    fn deleting_a_node_removes_its_entire_subtree() {
+        let graph = HierarchyGraphModel {
+            nodes: vec![
+                model_node("root"),
+                model_node("branch"),
+                model_node("child"),
+                model_node("sibling"),
+            ],
+            edges: vec![
+                model_edge("root", "branch"),
+                model_edge("branch", "child"),
+                model_edge("root", "sibling"),
+            ],
+        };
+        let updated = delete_subtree(&graph, "branch");
+        let remaining: HashSet<&str> = updated
+            .nodes
+            .iter()
+            .map(|node| node.data.id.as_str())
+            .collect();
+        assert_eq!(remaining, HashSet::from(["root", "sibling"]));
+        assert_eq!(updated.edges, vec![model_edge("root", "sibling")]);
     }
 }
