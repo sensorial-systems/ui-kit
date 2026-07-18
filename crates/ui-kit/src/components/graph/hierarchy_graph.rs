@@ -1,4 +1,5 @@
 use crate::components::graph::edge::{ArrowHead, Edge, EdgeDefs, EdgeType, GraphEdgeData};
+use crate::components::graph::navigation::{GraphNavigator, NavigationNode};
 use crate::components::graph::node::{GraphNodeData, Node, NodeShape};
 use crate::components::input::{Button, ButtonSize, EditableText, EditableTextVariant};
 use dioxus::prelude::*;
@@ -240,15 +241,18 @@ pub fn HierarchyGraphViewer(
         .nodes
         .iter()
         .map(|node| {
-            let element = node_elements.get(&node.data.id).cloned().unwrap_or_else(|| {
-                let label = node.label.clone();
-                rsx! {
-                    div {
-                        class: "uikit-hierarchy-graph-label-value",
-                        dangerous_inner_html: "{label}"
+            let element = node_elements
+                .get(&node.data.id)
+                .cloned()
+                .unwrap_or_else(|| {
+                    let label = node.label.clone();
+                    rsx! {
+                        div {
+                            class: "uikit-hierarchy-graph-label-value",
+                            dangerous_inner_html: "{label}"
+                        }
                     }
-                }
-            });
+                });
             (node.data.clone(), element)
         })
         .collect();
@@ -548,7 +552,11 @@ pub fn HierarchyGraphViewer(
             .map(|color| brighter(color, depth.saturating_sub(1)));
 
         let (accent, node_border, node_background) = if depth == 0 {
-            (node.color.clone(), Some("none".to_string()), Some("transparent".to_string()))
+            (
+                node.color.clone(),
+                Some("none".to_string()),
+                Some("transparent".to_string()),
+            )
         } else if depth == 1 {
             (
                 base_color.clone(),
@@ -588,6 +596,21 @@ pub fn HierarchyGraphViewer(
         }
     });
 
+    let navigation_nodes = nodes
+        .iter()
+        .map(|(node, _)| {
+            let (x, y) = node_positions.get(&node.id).copied().unwrap_or((0.0, 0.0));
+            let (width, height) = node.shape.dimensions();
+            NavigationNode {
+                x: x - width / 2.0,
+                y: y - height / 2.0,
+                width,
+                height,
+                shape: node.shape,
+            }
+        })
+        .collect();
+
     let mut canvas_style = format!(
         "position: relative; width: {canvas_width}px; height: {canvas_height}px; flex-shrink: 0;"
     );
@@ -599,22 +622,22 @@ pub fn HierarchyGraphViewer(
     }
 
     rsx! {
-        div {
-            class: "uikit-hierarchy-graph-scroll",
+        GraphNavigator {
+            canvas_width,
+            canvas_height,
+            nodes: navigation_nodes,
+            canvas_class: "uikit-graph-container uikit-hierarchy-graph",
+            canvas_style,
+            svg {
+                class: "uikit-graph-svg",
+                view_box: "0 0 {canvas_width} {canvas_height}",
+                EdgeDefs {}
+                {root_edges}
+                {shared_branches}
+            }
             div {
-                class: "uikit-graph-container uikit-graph-grid uikit-hierarchy-graph",
-                style: "{canvas_style}",
-                svg {
-                    class: "uikit-graph-svg",
-                    view_box: "0 0 {canvas_width} {canvas_height}",
-                    EdgeDefs {}
-                    {root_edges}
-                    {shared_branches}
-                }
-                div {
-                    class: "uikit-graph-nodes-container",
-                    {rendered_nodes}
-                }
+                class: "uikit-graph-nodes-container",
+                {rendered_nodes}
             }
         }
     }
@@ -631,7 +654,11 @@ fn primary_root_id(graph: &HierarchyGraphModel) -> Option<String> {
 }
 
 fn next_node_id(graph: &HierarchyGraphModel) -> String {
-    let ids: HashSet<&str> = graph.nodes.iter().map(|node| node.data.id.as_str()).collect();
+    let ids: HashSet<&str> = graph
+        .nodes
+        .iter()
+        .map(|node| node.data.id.as_str())
+        .collect();
     (1..)
         .map(|index| format!("node-{index}"))
         .find(|id| !ids.contains(id.as_str()))

@@ -1321,11 +1321,97 @@
     background-size: 20px 20px;
 }
 
+.uikit-graph-navigation {
+    position: relative;
+    width: 100%;
+    min-height: 240px;
+    overflow: hidden;
+    border-radius: 0;
+    background-color: var(--uikit-bg);
+    touch-action: none;
+    user-select: none;
+    cursor: default;
+}
+
+.uikit-graph-navigation-framed {
+    border: 1px solid var(--uikit-border);
+    border-radius: var(--uikit-radius-lg);
+    box-shadow: var(--uikit-shadow);
+}
+
+.uikit-graph-navigation:focus-visible {
+    outline: 2px solid var(--uikit-primary);
+    outline-offset: 2px;
+}
+
+.uikit-graph-navigation-canvas {
+    position: absolute;
+    inset: 0 auto auto 0;
+    transform-origin: 0 0;
+    will-change: transform;
+}
+
+.uikit-graph-navigation-canvas > .uikit-graph-container {
+    border: none;
+    border-radius: 0;
+    background-color: transparent;
+    box-shadow: none;
+}
+
+.uikit-graph-navigation-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 10px;
+}
+
+.uikit-graph-minimap {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    z-index: 100;
+    width: 220px;
+    height: 150px;
+    overflow: hidden;
+    border: 1px solid var(--uikit-border);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--uikit-card-bg) 88%, transparent);
+    box-shadow: var(--uikit-shadow);
+    backdrop-filter: blur(8px);
+    cursor: grab;
+}
+
+.uikit-graph-minimap-dragging {
+    cursor: grabbing;
+}
+
+.uikit-graph-minimap-canvas {
+    pointer-events: none;
+}
+
+.uikit-graph-minimap-viewport {
+    fill: var(--uikit-primary);
+    fill-opacity: 0.08;
+    stroke: var(--uikit-primary);
+    stroke-width: 1.5;
+}
+
+.uikit-graph-minimap-node {
+    fill: var(--uikit-muted);
+    fill-opacity: 0.3;
+    stroke: var(--uikit-border-hover);
+    stroke-width: 1;
+}
+
 /* Hierarchy graphs share the standard dotted graph grid while keeping their
    frame and elevation optional through viewer/editor props. */
 .uikit-hierarchy-graph {
     border: none;
     border-radius: 0;
+    background-color: transparent !important;
     box-shadow: none;
 }
 

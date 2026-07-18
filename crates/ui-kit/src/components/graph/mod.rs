@@ -3,6 +3,7 @@ pub mod edge;
 pub mod flow_graph;
 pub mod hierarchy_graph;
 pub mod network_graph;
+mod navigation;
 
 pub use node::{Node, NodeShape, GraphNodeData};
 pub use edge::{Edge, EdgeType, ArrowHead, GraphEdgeData, EdgeDefs};

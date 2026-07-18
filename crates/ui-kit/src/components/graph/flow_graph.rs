@@ -1,6 +1,7 @@
+use crate::components::graph::edge::{Edge, EdgeDefs, EdgeType, GraphEdgeData};
+use crate::components::graph::navigation::{GraphNavigator, NavigationNode};
+use crate::components::graph::node::{GraphNodeData, Node, NodeShape};
 use dioxus::prelude::*;
-use crate::components::graph::node::{Node, GraphNodeData, NodeShape};
-use crate::components::graph::edge::{Edge, EdgeType, EdgeDefs, GraphEdgeData};
 use std::collections::HashMap;
 
 #[component]
@@ -18,13 +19,19 @@ pub fn FlowGraph(
     let mut incoming: HashMap<String, Vec<String>> = HashMap::new();
     let mut outgoing: HashMap<String, Vec<String>> = HashMap::new();
     for edge in &edges {
-        incoming.entry(edge.to.clone()).or_default().push(edge.from.clone());
-        outgoing.entry(edge.from.clone()).or_default().push(edge.to.clone());
+        incoming
+            .entry(edge.to.clone())
+            .or_default()
+            .push(edge.from.clone());
+        outgoing
+            .entry(edge.from.clone())
+            .or_default()
+            .push(edge.to.clone());
     }
 
     // Determine levels of nodes
     let mut levels: HashMap<String, usize> = HashMap::new();
-    
+
     // Initialize
     for (node, _) in &nodes {
         levels.insert(node.id.clone(), 0);
@@ -67,7 +74,7 @@ pub fn FlowGraph(
 
         // Otherwise, place based on calculated column (level) and vertical spacing
         let lvl = *levels.get(&node.id).unwrap_or(&0);
-        
+
         // Calculate X coordinate
         let x = if max_level == 0 {
             canvas_width / 2.0
@@ -78,9 +85,12 @@ pub fn FlowGraph(
 
         // Calculate Y coordinate
         let nodes_in_lvl = nodes_by_level.get(&lvl).unwrap();
-        let idx = nodes_in_lvl.iter().position(|id| id == &node.id).unwrap_or(0);
+        let idx = nodes_in_lvl
+            .iter()
+            .position(|id| id == &node.id)
+            .unwrap_or(0);
         let count = nodes_in_lvl.len();
-        
+
         let y = if count <= 1 {
             canvas_height / 2.0
         } else {
@@ -93,7 +103,10 @@ pub fn FlowGraph(
 
     // Render edges by looking up start/end coordinates from calculated positions
     let rendered_edges = edges.iter().map(|edge| {
-        let (fx, fy) = node_positions.get(&edge.from).copied().unwrap_or((0.0, 0.0));
+        let (fx, fy) = node_positions
+            .get(&edge.from)
+            .copied()
+            .unwrap_or((0.0, 0.0));
         let (tx, ty) = node_positions.get(&edge.to).copied().unwrap_or((0.0, 0.0));
 
         // Offset connection points to the borders of the Box nodes (width = 150px)
@@ -141,22 +154,37 @@ pub fn FlowGraph(
         }
     });
 
+    let navigation_nodes = nodes
+        .iter()
+        .map(|(node, _)| {
+            let (x, y) = node_positions.get(&node.id).copied().unwrap_or((0.0, 0.0));
+            let (width, height) = NodeShape::Box.dimensions();
+            NavigationNode {
+                x: x - width / 2.0,
+                y: y - height / 2.0,
+                width,
+                height,
+                shape: NodeShape::Box,
+            }
+        })
+        .collect();
+
     rsx! {
-        div {
-            style: "width: 100%; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 12px;",
+        GraphNavigator {
+            canvas_width,
+            canvas_height,
+            nodes: navigation_nodes,
+            canvas_class: "uikit-graph-container",
+            canvas_style: "position: relative; width: {canvas_width}px; height: {canvas_height}px;",
+            svg {
+                class: "uikit-graph-svg",
+                view_box: "0 0 {canvas_width} {canvas_height}",
+                EdgeDefs {}
+                {rendered_edges}
+            }
             div {
-                class: "uikit-graph-container uikit-graph-grid",
-                style: "position: relative; width: {canvas_width}px; height: {canvas_height}px; flex-shrink: 0;",
-                svg {
-                    class: "uikit-graph-svg",
-                    view_box: "0 0 {canvas_width} {canvas_height}",
-                    EdgeDefs {}
-                    {rendered_edges}
-                }
-                div {
-                    class: "uikit-graph-nodes-container",
-                    {rendered_nodes}
-                }
+                class: "uikit-graph-nodes-container",
+                {rendered_nodes}
             }
         }
     }

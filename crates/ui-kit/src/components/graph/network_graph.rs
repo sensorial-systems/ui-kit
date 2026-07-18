@@ -1,4 +1,5 @@
 use crate::components::graph::edge::{Edge, EdgeDefs, EdgeType, GraphEdgeData};
+use crate::components::graph::navigation::{GraphNavigator, NavigationNode};
 use crate::components::graph::node::{GraphNodeData, Node, NodeShape};
 use dioxus::prelude::*;
 use std::collections::HashMap;
@@ -135,22 +136,42 @@ pub fn NetworkGraph(
         }
     });
 
+    let navigation_nodes = nodes
+        .iter()
+        .map(|(node, _)| {
+            let (x, y) = node_positions.get(&node.id).copied().unwrap_or((0.0, 0.0));
+            let shape = if Some(node.id.clone()) == hub_id && use_hub_layout {
+                NodeShape::Circle
+            } else {
+                node.shape
+            };
+            let (width, height) = shape.dimensions();
+            NavigationNode {
+                x: x - width / 2.0,
+                y: y - height / 2.0,
+                width,
+                height,
+                shape,
+            }
+        })
+        .collect();
+
     rsx! {
-        div {
-            style: "width: 100%; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 12px;",
+        GraphNavigator {
+            canvas_width,
+            canvas_height,
+            nodes: navigation_nodes,
+            canvas_class: "uikit-graph-container",
+            canvas_style: "position: relative; width: {canvas_width}px; height: {canvas_height}px;",
+            svg {
+                class: "uikit-graph-svg",
+                view_box: "0 0 {canvas_width} {canvas_height}",
+                EdgeDefs {}
+                {rendered_edges}
+            }
             div {
-                class: "uikit-graph-container uikit-graph-grid",
-                style: "position: relative; width: {canvas_width}px; height: {canvas_height}px; flex-shrink: 0;",
-                svg {
-                    class: "uikit-graph-svg",
-                    view_box: "0 0 {canvas_width} {canvas_height}",
-                    EdgeDefs {}
-                    {rendered_edges}
-                }
-                div {
-                    class: "uikit-graph-nodes-container",
-                    {rendered_nodes}
-                }
+                class: "uikit-graph-nodes-container",
+                {rendered_nodes}
             }
         }
     }

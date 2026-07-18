@@ -21,6 +21,11 @@ impl NodeShape {
         }
     }
 
+    pub(crate) fn dimensions(self) -> (f64, f64) {
+        let (half_width, half_height, _) = self.geometry();
+        (half_width * 2.0, half_height * 2.0)
+    }
+
     pub fn class_name(&self) -> &'static str {
         match self {
             NodeShape::Box => "uikit-graph-node-box",
