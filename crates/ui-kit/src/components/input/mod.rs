@@ -19,5 +19,4 @@ pub use slider::Slider;
 pub use date_time_picker::DateTimePicker;
 pub use switch::Switch;
 pub use text_input::TextInput;
-pub use editable_text::EditableText;
-
+pub use editable_text::{EditableText, EditableTextVariant};

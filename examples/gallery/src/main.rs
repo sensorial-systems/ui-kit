@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use std::collections::{HashMap, HashSet};
 use ui_kit::*;
 
 fn main() {
@@ -45,6 +46,23 @@ fn App() -> Element {
 
     let mut flow_active = use_signal(|| Some("build".to_string()));
     let mut tree_active = use_signal(|| Some("root".to_string()));
+    let mut tree_editable = use_signal(|| false);
+    let mut tree_next_node = use_signal(|| 1_usize);
+    let mut tree_extra_nodes = use_signal(Vec::<GraphNodeData>::new);
+    let mut tree_extra_edges = use_signal(Vec::<GraphEdgeData>::new);
+    let mut tree_deleted_nodes = use_signal(HashSet::<String>::new);
+    let mut tree_labels = use_signal(|| HashMap::from([
+        ("root".to_string(), "Core App".to_string()),
+        ("ui".to_string(), "UI Layer".to_string()),
+        ("db".to_string(), "Database".to_string()),
+        ("api".to_string(), "GraphQL API".to_string()),
+        ("views".to_string(), "Views & Pages".to_string()),
+        ("components".to_string(), "Shared Parts".to_string()),
+        ("web".to_string(), "Web Views".to_string()),
+        ("mobile".to_string(), "Mobile Views".to_string()),
+        ("forms".to_string(), "Form Controls".to_string()),
+        ("navigation".to_string(), "Navigation".to_string()),
+    ]));
     let mut net_active = use_signal(|| Some("db".to_string()));
 
     let flow_nodes = vec![
@@ -112,7 +130,7 @@ fn App() -> Element {
         GraphEdgeData { from: "build".to_string(), to: "deploy".to_string(), label: None, edge_type: EdgeType::Orthogonal, color: None, animated: false, arrow: ArrowHead::End },
     ];
 
-    let tree_nodes = vec![
+    let mut tree_nodes = vec![
         (
             GraphNodeData { id: "root".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-primary)".to_string()), border: Some("none".to_string()), background_color: None, shape: NodeShape::Box, selected: false },
             rsx! {
@@ -166,7 +184,15 @@ fn App() -> Element {
             rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Navigation" } }
         ),
     ];
-    let tree_edges = vec![
+    tree_nodes.extend(
+        tree_extra_nodes
+            .read()
+            .iter()
+            .cloned()
+            .map(|node| (node, rsx! {})),
+    );
+
+    let mut tree_edges = vec![
         GraphEdgeData { from: "root".to_string(), to: "ui".to_string(), label: None, edge_type: EdgeType::Bezier, color: Some("var(--uikit-info)".to_string()), animated: false, arrow: ArrowHead::None },
         GraphEdgeData { from: "root".to_string(), to: "db".to_string(), label: None, edge_type: EdgeType::OrganicCurved, color: Some("var(--uikit-warning)".to_string()), animated: false, arrow: ArrowHead::None },
         GraphEdgeData { from: "root".to_string(), to: "api".to_string(), label: None, edge_type: EdgeType::OrganicCurved, color: Some("var(--uikit-success)".to_string()), animated: false, arrow: ArrowHead::None },
@@ -177,6 +203,14 @@ fn App() -> Element {
         GraphEdgeData { from: "components".to_string(), to: "forms".to_string(), label: None, edge_type: EdgeType::Bezier, color: None, animated: false, arrow: ArrowHead::None },
         GraphEdgeData { from: "components".to_string(), to: "navigation".to_string(), label: None, edge_type: EdgeType::Bezier, color: None, animated: false, arrow: ArrowHead::None },
     ];
+    tree_edges.extend(tree_extra_edges.read().iter().cloned());
+
+    let deleted_tree_nodes = tree_deleted_nodes.read().clone();
+    tree_nodes.retain(|(node, _)| !deleted_tree_nodes.contains(&node.id));
+    tree_edges.retain(|edge| {
+        !deleted_tree_nodes.contains(&edge.from) && !deleted_tree_nodes.contains(&edge.to)
+    });
+    let tree_delete_edges = tree_edges.clone();
 
     let net_nodes = vec![
         (
@@ -763,11 +797,80 @@ fn App() -> Element {
                             Card {
                                 div {
                                     style: "display: flex; flex-direction: column; gap: 12px;",
-                                    Heading { level: HeadingLevel::H3, "Hierarchy Graph (Mind Map / Org Structure)" }
+                                    div {
+                                        style: "display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;",
+                                        Heading { level: HeadingLevel::H3, "Hierarchy Graph (Mind Map / Org Structure)" }
+                                        Checkbox {
+                                            checked: *tree_editable.read(),
+                                            label: "Editable",
+                                            onchange: move |checked| tree_editable.set(checked)
+                                        }
+                                    }
                                     p { style: "font-size: 13px; color: var(--uikit-muted);", "XMind-style two-sided topics with smooth branches and configurable canvas and node surfaces." }
                                     HierarchyGraph {
                                         nodes: tree_nodes,
                                         edges: tree_edges,
+                                        editable: *tree_editable.read(),
+                                        node_labels: tree_labels.read().clone(),
+                                        on_node_edit: move |(id, label)| {
+                                            tree_labels.write().insert(id, label);
+                                        },
+                                        on_create_sub_node: move |parent_id: String| {
+                                            let index = *tree_next_node.read();
+                                            tree_next_node.set(index + 1);
+                                            let id = format!("sub-node-{index}");
+                                            let is_root_child = parent_id == "root";
+                                            let branch_color = is_root_child.then(|| {
+                                                let hue = (index as f64 * 137.508 + 280.0) % 360.0;
+                                                format!("hsl({hue:.0}deg 68% 52%)")
+                                            });
+                                            tree_labels.write().insert(id.clone(), format!("Node {index}"));
+                                            tree_extra_nodes.write().push(GraphNodeData {
+                                                id: id.clone(),
+                                                x: 0.0,
+                                                y: 0.0,
+                                                color: branch_color.clone(),
+                                                border: Some("none".to_string()),
+                                                background_color: if is_root_child {
+                                                    None
+                                                } else {
+                                                    Some("transparent".to_string())
+                                                },
+                                                shape: if is_root_child {
+                                                    NodeShape::Box
+                                                } else {
+                                                    NodeShape::Plain
+                                                },
+                                                selected: false,
+                                            });
+                                            tree_extra_edges.write().push(GraphEdgeData {
+                                                from: parent_id,
+                                                to: id.clone(),
+                                                label: None,
+                                                edge_type: EdgeType::Bezier,
+                                                color: branch_color,
+                                                animated: false,
+                                                arrow: ArrowHead::None,
+                                            });
+                                            tree_active.set(Some(id));
+                                        },
+                                        on_delete_node: move |id: String| {
+                                            let mut subtree = HashSet::new();
+                                            let mut pending = vec![id];
+                                            while let Some(parent_id) = pending.pop() {
+                                                if subtree.insert(parent_id.clone()) {
+                                                    pending.extend(
+                                                        tree_delete_edges
+                                                            .iter()
+                                                            .filter(|edge| edge.from == parent_id)
+                                                            .map(|edge| edge.to.clone()),
+                                                    );
+                                                }
+                                            }
+                                            tree_deleted_nodes.write().extend(subtree.iter().cloned());
+                                            tree_labels.write().retain(|id, _| !subtree.contains(id));
+                                            tree_active.set(None);
+                                        },
                                         root_edge_type: Some(EdgeType::OrganicCurved),
                                         border: Some("none".to_string()),
                                         background_color: Some("var(--uikit-bg)".to_string()),

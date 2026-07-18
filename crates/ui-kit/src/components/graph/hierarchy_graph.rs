@@ -1,5 +1,6 @@
 use crate::components::graph::edge::{Edge, EdgeDefs, EdgeType, GraphEdgeData};
 use crate::components::graph::node::{GraphNodeData, Node};
+use crate::components::input::{Button, ButtonSize, EditableText, EditableTextVariant};
 use dioxus::prelude::*;
 use std::collections::{HashMap, HashSet};
 
@@ -93,11 +94,7 @@ fn branch_ancestor(
     current.to_string()
 }
 
-fn rounded_t_paths(
-    from: (f64, f64),
-    mut targets: Vec<(f64, f64)>,
-    side: f64,
-) -> Vec<String> {
+fn rounded_t_paths(from: (f64, f64), mut targets: Vec<(f64, f64)>, side: f64) -> Vec<String> {
     if targets.is_empty() {
         return Vec::new();
     }
@@ -202,19 +199,40 @@ fn rectangular_normal(
 pub fn HierarchyGraph(
     nodes: Vec<(GraphNodeData, Element)>,
     edges: Vec<GraphEdgeData>,
+    /// Enables node label editing and displays the graph action menu.
+    #[props(default = false)]
+    editable: bool,
+    /// Controlled labels used by `EditableText` when `editable` is enabled.
+    /// Missing labels fall back to the node id.
+    #[props(default)]
+    node_labels: HashMap<String, String>,
     #[props(default)] active_node_id: Option<String>,
     #[props(default)] on_node_click: EventHandler<String>,
+    /// Called with `(node_id, new_label)` after an editable label is saved.
+    #[props(default)]
+    on_node_edit: EventHandler<(String, String)>,
+    /// Requests a new child for the currently selected node.
+    #[props(default)]
+    on_create_sub_node: EventHandler<String>,
+    /// Requests deletion of the currently selected node.
+    #[props(default)]
+    on_delete_node: EventHandler<String>,
     /// Complete CSS border declaration for the graph canvas. `"none"` removes it.
-    #[props(into, default)] border: Option<String>,
+    #[props(into, default)]
+    border: Option<String>,
     /// CSS background color for the graph canvas.
-    #[props(into, default)] background_color: Option<String>,
+    #[props(into, default)]
+    background_color: Option<String>,
     /// Visible width used to anchor edges to the transparent core topic.
-    #[props(default = 100.0)] core_width: f64,
+    #[props(default = 100.0)]
+    core_width: f64,
     /// Visible height used to anchor edges to the transparent core topic.
-    #[props(default = 28.0)] core_height: f64,
+    #[props(default = 28.0)]
+    core_height: f64,
     /// Optional routing override for every core-to-main-topic edge. When
     /// omitted, each `GraphEdgeData::edge_type` is used independently.
-    #[props(default)] root_edge_type: Option<EdgeType>,
+    #[props(default)]
+    root_edge_type: Option<EdgeType>,
 ) -> Element {
     let row_gap = 58.0;
 
@@ -237,8 +255,8 @@ pub fn HierarchyGraph(
         roots.push(nodes[0].0.id.clone());
     }
 
-    // XMind balances the root's main topics on both sides of the central
-    // topic. Weighting by leaves keeps a large subtree from crowding one side.
+    // Keep the root's main topics evenly distributed by count. Subtree leaf
+    // weights are still used below to allocate enough vertical space per side.
     let primary_root = roots.first().cloned();
     let root_children = primary_root
         .as_ref()
@@ -251,7 +269,7 @@ pub fn HierarchyGraph(
     let mut right_weight = 0;
     for child in root_children {
         let weight = leaf_count(&child, &children, &mut HashSet::new());
-        if right_weight <= left_weight {
+        if right.len() <= left.len() {
             right.push(child);
             right_weight += weight;
         } else {
@@ -264,7 +282,7 @@ pub fn HierarchyGraph(
     // visible and participate in the same balanced mind-map layout.
     for root in roots.iter().skip(1) {
         let weight = leaf_count(root, &children, &mut HashSet::new());
-        if right_weight <= left_weight {
+        if right.len() <= left.len() {
             right.push(root.clone());
             right_weight += weight;
         } else {
@@ -376,66 +394,63 @@ pub fn HierarchyGraph(
         .iter()
         .filter(|edge| node_depths.get(&edge.from).copied().unwrap_or(0) == 0)
         .map(|edge| {
-        let from = node_positions
-            .get(&edge.from)
-            .copied()
-            .unwrap_or((0.0, 0.0));
-        let to = node_positions
-            .get(&edge.to)
-            .copied()
-            .unwrap_or((0.0, 0.0));
-        let effective_edge_type = root_edge_type.unwrap_or(edge.edge_type);
-        // The transparent core has no visible box to clip against, so compute
-        // the exact radial intersection with its configured visible bounds.
-        let from_point = rectangular_connection(from, to, core_width, core_height);
-        // XMind main-topic branches enter the subject through the center of
-        // its facing side. This is independent of variable text-driven node
-        // height and guarantees a surface-orthogonal horizontal arrival.
-        let target_toward = if (from.0 - to.0).abs() < f64::EPSILON {
-            from
-        } else {
-            (from.0, to.1)
-        };
-        let to_point = node_data
-            .get(edge.to.as_str())
-            .map(|node| node.shape.connection_point(to, target_toward))
-            .unwrap_or(to);
-        let from_normal = rectangular_normal(from, from_point, core_width, core_height);
-        let to_normal = node_data
-            .get(edge.to.as_str())
-            .map(|node| node.shape.connection_normal(to, to_point))
-            .unwrap_or_else(|| {
-                let dx = from.0 - to.0;
-                let dy = from.1 - to.1;
-                let length = (dx * dx + dy * dy).sqrt();
-                if length < f64::EPSILON {
-                    (0.0, 0.0)
-                } else {
-                    (dx / length, dy / length)
-                }
-            });
-        let color = branch_colors
-            .get(&edge.to)
-            .cloned()
-            .or_else(|| edge.color.clone());
+            let from = node_positions
+                .get(&edge.from)
+                .copied()
+                .unwrap_or((0.0, 0.0));
+            let to = node_positions.get(&edge.to).copied().unwrap_or((0.0, 0.0));
+            let effective_edge_type = root_edge_type.unwrap_or(edge.edge_type);
+            // The transparent core has no visible box to clip against, so compute
+            // the exact radial intersection with its configured visible bounds.
+            let from_point = rectangular_connection(from, to, core_width, core_height);
+            // XMind main-topic branches enter the subject through the center of
+            // its facing side. This is independent of variable text-driven node
+            // height and guarantees a surface-orthogonal horizontal arrival.
+            let target_toward = if (from.0 - to.0).abs() < f64::EPSILON {
+                from
+            } else {
+                (from.0, to.1)
+            };
+            let to_point = node_data
+                .get(edge.to.as_str())
+                .map(|node| node.shape.connection_point(to, target_toward))
+                .unwrap_or(to);
+            let from_normal = rectangular_normal(from, from_point, core_width, core_height);
+            let to_normal = node_data
+                .get(edge.to.as_str())
+                .map(|node| node.shape.connection_normal(to, to_point))
+                .unwrap_or_else(|| {
+                    let dx = from.0 - to.0;
+                    let dy = from.1 - to.1;
+                    let length = (dx * dx + dy * dy).sqrt();
+                    if length < f64::EPSILON {
+                        (0.0, 0.0)
+                    } else {
+                        (dx / length, dy / length)
+                    }
+                });
+            let color = branch_colors
+                .get(&edge.to)
+                .cloned()
+                .or_else(|| edge.color.clone());
 
-        rsx! {
-            Edge {
-                key: "{edge.from}-{edge.to}",
-                from_x: from_point.0,
-                from_y: from_point.1,
-                to_x: to_point.0,
-                to_y: to_point.1,
-                edge_type: effective_edge_type,
-                arrow: edge.arrow,
-                animated: edge.animated,
-                label: edge.label.clone(),
-                color,
-                from_normal: Some(from_normal),
-                to_normal: Some(to_normal)
+            rsx! {
+                Edge {
+                    key: "{edge.from}-{edge.to}",
+                    from_x: from_point.0,
+                    from_y: from_point.1,
+                    to_x: to_point.0,
+                    to_y: to_point.1,
+                    edge_type: effective_edge_type,
+                    arrow: edge.arrow,
+                    animated: edge.animated,
+                    label: edge.label.clone(),
+                    color,
+                    from_normal: Some(from_normal),
+                    to_normal: Some(to_normal)
+                }
             }
-        }
-    });
+        });
 
     // Every deeper parent renders one shared spine. Child arms join that
     // spine as rounded T connections, matching XMind's bracket-like branches.
@@ -455,10 +470,8 @@ pub fn HierarchyGraph(
         let from = node_data
             .get(parent_id.as_str())
             .map(|node| {
-                node.shape.connection_point(
-                    parent_position,
-                    (first_child_position.0, parent_position.1),
-                )
+                node.shape
+                    .connection_point(parent_position, (first_child_position.0, parent_position.1))
             })
             .unwrap_or(parent_position);
         let targets: Vec<(f64, f64)> = child_ids
@@ -469,10 +482,8 @@ pub fn HierarchyGraph(
                     node_data
                         .get(child.as_str())
                         .map(|node| {
-                            node.shape.connection_point(
-                                position,
-                                (parent_position.0, position.1),
-                            )
+                            node.shape
+                                .connection_point(position, (parent_position.0, position.1))
                         })
                         .unwrap_or(position),
                 )
@@ -482,7 +493,11 @@ pub fn HierarchyGraph(
         let base_color = branch_colors
             .get(&branch_id)
             .cloned()
-            .or_else(|| node_data.get(parent_id.as_str()).and_then(|node| node.color.clone()))
+            .or_else(|| {
+                node_data
+                    .get(parent_id.as_str())
+                    .and_then(|node| node.color.clone())
+            })
             .unwrap_or_else(|| "var(--uikit-border)".to_string());
         let color = brighter(&base_color, parent_depth.saturating_sub(1));
         let paths = rounded_t_paths(from, targets, side);
@@ -501,10 +516,23 @@ pub fn HierarchyGraph(
         })
     });
 
+    let selected_node_id = active_node_id.clone().or_else(|| {
+        nodes
+            .iter()
+            .find(|(node, _)| node.selected)
+            .map(|(node, _)| node.id.clone())
+    });
+
     let rendered_nodes = nodes.iter().map(|(node, node_element)| {
         let (x, y) = node_positions.get(&node.id).copied().unwrap_or((0.0, 0.0));
         let is_selected = active_node_id.as_ref() == Some(&node.id) || node.selected;
         let node_id = node.id.clone();
+        let label_node_id = node.id.clone();
+        let edit_node_id = node.id.clone();
+        let controlled_label = node_labels.get(&node.id).cloned();
+        let editable_label = controlled_label
+            .clone()
+            .unwrap_or_else(|| node.id.clone());
         let depth = node_depths.get(&node.id).copied().unwrap_or(0);
         let branch_id = branch_ancestor(&node.id, &parents, &node_depths);
         let base_color = branch_colors
@@ -548,7 +576,33 @@ pub fn HierarchyGraph(
                 shape: node.shape,
                 selected: is_selected,
                 onclick: move |_| on_node_click.call(node_id.clone()),
-                {node_element.clone()}
+                if editable {
+                    div {
+                        class: "uikit-hierarchy-graph-editable-label uikit-hierarchy-graph-level-{depth}",
+                        onclick: move |event| {
+                            event.stop_propagation();
+                            on_node_click.call(label_node_id.clone());
+                        },
+                        EditableText {
+                            value: editable_label,
+                            variant: EditableTextVariant::Inline,
+                            placeholder: "Node label",
+                            onchange: move |value| {
+                                on_node_edit.call((edit_node_id.clone(), value));
+                            }
+                        }
+                    }
+                } else if let Some(label) = controlled_label {
+                    div {
+                        class: "uikit-hierarchy-graph-editable-label uikit-hierarchy-graph-level-{depth}",
+                        div {
+                            class: "uikit-hierarchy-graph-label-value",
+                            dangerous_inner_html: "{label}"
+                        }
+                    }
+                } else {
+                    {node_element.clone()}
+                }
             }
         }
     });
@@ -565,10 +619,44 @@ pub fn HierarchyGraph(
 
     rsx! {
         div {
-            style: "width: 100%; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 12px;",
+            class: "uikit-hierarchy-graph-scroll",
             div {
-                class: "uikit-graph-container uikit-hierarchy-graph",
+                class: "uikit-graph-container uikit-graph-grid uikit-hierarchy-graph",
                 style: "{canvas_style}",
+                if editable {
+                    div {
+                        class: "uikit-hierarchy-graph-context-menu",
+                        role: "toolbar",
+                        aria_label: "Selected node actions",
+                        Button {
+                            size: ButtonSize::Small,
+                            disabled: selected_node_id.is_none(),
+                            onclick: {
+                                let selected_node_id = selected_node_id.clone();
+                                move |_| {
+                                    if let Some(id) = selected_node_id.as_ref() {
+                                        on_create_sub_node.call(id.clone());
+                                    }
+                                }
+                            },
+                            "Add"
+                        }
+                        Button {
+                            size: ButtonSize::Small,
+                            color: "var(--uikit-error)",
+                            disabled: selected_node_id.is_none(),
+                            onclick: {
+                                let selected_node_id = selected_node_id.clone();
+                                move |_| {
+                                    if let Some(id) = selected_node_id.as_ref() {
+                                        on_delete_node.call(id.clone());
+                                    }
+                                }
+                            },
+                            "Delete"
+                        }
+                    }
+                }
                 svg {
                     class: "uikit-graph-svg",
                     view_box: "0 0 {canvas_width} {canvas_height}",
@@ -610,15 +698,7 @@ mod tests {
         )]);
         let mut positions = HashMap::new();
         let mut y = 10.0;
-        layout_branch(
-            "branch",
-            1,
-            -1.0,
-            &mut y,
-            20.0,
-            &children,
-            &mut positions,
-        );
+        layout_branch("branch", 1, -1.0, &mut y, 20.0, &children, &mut positions);
         assert_eq!(positions["branch"], (1, 20.0, -1.0));
     }
 

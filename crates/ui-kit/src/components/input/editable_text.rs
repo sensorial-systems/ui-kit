@@ -5,10 +5,19 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum EditableTextVariant {
+    #[default]
+    Full,
+    /// Edits the rendered text in place without showing the formatting toolbar.
+    Inline,
+}
+
 #[component]
 pub fn EditableText(
     #[props(into)] value: String,
     onchange: EventHandler<String>,
+    #[props(default)] variant: EditableTextVariant,
     #[props(into, default)] placeholder: Option<String>,
     #[props(default)] disabled: bool,
     #[props(into, default)] label: Option<String>,
@@ -69,6 +78,44 @@ pub fn EditableText(
             div {
                 class: "uikit-wysiwyg-wrapper",
                 if *editing.read() {
+                    if variant == EditableTextVariant::Inline {
+                        div {
+                            id: "uikit-wysiwyg-editor-{unique_id}",
+                            class: "uikit-wysiwyg-editor uikit-wysiwyg-editor-inline",
+                            contenteditable: true,
+                            "data-placeholder": "{placeholder_str}",
+                            dangerous_inner_html: "{local_value}",
+                            onblur: move |_| {
+                                let mut editing = editing;
+                                let mut local_value = local_value;
+                                let mut eval_handle = eval(&format!(
+                                    r#"
+                                    let el = document.getElementById("uikit-wysiwyg-editor-{}");
+                                    dioxus.send(el ? el.innerHTML : "");
+                                    "#,
+                                    unique_id
+                                ));
+                                spawn(async move {
+                                    if let Ok(html) = eval_handle.recv::<String>().await {
+                                        let trimmed = html.trim();
+                                        let clean_html = if trimmed == "<br>" { "".to_string() } else { html };
+                                        local_value.set(clean_html.clone());
+                                        onchange.call(clean_html);
+                                    }
+                                    editing.set(false);
+                                });
+                            },
+                            onkeydown: move |event| {
+                                if event.key() == Key::Escape {
+                                    let mut editing = editing;
+                                    editing.set(false);
+                                } else if event.key() == Key::Enter && event.modifiers().ctrl() {
+                                    event.prevent_default();
+                                    let _ = eval("document.activeElement?.blur();");
+                                }
+                            }
+                        }
+                    } else {
                     div {
                         class: "uikit-wysiwyg-container",
                         div {
@@ -444,6 +491,7 @@ pub fn EditableText(
                                 }
                             }
                         }
+                    }
                     }
                 } else {
                     div {

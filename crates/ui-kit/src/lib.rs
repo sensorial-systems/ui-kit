@@ -12,7 +12,7 @@ pub use components::{
     Notification, NotificationVariant,
     Checkbox,
     TextInput,
-    EditableText,
+    EditableText, EditableTextVariant,
     OtpInput,
     Select,
     Switch,
@@ -32,6 +32,5 @@ pub use components::{
 };
 pub use theme::AppTheme;
 pub use theme_provider::ThemeProvider;
-
 
 

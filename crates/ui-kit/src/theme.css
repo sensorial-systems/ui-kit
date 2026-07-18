@@ -192,6 +192,19 @@
     background-color: var(--uikit-secondary);
 }
 
+/* A supplied color intentionally overrides every variant surface. */
+.uikit-btn-custom-color {
+    background-color: var(--uikit-btn-color);
+    border-color: var(--uikit-btn-color);
+    color: #fff;
+}
+
+.uikit-btn-custom-color:not(:disabled):hover,
+.uikit-btn-custom-color:not(:disabled):active {
+    background-color: color-mix(in srgb, var(--uikit-btn-color) 85%, black);
+    border-color: color-mix(in srgb, var(--uikit-btn-color) 85%, black);
+}
+
 /* Button Sizes */
 .uikit-btn-sm {
     padding: 6px 12px;
@@ -1308,13 +1321,110 @@
     background-size: 20px 20px;
 }
 
-/* XMind-style canvases are intentionally quiet: no editor grid, frame, or
-   elevation around the map. HierarchyGraph props can opt back into a frame. */
+/* Hierarchy graphs share the standard dotted graph grid while keeping their
+   frame and elevation optional through HierarchyGraph props. */
 .uikit-hierarchy-graph {
-    background-image: none;
     border: none;
     border-radius: 0;
     box-shadow: none;
+}
+
+.uikit-hierarchy-graph-scroll {
+    width: 100%;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+}
+
+.uikit-hierarchy-graph-context-menu {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    z-index: 4;
+    width: max-content;
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    transform: translateX(-50%);
+    border: 1px solid var(--uikit-border);
+    border-radius: var(--uikit-radius-md);
+    background: var(--uikit-bg);
+    box-shadow: var(--uikit-shadow);
+}
+
+.uikit-hierarchy-graph .uikit-graph-node.uikit-graph-node-selected {
+    outline: none;
+    box-shadow: 0 0 0 4px var(--uikit-ring);
+}
+
+.uikit-hierarchy-graph-editable-label {
+    width: 100%;
+    min-width: 0;
+    color: var(--uikit-fg);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: normal;
+}
+
+.uikit-hierarchy-graph-editable-label.uikit-hierarchy-graph-level-0 {
+    font-size: 20px;
+    font-weight: 750;
+    text-align: center;
+}
+
+.uikit-hierarchy-graph-editable-label:not(.uikit-hierarchy-graph-level-0):not(.uikit-hierarchy-graph-level-1) {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.uikit-hierarchy-graph .uikit-graph-node-plain .uikit-hierarchy-graph-editable-label {
+    color: var(--uikit-graph-node-color, var(--uikit-fg));
+}
+
+.uikit-hierarchy-graph-editable-label .uikit-field-container,
+.uikit-hierarchy-graph-editable-label .uikit-field-content,
+.uikit-hierarchy-graph-editable-label .uikit-wysiwyg-wrapper,
+.uikit-hierarchy-graph-editable-label .uikit-wysiwyg-viewer-wrapper {
+    width: 100%;
+    margin: 0;
+}
+
+.uikit-hierarchy-graph-editable-label .uikit-wysiwyg-viewer,
+.uikit-hierarchy-graph-label-value {
+    display: block;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    color: inherit;
+    background: transparent;
+    font: inherit;
+    line-height: inherit;
+    text-align: inherit;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.uikit-hierarchy-graph-editable-label .uikit-field-container,
+.uikit-hierarchy-graph-editable-label .uikit-field-content,
+.uikit-hierarchy-graph-editable-label .uikit-wysiwyg-wrapper,
+.uikit-hierarchy-graph-editable-label .uikit-wysiwyg-viewer-wrapper {
+    min-height: 0;
+    line-height: inherit;
+}
+
+.uikit-hierarchy-graph-editable-label .uikit-wysiwyg-viewer:hover {
+    border-color: transparent;
+    background: transparent;
+}
+
+.uikit-hierarchy-graph-editable-label .uikit-wysiwyg-hint {
+    display: none;
 }
 
 .uikit-hierarchy-graph .uikit-graph-node {
@@ -1599,6 +1709,24 @@
     font-family: var(--uikit-font-sans);
 }
 
+.uikit-wysiwyg-editor-inline {
+    width: 100%;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    color: inherit;
+    background: transparent;
+    font: inherit;
+    line-height: inherit;
+    text-align: inherit;
+    overflow: hidden;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
 .uikit-wysiwyg-editor:empty::before {
     content: attr(data-placeholder);
     color: var(--uikit-muted);
@@ -1649,4 +1777,3 @@
 .uikit-wysiwyg-viewer-wrapper:hover .uikit-wysiwyg-hint {
     opacity: 0.8;
 }
-
