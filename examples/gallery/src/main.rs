@@ -850,10 +850,10 @@ fn App() -> Element {
                                         style: "display: flex; flex-direction: column; gap: 12px;",
                                         Heading { level: HeadingLevel::H4, muted: true, "Node Shapes & Colors" }
                                         div {
-                                            style: "width: 100%; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 12px;",
+                                            style: "width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;",
                                             div {
                                                 class: "uikit-graph-container uikit-graph-grid",
-                                                style: "position: relative; width: 900px; height: 180px; flex-shrink: 0;",
+                                                style: "position: relative; width: 100%; max-width: 760px; height: 180px;",
                                                 
                                                 // Default Shapes
                                                 Node { id: "n-def-p".to_string(), x: 120.0, y: 50.0, color: None, shape: NodeShape::Pill, span { "Default Pill" } }
@@ -874,21 +874,22 @@ fn App() -> Element {
                                         style: "display: flex; flex-direction: column; gap: 12px;",
                                         Heading { level: HeadingLevel::H4, muted: true, "Edge Routing Shapes (Straight, Bezier, Orthogonal, Curved Orthogonal, Organic Curved)" }
                                         {
-                                            let (s1_x, s1_y, e1_x, e1_y) = get_circle_connection(50.0, 50.0, 200.0, 150.0, true);
-                                            let (s2_x, s2_y, e2_x, e2_y) = get_circle_connection(270.0, 50.0, 420.0, 150.0, false);
-                                            let (s3_x, s3_y, e3_x, e3_y) = get_circle_connection(490.0, 50.0, 640.0, 150.0, false);
-                                            let (s4_x, s4_y, e4_x, e4_y) = get_circle_connection(710.0, 50.0, 860.0, 150.0, false);
+                                            let (s1_x, s1_y, e1_x, e1_y) = get_circle_connection(50.0, 50.0, 160.0, 140.0, true);
+                                            let (s2_x, s2_y, e2_x, e2_y) = get_circle_connection(280.0, 50.0, 390.0, 140.0, false);
+                                            let (s3_x, s3_y, e3_x, e3_y) = get_circle_connection(510.0, 50.0, 620.0, 140.0, false);
+                                            let (s4_x, s4_y, e4_x, e4_y) = get_circle_connection(150.0, 230.0, 270.0, 320.0, false);
+                                            let (s5_x, s5_y, e5_x, e5_y) = get_circle_connection(440.0, 230.0, 560.0, 320.0, false);
                                             
                                             rsx! {
                                                 div {
-                                                    style: "width: 100%; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 12px;",
+                                                    style: "width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;",
                                                     div {
                                                         class: "uikit-graph-container uikit-graph-grid",
-                                                        style: "position: relative; width: 1120px; height: 210px; flex-shrink: 0;",
+                                                        style: "position: relative; width: 100%; max-width: 700px; height: 370px;",
                                                         svg {
                                                             class: "uikit-graph-svg",
                                                             style: "width: 100%; height: 100%; pointer-events: none;",
-                                                            view_box: "0 0 1120 210",
+                                                            view_box: "0 0 700 370",
                                                             EdgeDefs {}
                                                             
                                                             // 1. Straight Edge
@@ -904,24 +905,24 @@ fn App() -> Element {
                                                             Edge { from_x: s4_x, from_y: s4_y, to_x: e4_x, to_y: e4_y, edge_type: EdgeType::CurvedOrthogonal, arrow: ArrowHead::End, label: Some("Curved Ortho".to_string()), color: Some("var(--uikit-error)".to_string()) }
 
                                                             // 5. Long boundary-anchored XMind curve
-                                                            Edge { from_x: 970.0, from_y: 85.0, to_x: 1035.0, to_y: 150.0, from_normal: Some((0.0, 1.0)), to_normal: Some((-1.0, 0.0)), edge_type: EdgeType::OrganicCurved, arrow: ArrowHead::End, label: Some("Organic Curved".to_string()), color: Some("var(--uikit-primary)".to_string()) }
+                                                            Edge { from_x: s5_x, from_y: s5_y, to_x: e5_x, to_y: e5_y, from_normal: Some((0.0, 1.0)), to_normal: Some((-1.0, 0.0)), edge_type: EdgeType::OrganicCurved, arrow: ArrowHead::End, label: Some("Organic Curved".to_string()), color: Some("var(--uikit-primary)".to_string()) }
                                                         }
                                                         
                                                         // Labeled Endpoint Nodes
                                                         Node { id: "ep-s1".to_string(), x: 50.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
-                                                        Node { id: "ep-e1".to_string(), x: 200.0, y: 150.0, color: Some("var(--uikit-success)".to_string()), shape: NodeShape::Circle, span { "End" } }
+                                                        Node { id: "ep-e1".to_string(), x: 160.0, y: 140.0, color: Some("var(--uikit-success)".to_string()), shape: NodeShape::Circle, span { "End" } }
                                                         
-                                                        Node { id: "ep-s2".to_string(), x: 270.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
-                                                        Node { id: "ep-e2".to_string(), x: 420.0, y: 150.0, color: Some("var(--uikit-info)".to_string()), shape: NodeShape::Circle, span { "End" } }
+                                                        Node { id: "ep-s2".to_string(), x: 280.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
+                                                        Node { id: "ep-e2".to_string(), x: 390.0, y: 140.0, color: Some("var(--uikit-info)".to_string()), shape: NodeShape::Circle, span { "End" } }
                                                         
-                                                        Node { id: "ep-s3".to_string(), x: 490.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
-                                                        Node { id: "ep-e3".to_string(), x: 640.0, y: 150.0, color: Some("var(--uikit-warning)".to_string()), shape: NodeShape::Circle, span { "End" } }
+                                                        Node { id: "ep-s3".to_string(), x: 510.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
+                                                        Node { id: "ep-e3".to_string(), x: 620.0, y: 140.0, color: Some("var(--uikit-warning)".to_string()), shape: NodeShape::Circle, span { "End" } }
                                                         
-                                                        Node { id: "ep-s4".to_string(), x: 710.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
-                                                        Node { id: "ep-e4".to_string(), x: 860.0, y: 150.0, color: Some("var(--uikit-error)".to_string()), shape: NodeShape::Circle, span { "End" } }
+                                                        Node { id: "ep-s4".to_string(), x: 150.0, y: 230.0, color: None, shape: NodeShape::Circle, span { "Start" } }
+                                                        Node { id: "ep-e4".to_string(), x: 270.0, y: 320.0, color: Some("var(--uikit-error)".to_string()), shape: NodeShape::Circle, span { "End" } }
 
-                                                        Node { id: "ep-s5".to_string(), x: 970.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
-                                                        Node { id: "ep-e5".to_string(), x: 1070.0, y: 150.0, color: Some("var(--uikit-primary)".to_string()), shape: NodeShape::Circle, span { "End" } }
+                                                        Node { id: "ep-s5".to_string(), x: 440.0, y: 230.0, color: None, shape: NodeShape::Circle, span { "Start" } }
+                                                        Node { id: "ep-e5".to_string(), x: 560.0, y: 320.0, color: Some("var(--uikit-primary)".to_string()), shape: NodeShape::Circle, span { "End" } }
                                                     }
                                                 }
                                             }

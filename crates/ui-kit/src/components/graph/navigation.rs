@@ -56,13 +56,12 @@ impl MiniMapProjection {
 
 fn mini_map_projection(
     nodes: &[NavigationNode],
-    canvas: (f64, f64),
     viewport: (f64, f64, f64, f64),
 ) -> MiniMapProjection {
-    let mut min_x = 0.0_f64.min(viewport.0);
-    let mut min_y = 0.0_f64.min(viewport.1);
-    let mut max_x = canvas.0.max(viewport.2);
-    let mut max_y = canvas.1.max(viewport.3);
+    let mut min_x = viewport.0;
+    let mut min_y = viewport.1;
+    let mut max_x = viewport.2;
+    let mut max_y = viewport.3;
     for node in nodes {
         min_x = min_x.min(node.x);
         min_y = min_y.min(node.y);
@@ -136,6 +135,7 @@ pub(crate) fn GraphNavigator(
     canvas_height: f64,
     nodes: Vec<NavigationNode>,
     #[props(default = true)] framed: bool,
+    #[props(default = false)] center_on_mount: bool,
     #[props(into)] canvas_class: String,
     #[props(into)] canvas_style: String,
     children: Element,
@@ -161,11 +161,8 @@ pub(crate) fn GraphNavigator(
     let viewport_x2 = (viewport_width - current_pan_x) / current_zoom;
     let viewport_y2 = (viewport_height - current_pan_y) / current_zoom;
 
-    let map_projection = mini_map_projection(
-        &nodes,
-        (canvas_width, canvas_height),
-        (viewport_x1, viewport_y1, viewport_x2, viewport_y2),
-    );
+    let map_projection =
+        mini_map_projection(&nodes, (viewport_x1, viewport_y1, viewport_x2, viewport_y2));
     let (map_viewport_x1, map_viewport_y1) = map_projection.graph_to_map(viewport_x1, viewport_y1);
     let (map_viewport_x2, map_viewport_y2) = map_projection.graph_to_map(viewport_x2, viewport_y2);
     let fit_nodes = nodes.clone();
@@ -189,6 +186,10 @@ pub(crate) fn GraphNavigator(
                 spawn(async move {
                     if let Ok(rect) = data.get_client_rect().await {
                         viewport_size.set((rect.width(), rect.height()));
+                        if center_on_mount {
+                            pan_x.set((rect.width() - canvas_width) / 2.0);
+                            pan_y.set((rect.height() - canvas_height) / 2.0);
+                        }
                     }
                 });
             },
@@ -461,11 +462,28 @@ mod tests {
 
     #[test]
     fn minimap_always_contains_the_complete_viewport() {
-        let projection = mini_map_projection(&[], (900.0, 420.0), (-800.0, -600.0, 1700.0, 1200.0));
+        let projection = mini_map_projection(&[], (-800.0, -600.0, 1700.0, 1200.0));
         let top_left = projection.graph_to_map(-800.0, -600.0);
         let bottom_right = projection.graph_to_map(1700.0, 1200.0);
 
         assert!(top_left.0 >= 0.0 && top_left.1 >= 0.0);
         assert!(bottom_right.0 <= MINIMAP_WIDTH && bottom_right.1 <= MINIMAP_HEIGHT);
+    }
+
+    #[test]
+    fn minimap_centers_a_fitted_viewport_without_unused_canvas_space() {
+        let nodes = vec![NavigationNode {
+            x: 300.0,
+            y: 100.0,
+            width: 200.0,
+            height: 100.0,
+            shape: NodeShape::Box,
+        }];
+        let projection = mini_map_projection(&nodes, (200.0, 0.0, 600.0, 300.0));
+        let top_left = projection.graph_to_map(200.0, 0.0);
+        let bottom_right = projection.graph_to_map(600.0, 300.0);
+
+        assert!(((top_left.0 + bottom_right.0) / 2.0 - MINIMAP_WIDTH / 2.0).abs() < 1e-9);
+        assert!(((top_left.1 + bottom_right.1) / 2.0 - MINIMAP_HEIGHT / 2.0).abs() < 1e-9);
     }
 }

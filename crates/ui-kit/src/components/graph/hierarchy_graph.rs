@@ -626,6 +626,7 @@ pub fn HierarchyGraphViewer(
             canvas_width,
             canvas_height,
             nodes: navigation_nodes,
+            center_on_mount: true,
             canvas_class: "uikit-graph-container uikit-hierarchy-graph",
             canvas_style,
             svg {
