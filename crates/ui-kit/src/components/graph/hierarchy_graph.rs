@@ -17,6 +17,12 @@ pub struct HierarchyGraphModel {
     pub edges: Vec<GraphEdgeData>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct NodeDimensions {
+    width: f64,
+    height: f64,
+}
+
 fn leaf_count(
     node_id: &str,
     children: &HashMap<String, Vec<String>>,
@@ -88,8 +94,168 @@ fn brighter(color: &str, level: usize) -> String {
     if level == 0 {
         return color.to_string();
     }
-    let retained = 0.7_f64.powi(level as i32) * 100.0;
+    let retained = 0.55_f64.powi(level as i32) * 100.0;
     format!("color-mix(in srgb, {color} {retained:.0}%, white)")
+}
+
+fn hierarchy_node_shape(shape: NodeShape, depth: usize, _background: Option<&str>) -> NodeShape {
+    if depth == 2 && shape == NodeShape::Plain {
+        NodeShape::Box
+    } else {
+        shape
+    }
+}
+
+fn hierarchy_depth(node_id: &str, parents: &HashMap<String, String>) -> usize {
+    let mut depth = 0;
+    let mut current = node_id;
+    let mut visited = HashSet::new();
+    while let Some(parent) = parents.get(current) {
+        if !visited.insert(current.to_string()) {
+            break;
+        }
+        depth += 1;
+        current = parent;
+    }
+    depth
+}
+
+fn strip_html(value: &str) -> String {
+    let value = value
+        .replace("<br>", "\n")
+        .replace("<br/>", "\n")
+        .replace("<br />", "\n")
+        .replace("</div>", "\n")
+        .replace("</p>", "\n")
+        .replace("</li>", "\n");
+    let mut text = String::new();
+    let mut in_tag = false;
+    for character in value.chars() {
+        match character {
+            '<' => in_tag = true,
+            '>' => {
+                in_tag = false;
+            }
+            _ if !in_tag => text.push(character),
+            _ => {}
+        }
+    }
+    text.replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+}
+
+fn label_dimensions(label: &str, shape: NodeShape, depth: usize) -> NodeDimensions {
+    let text = strip_html(label);
+    let lines = text
+        .lines()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>();
+    let line_count = lines.len().max(1);
+    let longest_line = lines
+        .iter()
+        .map(|line| line.chars().count())
+        .max()
+        .unwrap_or(0)
+        .max(1);
+    let font_size = if depth == 0 {
+        20.0
+    } else if depth == 1 {
+        14.0
+    } else {
+        13.0
+    };
+    let horizontal_padding = if shape == NodeShape::Plain { 8.0 } else { 32.0 };
+    let vertical_padding = if shape == NodeShape::Plain { 8.0 } else { 24.0 };
+    let measured_width = longest_line as f64 * font_size * 0.58 + horizontal_padding;
+    let measured_height = line_count as f64 * font_size * 1.25 + vertical_padding;
+    let (base_width, base_height) = match shape {
+        NodeShape::Circle => shape.dimensions(),
+        NodeShape::Pill => (70.0, 32.0),
+        NodeShape::Box if depth == 0 => (96.0, 40.0),
+        NodeShape::Box => (44.0, 34.0),
+        NodeShape::Underline | NodeShape::Plain => (24.0, 22.0),
+    };
+
+    NodeDimensions {
+        width: measured_width.max(base_width).ceil(),
+        height: measured_height.max(base_height),
+    }
+}
+
+fn measurement_key(label: &str, shape: NodeShape, depth: usize) -> String {
+    format!("{depth}:{shape:?}:{label}")
+}
+
+fn shape_connection_point(
+    shape: NodeShape,
+    dimensions: NodeDimensions,
+    center: (f64, f64),
+    toward: (f64, f64),
+) -> (f64, f64) {
+    let dx = toward.0 - center.0;
+    let dy = toward.1 - center.1;
+    if dx.abs() < f64::EPSILON && dy.abs() < f64::EPSILON {
+        return center;
+    }
+
+    let half_width = dimensions.width / 2.0;
+    let half_height = dimensions.height / 2.0;
+    let scale = match shape {
+        NodeShape::Circle | NodeShape::Pill => {
+            1.0 / ((dx / half_width).powi(2) + (dy / half_height).powi(2)).sqrt()
+        }
+        _ => (half_width / dx.abs()).min(half_height / dy.abs()),
+    };
+
+    (center.0 + dx * scale, center.1 + dy * scale)
+}
+
+fn shape_connection_normal(
+    shape: NodeShape,
+    dimensions: NodeDimensions,
+    center: (f64, f64),
+    point: (f64, f64),
+) -> (f64, f64) {
+    let half_width = dimensions.width / 2.0;
+    let half_height = dimensions.height / 2.0;
+    let dx = point.0 - center.0;
+    let dy = point.1 - center.1;
+    let (nx, ny) = match shape {
+        NodeShape::Circle | NodeShape::Pill => {
+            (dx / half_width.powi(2), dy / half_height.powi(2))
+        }
+        _ => {
+            let x_ratio = dx.abs() / half_width;
+            let y_ratio = dy.abs() / half_height;
+            if (x_ratio - y_ratio).abs() < 1e-9 {
+                (dx / half_width, dy / half_height)
+            } else if x_ratio > y_ratio {
+                (dx.signum(), 0.0)
+            } else {
+                (0.0, dy.signum())
+            }
+        }
+    };
+    let length = (nx * nx + ny * ny).sqrt();
+    if length < f64::EPSILON {
+        (0.0, 0.0)
+    } else {
+        (nx / length, ny / length)
+    }
+}
+
+fn descendant_ids(node_id: &str, children: &HashMap<String, Vec<String>>) -> HashSet<String> {
+    let mut descendants = HashSet::new();
+    let mut pending = children.get(node_id).cloned().unwrap_or_default();
+    while let Some(id) = pending.pop() {
+        if descendants.insert(id.clone()) {
+            pending.extend(children.get(&id).cloned().unwrap_or_default());
+        }
+    }
+    descendants
 }
 
 fn branch_ancestor(
@@ -234,12 +400,35 @@ pub fn HierarchyGraphViewer(
     #[props(default)]
     root_edge_type: Option<EdgeType>,
 ) -> Element {
-    let row_gap = 58.0;
-    let edges = graph.edges.clone();
+    let mut collapsed_node_ids = use_signal(Vec::<String>::new);
+    let mut hovered_node_id = use_signal(|| None::<String>);
+    let mut measured_dimensions =
+        use_signal(HashMap::<String, (String, NodeDimensions)>::new);
+    let raw_edges = graph.edges.clone();
     let node_elements: HashMap<String, Element> = node_elements.into_iter().collect();
-    let nodes: Vec<(GraphNodeData, Element)> = graph
+    let mut children: HashMap<String, Vec<String>> = HashMap::new();
+    let mut parents: HashMap<String, String> = HashMap::new();
+    for edge in &raw_edges {
+        children
+            .entry(edge.from.clone())
+            .or_default()
+            .push(edge.to.clone());
+        parents.insert(edge.to.clone(), edge.from.clone());
+    }
+    let collapsed: HashSet<String> = collapsed_node_ids().into_iter().collect();
+    let hidden_nodes = collapsed
+        .iter()
+        .flat_map(|node_id| descendant_ids(node_id, &children))
+        .collect::<HashSet<_>>();
+    let edges: Vec<GraphEdgeData> = raw_edges
+        .iter()
+        .filter(|edge| !hidden_nodes.contains(&edge.from) && !hidden_nodes.contains(&edge.to))
+        .cloned()
+        .collect();
+    let nodes: Vec<(GraphNodeData, Element, String)> = graph
         .nodes
         .iter()
+        .filter(|node| !hidden_nodes.contains(&node.data.id))
         .map(|node| {
             let element = node_elements
                 .get(&node.data.id)
@@ -253,28 +442,70 @@ pub fn HierarchyGraphViewer(
                         }
                     }
                 });
-            (node.data.clone(), element)
+            (node.data.clone(), element, node.label.clone())
         })
         .collect();
 
-    let mut children: HashMap<String, Vec<String>> = HashMap::new();
-    let mut parents: HashMap<String, String> = HashMap::new();
-    for edge in &edges {
-        children
-            .entry(edge.from.clone())
-            .or_default()
-            .push(edge.to.clone());
-        parents.insert(edge.to.clone(), edge.from.clone());
-    }
-
     let mut roots: Vec<String> = nodes
         .iter()
-        .filter(|(node, _)| !parents.contains_key(&node.id))
-        .map(|(node, _)| node.id.clone())
+        .filter(|(node, _, _)| !parents.contains_key(&node.id))
+        .map(|(node, _, _)| node.id.clone())
         .collect();
     if roots.is_empty() && !nodes.is_empty() {
         roots.push(nodes[0].0.id.clone());
     }
+
+    // Canvas geometry is based on the complete graph. Collapsing only changes
+    // visibility; it must not move the root by changing canvas dimensions.
+    let node_depths: HashMap<String, usize> = graph
+        .nodes
+        .iter()
+        .map(|node| {
+            (
+                node.data.id.clone(),
+                hierarchy_depth(&node.data.id, &parents),
+            )
+        })
+        .collect();
+    let branch_colors: HashMap<String, String> = nodes
+        .iter()
+        .filter(|(node, _, _)| node_depths.get(&node.id).copied() == Some(1))
+        .filter_map(|(node, _, _)| {
+            let color = node.color.clone().or_else(|| {
+                edges
+                    .iter()
+                    .find(|edge| edge.to == node.id)
+                    .and_then(|edge| edge.color.clone())
+            });
+            color.map(|color| (node.id.clone(), color))
+        })
+        .collect();
+    let node_dimensions: HashMap<String, NodeDimensions> = graph
+        .nodes
+        .iter()
+        .map(|node| {
+            let depth = node_depths.get(&node.data.id).copied().unwrap_or(0);
+            let shape = hierarchy_node_shape(
+                node.data.shape,
+                depth,
+                node.data.background_color.as_deref(),
+            );
+            let key = measurement_key(&node.label, shape, depth);
+            let dimensions = measured_dimensions
+                .read()
+                .get(&node.data.id)
+                .filter(|(measured_key, _)| measured_key == &key)
+                .map(|(_, dimensions)| *dimensions)
+                .unwrap_or_else(|| label_dimensions(&node.label, shape, depth));
+            (node.data.id.clone(), dimensions)
+        })
+        .collect();
+    let row_gap = node_dimensions
+        .values()
+        .map(|dimensions| dimensions.height)
+        .fold(0.0_f64, f64::max)
+        .max(34.0)
+        + 28.0;
 
     // Keep the root's main topics evenly distributed by count. Subtree leaf
     // weights are still used below to allocate enough vertical space per side.
@@ -314,7 +545,6 @@ pub fn HierarchyGraphViewer(
 
     let largest_side = left_weight.max(right_weight).max(1) as f64;
     let canvas_height = (largest_side * row_gap + 100.0).max(420.0);
-    let horizontal_gap = 220.0;
     let center_y = canvas_height / 2.0;
     let largest_span = (largest_side - 1.0).max(0.0) * row_gap;
 
@@ -356,16 +586,30 @@ pub fn HierarchyGraphViewer(
         );
     }
 
-    let max_depth = layout_positions
+    let max_depth = node_depths
         .values()
-        .map(|(depth, _, _)| *depth)
+        .copied()
         .max()
         .unwrap_or(1);
-    let canvas_width = (max_depth as f64 * horizontal_gap * 2.0 + 180.0).max(900.0);
+    let mut depth_widths = vec![0.0_f64; max_depth + 1];
+    for (node_id, depth) in &node_depths {
+        if let Some(dimensions) = node_dimensions.get(node_id) {
+            depth_widths[*depth] = depth_widths[*depth].max(dimensions.width);
+        }
+    }
+    let mut depth_offsets = vec![0.0_f64; max_depth + 1];
+    for depth in 1..=max_depth {
+        depth_offsets[depth] = depth_offsets[depth - 1]
+            + depth_widths[depth - 1] / 2.0
+            + depth_widths[depth] / 2.0
+            + 72.0;
+    }
+    let outer_width = depth_widths.last().copied().unwrap_or(0.0);
+    let canvas_width = (depth_offsets[max_depth] * 2.0 + outer_width + 120.0).max(900.0);
     let center_x = canvas_width / 2.0;
 
     let mut node_positions: HashMap<String, (f64, f64)> = HashMap::new();
-    for (node, _) in &nodes {
+    for (node, _, _) in &nodes {
         if node.x.abs() > 0.01 || node.y.abs() > 0.01 {
             node_positions.insert(node.id.clone(), (node.x, node.y));
             continue;
@@ -376,38 +620,13 @@ pub fn HierarchyGraphViewer(
             .unwrap_or((0, center_y, 0.0));
         node_positions.insert(
             node.id.clone(),
-            (center_x + side * horizontal_gap * depth as f64, y),
+            (center_x + side * depth_offsets[depth], y),
         );
     }
 
     let node_data: HashMap<&str, &GraphNodeData> = nodes
         .iter()
-        .map(|(node, _)| (node.id.as_str(), node))
-        .collect();
-    let node_depths: HashMap<String, usize> = nodes
-        .iter()
-        .map(|(node, _)| {
-            (
-                node.id.clone(),
-                layout_positions
-                    .get(&node.id)
-                    .map(|(depth, _, _)| *depth)
-                    .unwrap_or(0),
-            )
-        })
-        .collect();
-    let branch_colors: HashMap<String, String> = nodes
-        .iter()
-        .filter(|(node, _)| node_depths.get(&node.id).copied() == Some(1))
-        .filter_map(|(node, _)| {
-            let color = node.color.clone().or_else(|| {
-                edges
-                    .iter()
-                    .find(|edge| edge.to == node.id)
-                    .and_then(|edge| edge.color.clone())
-            });
-            color.map(|color| (node.id.clone(), color))
-        })
+        .map(|(node, _, _)| (node.id.as_str(), node))
         .collect();
 
     // The root owns independent organic curves, one for each main topic.
@@ -434,12 +653,49 @@ pub fn HierarchyGraphViewer(
             };
             let to_point = node_data
                 .get(edge.to.as_str())
-                .map(|node| node.shape.connection_point(to, target_toward))
+                .map(|node| {
+                    let depth = node_depths.get(&node.id).copied().unwrap_or(0);
+                    let background = if depth == 2 {
+                        Some("")
+                    } else {
+                        node.background_color.as_deref()
+                    };
+                    let shape = hierarchy_node_shape(node.shape, depth, background);
+                    let dimensions = node_dimensions
+                        .get(&node.id)
+                        .copied()
+                        .unwrap_or_else(|| {
+                            let (width, height) = shape.dimensions();
+                            NodeDimensions { width, height }
+                        });
+                    shape_connection_point(shape, dimensions, to, target_toward)
+                })
                 .unwrap_or(to);
-            let from_normal = rectangular_normal(from, from_point, core_width, core_height);
+            let root_side = (to.0 - from.0).signum();
+            let from_normal = if root_side.abs() < f64::EPSILON {
+                rectangular_normal(from, from_point, core_width, core_height)
+            } else {
+                (root_side, 0.0)
+            };
             let to_normal = node_data
                 .get(edge.to.as_str())
-                .map(|node| node.shape.connection_normal(to, to_point))
+                .map(|node| {
+                    let depth = node_depths.get(&node.id).copied().unwrap_or(0);
+                    let background = if depth == 2 {
+                        Some("")
+                    } else {
+                        node.background_color.as_deref()
+                    };
+                    let shape = hierarchy_node_shape(node.shape, depth, background);
+                    let dimensions = node_dimensions
+                        .get(&node.id)
+                        .copied()
+                        .unwrap_or_else(|| {
+                            let (width, height) = shape.dimensions();
+                            NodeDimensions { width, height }
+                        });
+                    shape_connection_normal(shape, dimensions, to, to_point)
+                })
                 .unwrap_or_else(|| {
                     let dx = from.0 - to.0;
                     let dy = from.1 - to.1;
@@ -491,8 +747,25 @@ pub fn HierarchyGraphViewer(
         let from = node_data
             .get(parent_id.as_str())
             .map(|node| {
-                node.shape
-                    .connection_point(parent_position, (first_child_position.0, parent_position.1))
+                let background = if parent_depth == 2 {
+                    Some("")
+                } else {
+                    node.background_color.as_deref()
+                };
+                let shape = hierarchy_node_shape(node.shape, parent_depth, background);
+                let dimensions = node_dimensions
+                    .get(&node.id)
+                    .copied()
+                    .unwrap_or_else(|| {
+                        let (width, height) = shape.dimensions();
+                        NodeDimensions { width, height }
+                    });
+                shape_connection_point(
+                    shape,
+                    dimensions,
+                    parent_position,
+                    (first_child_position.0, parent_position.1),
+                )
             })
             .unwrap_or(parent_position);
         let targets: Vec<(f64, f64)> = child_ids
@@ -503,8 +776,26 @@ pub fn HierarchyGraphViewer(
                     node_data
                         .get(child.as_str())
                         .map(|node| {
-                            node.shape
-                                .connection_point(position, (parent_position.0, position.1))
+                            let depth = node_depths.get(&node.id).copied().unwrap_or(0);
+                            let background = if depth == 2 {
+                                Some("")
+                            } else {
+                                node.background_color.as_deref()
+                            };
+                            let shape = hierarchy_node_shape(node.shape, depth, background);
+                            let dimensions = node_dimensions
+                                .get(&node.id)
+                                .copied()
+                                .unwrap_or_else(|| {
+                                    let (width, height) = shape.dimensions();
+                                    NodeDimensions { width, height }
+                                });
+                            shape_connection_point(
+                                shape,
+                                dimensions,
+                                position,
+                                (parent_position.0, position.1),
+                            )
                         })
                         .unwrap_or(position),
                 )
@@ -537,10 +828,12 @@ pub fn HierarchyGraphViewer(
         })
     });
 
-    let rendered_nodes = nodes.iter().map(|(node, node_element)| {
+    let rendered_nodes = nodes.iter().map(|(node, node_element, label)| {
         let (x, y) = node_positions.get(&node.id).copied().unwrap_or((0.0, 0.0));
         let is_selected = active_node_id.as_ref() == Some(&node.id) || node.selected;
-        let node_id = node.id.clone();
+        let click_node_id = node.id.clone();
+        let enter_node_id = node.id.clone();
+        let leave_node_id = node.id.clone();
         let depth = node_depths.get(&node.id).copied().unwrap_or(0);
         let branch_id = branch_ancestor(&node.id, &parents, &node_depths);
         let base_color = branch_colors
@@ -563,7 +856,7 @@ pub fn HierarchyGraphViewer(
                 node.border.clone().or_else(|| Some("none".to_string())),
                 node.background_color.clone().or_else(|| base_color.clone()),
             )
-        } else {
+        } else if depth == 2 {
             let accent = if node.shape == crate::components::graph::node::NodeShape::Plain {
                 base_color.clone()
             } else {
@@ -572,41 +865,160 @@ pub fn HierarchyGraphViewer(
             (
                 accent,
                 node.border.clone().or_else(|| Some("none".to_string())),
-                node.background_color.clone().or(level_color),
+                node.background_color
+                    .clone()
+                    .filter(|background| background != "transparent")
+                    .or(level_color),
+            )
+        } else {
+            (
+                base_color.clone(),
+                node.border.clone().or_else(|| Some("none".to_string())),
+                node.background_color
+                    .clone()
+                    .or_else(|| Some("transparent".to_string())),
             )
         };
+        let effective_shape = hierarchy_node_shape(node.shape, depth, node_background.as_deref());
+        let node_measurement_key = measurement_key(label, effective_shape, depth);
+        let measure_node_id = node.id.clone();
+        let mount_measurement_key = node_measurement_key.clone();
+        let resize_node_id = node.id.clone();
+        let resize_measurement_key = node_measurement_key.clone();
 
         rsx! {
             Node {
-                key: "{node.id}",
+                key: "{node.id}-{node_measurement_key}",
                 id: node.id.clone(),
                 x,
                 y,
                 color: accent,
                 border: node_border,
                 background_color: node_background,
-                shape: node.shape,
+                shape: effective_shape,
                 selected: is_selected,
-                onclick: move |_| on_node_click.call(node_id.clone()),
-                div {
-                    class: "uikit-hierarchy-graph-node-label uikit-hierarchy-graph-level-{depth}",
-                    {node_element.clone()}
+                onclick: move |_| on_node_click.call(click_node_id.clone()),
+                onmouseenter: move |_| hovered_node_id.set(Some(enter_node_id.clone())),
+                onmouseleave: move |_| {
+                    if hovered_node_id.peek().as_ref() == Some(&leave_node_id) {
+                        hovered_node_id.set(None);
+                    }
+                },
+                onmounted: move |event: MountedEvent| {
+                    let data = event.data().clone();
+                    let node_id = measure_node_id.clone();
+                    let key = mount_measurement_key.clone();
+                    spawn(async move {
+                        if let Ok(size) = data.get_scroll_size().await {
+                            let dimensions = NodeDimensions {
+                                width: size.width,
+                                height: size.height,
+                            };
+                            measured_dimensions.with_mut(|items| {
+                                items.insert(node_id, (key, dimensions));
+                            });
+                        }
+                    });
+                },
+                onresize: move |(width, height)| {
+                    measured_dimensions.with_mut(|items| {
+                        items.insert(
+                            resize_node_id.clone(),
+                            (
+                                resize_measurement_key.clone(),
+                                NodeDimensions { width, height },
+                            ),
+                        );
+                    });
+                },
+                div { class: "uikit-hierarchy-graph-node-content",
+                    div {
+                        class: "uikit-hierarchy-graph-node-label uikit-hierarchy-graph-level-{depth}",
+                        {node_element.clone()}
+                    }
                 }
             }
         }
     });
 
+    let rendered_collapse_buttons = nodes.iter().filter_map(|(node, _, _)| {
+        if !children.get(&node.id).is_some_and(|items| !items.is_empty()) {
+            return None;
+        }
+        let (x, y) = node_positions.get(&node.id).copied().unwrap_or((0.0, 0.0));
+        let dimensions = node_dimensions.get(&node.id).copied().unwrap_or(NodeDimensions {
+            width: 0.0,
+            height: 0.0,
+        });
+        let side = layout_positions
+            .get(&node.id)
+            .map(|(_, _, side)| *side)
+            .unwrap_or(1.0);
+        let direction = if side < 0.0 { -1.0 } else { 1.0 };
+        let button_x = x + direction * (dimensions.width / 2.0 + 14.0);
+        let is_collapsed = collapsed.contains(&node.id);
+        let is_visible = is_collapsed || hovered_node_id.read().as_ref() == Some(&node.id);
+        let hidden_child_count = descendant_ids(&node.id, &children).len();
+        let button_label = if is_collapsed {
+            hidden_child_count.to_string()
+        } else {
+            "-".to_string()
+        };
+        let toggle_node_id = node.id.clone();
+        let enter_button_id = node.id.clone();
+        let leave_button_id = node.id.clone();
+
+        Some(rsx! {
+            button {
+                key: "collapse-{node.id}",
+                class: if is_visible {
+                    "uikit-hierarchy-collapse-button is-visible"
+                } else {
+                    "uikit-hierarchy-collapse-button"
+                },
+                style: "left: {button_x}px; top: {y}px;",
+                r#type: "button",
+                aria_label: "Toggle child topics",
+                onmouseenter: move |_| hovered_node_id.set(Some(enter_button_id.clone())),
+                onmouseleave: move |_| {
+                    if hovered_node_id.peek().as_ref() == Some(&leave_button_id) {
+                        hovered_node_id.set(None);
+                    }
+                },
+                onclick: move |event| {
+                    event.stop_propagation();
+                    collapsed_node_ids.with_mut(|items| {
+                        if let Some(index) = items.iter().position(|item| item == &toggle_node_id) {
+                            items.remove(index);
+                        } else {
+                            items.push(toggle_node_id.clone());
+                        }
+                    });
+                },
+                "{button_label}"
+            }
+        })
+    });
+
     let navigation_nodes = nodes
         .iter()
-        .map(|(node, _)| {
+        .map(|(node, _, _)| {
             let (x, y) = node_positions.get(&node.id).copied().unwrap_or((0.0, 0.0));
-            let (width, height) = node.shape.dimensions();
+            let depth = node_depths.get(&node.id).copied().unwrap_or(0);
+            let shape = hierarchy_node_shape(node.shape, depth, Some(""));
+            let dimensions = node_dimensions
+                .get(&node.id)
+                .copied()
+                .unwrap_or_else(|| {
+                    let (width, height) = shape.dimensions();
+                    NodeDimensions { width, height }
+                });
             NavigationNode {
-                x: x - width / 2.0,
-                y: y - height / 2.0,
-                width,
-                height,
-                shape: node.shape,
+                x: x - dimensions.width / 2.0,
+                y: y - dimensions.height / 2.0,
+                width: dimensions.width,
+                height: dimensions.height,
+                shape,
             }
         })
         .collect();
@@ -639,19 +1051,10 @@ pub fn HierarchyGraphViewer(
             div {
                 class: "uikit-graph-nodes-container",
                 {rendered_nodes}
+                {rendered_collapse_buttons}
             }
         }
     }
-}
-
-fn primary_root_id(graph: &HierarchyGraphModel) -> Option<String> {
-    let children: HashSet<&str> = graph.edges.iter().map(|edge| edge.to.as_str()).collect();
-    graph
-        .nodes
-        .iter()
-        .find(|node| !children.contains(node.data.id.as_str()))
-        .map(|node| node.data.id.clone())
-        .or_else(|| graph.nodes.first().map(|node| node.data.id.clone()))
 }
 
 fn next_node_id(graph: &HierarchyGraphModel) -> String {
@@ -669,7 +1072,13 @@ fn next_node_id(graph: &HierarchyGraphModel) -> String {
 fn add_child(graph: &HierarchyGraphModel, parent_id: &str) -> (HierarchyGraphModel, String) {
     let mut updated = graph.clone();
     let id = next_node_id(graph);
-    let is_root_child = primary_root_id(graph).as_deref() == Some(parent_id);
+    let parents = graph
+        .edges
+        .iter()
+        .map(|edge| (edge.to.clone(), edge.from.clone()))
+        .collect::<HashMap<_, _>>();
+    let child_depth = hierarchy_depth(parent_id, &parents) + 1;
+    let is_root_child = child_depth == 1;
     let root_child_count = graph
         .edges
         .iter()
@@ -687,12 +1096,8 @@ fn add_child(graph: &HierarchyGraphModel, parent_id: &str) -> (HierarchyGraphMod
             y: 0.0,
             color: branch_color.clone(),
             border: Some("none".to_string()),
-            background_color: if is_root_child {
-                None
-            } else {
-                Some("transparent".to_string())
-            },
-            shape: if is_root_child {
+            background_color: None,
+            shape: if child_depth <= 2 {
                 NodeShape::Box
             } else {
                 NodeShape::Plain
@@ -705,7 +1110,7 @@ fn add_child(graph: &HierarchyGraphModel, parent_id: &str) -> (HierarchyGraphMod
         from: parent_id.to_string(),
         to: id.clone(),
         label: None,
-        edge_type: EdgeType::Bezier,
+        edge_type: EdgeType::OrganicCurved,
         color: branch_color,
         animated: false,
         arrow: ArrowHead::None,
@@ -798,6 +1203,21 @@ pub fn HierarchyGraphEditor(
     rsx! {
         div {
             class: "uikit-hierarchy-graph-editor",
+            tabindex: "0",
+            onkeydown: {
+                let key_graph = graph.clone();
+                move |event: KeyboardEvent| {
+                    if event.key() == Key::Delete {
+                        event.prevent_default();
+                        event.stop_propagation();
+                        let node_id = selected_node_id.read().clone();
+                        if let Some(node_id) = node_id {
+                            onchange.call(delete_subtree(&key_graph, &node_id));
+                            selected_node_id.set(None);
+                        }
+                    }
+                }
+            },
             div {
                 class: "uikit-hierarchy-graph-context-menu",
                 role: "toolbar",
@@ -836,7 +1256,7 @@ pub fn HierarchyGraphEditor(
                 }
             }
             HierarchyGraphViewer {
-                graph,
+                graph: graph.clone(),
                 node_elements,
                 active_node_id: selected,
                 on_node_click: move |id| selected_node_id.set(Some(id)),
@@ -854,8 +1274,8 @@ pub fn HierarchyGraphEditor(
 mod tests {
     use super::{
         add_child, brighter, delete_subtree, layout_branch, leaf_count, rectangular_connection,
-        rectangular_normal, rounded_t_paths, ArrowHead, EdgeType, GraphEdgeData, GraphNodeData,
-        HierarchyGraphModel, HierarchyNode, NodeShape,
+        rectangular_normal, rounded_t_paths, measurement_key, ArrowHead, EdgeType, GraphEdgeData,
+        GraphNodeData, HierarchyGraphModel, HierarchyNode, NodeShape,
     };
     use std::collections::{HashMap, HashSet};
 
@@ -919,7 +1339,19 @@ mod tests {
     #[test]
     fn subdivisions_get_progressively_brighter() {
         assert_eq!(brighter("#8844cc", 0), "#8844cc");
-        assert!(brighter("#8844cc", 2).contains("49%"));
+        assert!(brighter("#8844cc", 2).contains("30%"));
+    }
+
+    #[test]
+    fn measurement_cache_distinguishes_depth_and_shape() {
+        assert_ne!(
+            measurement_key("Database", NodeShape::Box, 1),
+            measurement_key("Database", NodeShape::Box, 2)
+        );
+        assert_ne!(
+            measurement_key("Database", NodeShape::Box, 2),
+            measurement_key("Database", NodeShape::Plain, 2)
+        );
     }
 
     #[test]
@@ -954,6 +1386,26 @@ mod tests {
         assert!(node.data.color.as_deref().unwrap().starts_with("hsl("));
         assert_eq!(node.data.shape, NodeShape::Box);
         assert_eq!(updated.edges[0].color, node.data.color);
+        assert_eq!(updated.edges[0].edge_type, EdgeType::OrganicCurved);
+    }
+
+    #[test]
+    fn second_level_children_use_crate_owned_box_styling() {
+        let graph = HierarchyGraphModel {
+            nodes: vec![model_node("root")],
+            edges: Vec::new(),
+        };
+        let (graph, branch_id) = add_child(&graph, "root");
+        let (updated, child_id) = add_child(&graph, &branch_id);
+        let child = updated
+            .nodes
+            .iter()
+            .find(|node| node.data.id == child_id)
+            .unwrap();
+
+        assert_eq!(child.data.shape, NodeShape::Box);
+        assert_eq!(child.data.background_color, None);
+        assert_eq!(updated.edges.last().unwrap().edge_type, EdgeType::OrganicCurved);
     }
 
     #[test]

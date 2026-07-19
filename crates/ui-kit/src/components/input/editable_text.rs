@@ -106,6 +106,7 @@ pub fn EditableText(
                                 });
                             },
                             onkeydown: move |event| {
+                                event.stop_propagation();
                                 if event.key() == Key::Escape {
                                     let mut editing = editing;
                                     editing.set(false);

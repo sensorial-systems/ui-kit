@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use std::rc::Rc;
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -63,6 +64,7 @@ impl NodeShape {
 
     /// Return the outward unit normal of this shape at a connection point.
     /// Organic curves use this for surface-orthogonal tangents and arrows.
+    #[allow(dead_code)]
     pub(crate) fn connection_normal(
         self,
         center: (f64, f64),
@@ -155,10 +157,17 @@ pub fn Node(
     #[props(into, default)] border: Option<String>,
     #[props(into, default)] background_color: Option<String>,
     #[props(default)] shape: NodeShape,
+    #[props(default)] width: Option<f64>,
+    #[props(default)] height: Option<f64>,
     #[props(default = false)] selected: bool,
     children: Element,
     #[props(default)] onclick: EventHandler<MouseEvent>,
+    #[props(default)] onmouseenter: EventHandler<MouseEvent>,
+    #[props(default)] onmouseleave: EventHandler<MouseEvent>,
+    #[props(default)] onmounted: EventHandler<MountedEvent>,
+    #[props(default)] onresize: EventHandler<(f64, f64)>,
 ) -> Element {
+    let mut mounted = use_signal(|| None::<Rc<MountedData>>);
     let shape_class = shape.class_name();
     let selected_class = if selected {
         "uikit-graph-node-selected"
@@ -185,15 +194,35 @@ pub fn Node(
     if let Some(value) = background_color.as_ref() {
         custom_style.push_str(&format!("background-color: {};", value));
     }
+    if let Some(value) = width {
+        custom_style.push_str(&format!("width: {value}px;"));
+    }
+    if let Some(value) = height {
+        custom_style.push_str(&format!("min-height: {value}px;"));
+    }
 
     rsx! {
         div {
             class: "uikit-graph-node-wrapper",
             style: "left: {x}px; top: {y}px;",
             onclick: move |e| onclick.call(e),
+            onmouseenter: move |event| onmouseenter.call(event),
+            onmouseleave: move |event| onmouseleave.call(event),
             div {
                 class: "uikit-graph-node {shape_class} {selected_class}",
                 style: "{custom_style}",
+                onmounted: move |event| {
+                    mounted.set(Some(event.data().clone()));
+                    onmounted.call(event);
+                },
+                oninput: move |_| {
+                    let Some(data) = mounted.peek().clone() else { return };
+                    spawn(async move {
+                        if let Ok(size) = data.get_scroll_size().await {
+                            onresize.call((size.width, size.height));
+                        }
+                    });
+                },
                 {children}
             }
         }

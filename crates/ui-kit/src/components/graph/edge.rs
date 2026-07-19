@@ -113,7 +113,10 @@ pub fn Edge(
                 let source_normal = normalize(from_normal.unwrap_or(radial), radial);
                 let target_fallback = (-radial.0, -radial.1);
                 let target_normal = normalize(to_normal.unwrap_or(target_fallback), target_fallback);
-                let handle = distance * 0.45;
+                // Cap horizontal handles to the horizontal span. This keeps the
+                // curve monotonic in X, even for steep branches, so it cannot
+                // double back and cross a neighboring root branch.
+                let handle = (distance * 0.45).min(dx.abs() * 0.45);
 
                 // Cubic endpoint tangents are defined by P1-P0 and P3-P2.
                 // Aligning those handles with the outward surface normals

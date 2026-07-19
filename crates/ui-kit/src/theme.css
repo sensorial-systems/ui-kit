@@ -1426,6 +1426,7 @@
 
 .uikit-hierarchy-graph-editor {
     position: relative;
+    outline: none;
 }
 
 .uikit-hierarchy-graph-editor-node {
@@ -1462,6 +1463,11 @@
     line-height: normal;
 }
 
+.uikit-hierarchy-graph-node-content {
+    position: relative;
+    width: 100%;
+}
+
 .uikit-hierarchy-graph-node-label.uikit-hierarchy-graph-level-0 {
     font-size: 20px;
     font-weight: 750;
@@ -1473,7 +1479,7 @@
     font-weight: 500;
 }
 
-.uikit-hierarchy-graph .uikit-graph-node-plain .uikit-hierarchy-graph-node-label {
+.uikit-hierarchy-graph .uikit-graph-node-plain[style*="transparent"] .uikit-hierarchy-graph-node-label {
     color: var(--uikit-graph-node-color, var(--uikit-fg));
 }
 
@@ -1499,9 +1505,10 @@
     font: inherit;
     line-height: inherit;
     text-align: inherit;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: pre;
+    overflow: visible;
+    overflow-wrap: normal;
+    text-overflow: clip;
 }
 
 .uikit-hierarchy-graph-node-label .uikit-field-container,
@@ -1523,6 +1530,67 @@
 
 .uikit-hierarchy-graph .uikit-graph-node {
     box-shadow: none;
+    height: auto;
+    width: max-content;
+    transition: background-color 0.15s ease, border-color 0.15s ease,
+        box-shadow 0.15s ease, color 0.15s ease;
+}
+
+.uikit-hierarchy-graph .uikit-graph-node-wrapper:hover {
+    transform: translate(-50%, -50%);
+}
+
+.uikit-hierarchy-graph .uikit-graph-node:has(.uikit-wysiwyg-editor-inline) {
+    width: max-content !important;
+}
+
+.uikit-hierarchy-graph .uikit-graph-node:has(.uikit-wysiwyg-editor-inline)
+    .uikit-hierarchy-graph-node-content,
+.uikit-hierarchy-graph .uikit-graph-node:has(.uikit-wysiwyg-editor-inline)
+    .uikit-hierarchy-graph-node-label,
+.uikit-hierarchy-graph .uikit-graph-node:has(.uikit-wysiwyg-editor-inline)
+    .uikit-hierarchy-graph-editor-node,
+.uikit-hierarchy-graph .uikit-graph-node:has(.uikit-wysiwyg-editor-inline)
+    .uikit-field-container,
+.uikit-hierarchy-graph .uikit-graph-node:has(.uikit-wysiwyg-editor-inline)
+    .uikit-field-content,
+.uikit-hierarchy-graph .uikit-graph-node:has(.uikit-wysiwyg-editor-inline)
+    .uikit-wysiwyg-wrapper {
+    width: max-content;
+}
+
+.uikit-hierarchy-collapse-button {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    transform: translate(-50%, -50%);
+    border: 1px solid var(--uikit-border);
+    border-radius: var(--uikit-radius-full);
+    background: var(--uikit-bg);
+    color: var(--uikit-muted);
+    cursor: pointer;
+    font-family: var(--uikit-font-sans);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    opacity: 0;
+    pointer-events: auto;
+    z-index: 3;
+    transition: var(--uikit-transition-fast);
+}
+
+.uikit-hierarchy-collapse-button.is-visible,
+.uikit-hierarchy-collapse-button:hover {
+    opacity: 1;
+}
+
+.uikit-hierarchy-collapse-button:hover {
+    border-color: var(--uikit-primary);
+    color: var(--uikit-primary);
 }
 
 .uikit-hierarchy-graph .uikit-graph-node-plain .uikit-graph-node-title {
@@ -1804,7 +1872,8 @@
 }
 
 .uikit-wysiwyg-editor-inline {
-    width: 100%;
+    width: max-content;
+    min-width: 100%;
     min-height: 0;
     max-height: none;
     margin: 0;
@@ -1817,8 +1886,8 @@
     line-height: inherit;
     text-align: inherit;
     overflow: hidden;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
+    white-space: pre;
+    overflow-wrap: normal;
 }
 
 .uikit-wysiwyg-editor:empty::before {
