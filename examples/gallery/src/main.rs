@@ -378,6 +378,21 @@ fn App() -> Element {
                                         }
                                     }
                                 }
+                                div {
+                                    Heading { level: HeadingLevel::H4, muted: true, style: "margin-bottom: 12px;", "Circular Buttons" }
+                                    div {
+                                        style: "display: flex; gap: 12px; flex-wrap: wrap; align-items: center;",
+                                        CircularButton { variant: ButtonVariant::Primary, size: ButtonSize::Small, "S" }
+                                        CircularButton { variant: ButtonVariant::Primary, size: ButtonSize::Medium, "M" }
+                                        CircularButton { variant: ButtonVariant::Primary, size: ButtonSize::Large, "L" }
+                                        CircularButton { variant: ButtonVariant::Secondary, "2" }
+                                        CircularButton { variant: ButtonVariant::Outline, "O" }
+                                        CircularButton { variant: ButtonVariant::Text, "T" }
+                                        CircularButton { disabled: true, "D" }
+                                        CircularButton { loading: true, "L" }
+                                        CircularButton { color: "red".to_string(), "R" }
+                                    }
+                                }
                             }
                         }
                     }

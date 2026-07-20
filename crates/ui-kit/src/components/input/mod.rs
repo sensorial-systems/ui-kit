@@ -1,5 +1,6 @@
 pub mod button;
 pub mod checkbox;
+pub mod circular_button;
 pub mod form_field;
 pub mod otp_input;
 pub mod select;
@@ -12,6 +13,7 @@ pub mod editable_text;
 
 pub use button::{Button, ButtonSize, ButtonVariant};
 pub use checkbox::Checkbox;
+pub use circular_button::CircularButton;
 pub use form_field::{FormField, LabelLayout};
 pub use otp_input::OtpInput;
 pub use select::Select;

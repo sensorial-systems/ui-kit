@@ -6,6 +6,7 @@ pub use components::{
     Badge, BadgeVariant, BadgeSize,
     Button, ButtonSize, ButtonVariant,
     Card,
+    CircularButton,
     Heading, HeadingLevel,
     FormField, LabelLayout,
     Modal,
