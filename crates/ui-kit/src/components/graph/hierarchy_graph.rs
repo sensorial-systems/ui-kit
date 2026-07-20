@@ -1,7 +1,7 @@
 use crate::components::graph::edge::{ArrowHead, Edge, EdgeDefs, EdgeType, GraphEdgeData};
 use crate::components::graph::navigation::{GraphNavigator, NavigationNode};
 use crate::components::graph::node::{GraphNodeData, Node, NodeShape};
-use crate::components::input::{Button, ButtonSize, EditableText, EditableTextVariant};
+use crate::components::input::{Button, ButtonSize, CircularButton, EditableText, EditableTextVariant};
 use dioxus::prelude::*;
 use std::collections::{HashMap, HashSet};
 
@@ -969,7 +969,7 @@ pub fn HierarchyGraphViewer(
         let leave_button_id = node.id.clone();
 
         Some(rsx! {
-            button {
+            CircularButton {
                 key: "collapse-{node.id}",
                 class: if is_visible {
                     "uikit-hierarchy-collapse-button is-visible"
@@ -977,7 +977,6 @@ pub fn HierarchyGraphViewer(
                     "uikit-hierarchy-collapse-button"
                 },
                 style: "left: {button_x}px; top: {y}px;",
-                r#type: "button",
                 aria_label: "Toggle child topics",
                 onmouseenter: move |_| hovered_node_id.set(Some(enter_button_id.clone())),
                 onmouseleave: move |_| {
@@ -985,7 +984,7 @@ pub fn HierarchyGraphViewer(
                         hovered_node_id.set(None);
                     }
                 },
-                onclick: move |event| {
+                onclick: move |event: MouseEvent| {
                     event.stop_propagation();
                     collapsed_node_ids.with_mut(|items| {
                         if let Some(index) = items.iter().position(|item| item == &toggle_node_id) {
