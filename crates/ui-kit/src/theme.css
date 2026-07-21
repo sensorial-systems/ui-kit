@@ -19,8 +19,8 @@
     box-sizing: border-box;
 }
 
-/* 1. Neutral Theme */
-.uikit-theme-neutral {
+/* 1. Black Theme */
+.uikit-theme-black {
     --uikit-bg: #121214;
     --uikit-fg: #f4f4f5;
     --uikit-card-bg: #1a1a1e;
@@ -45,34 +45,6 @@
     --uikit-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     --uikit-ring: rgba(59, 130, 246, 0.3);
     --uikit-select-arrow: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f4f4f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-}
-
-/* 2. Black Theme */
-.uikit-theme-black {
-    --uikit-bg: #000000;
-    --uikit-fg: #ffffff;
-    --uikit-card-bg: #0a0a0a;
-    --uikit-primary: #ffffff;
-    --uikit-primary-hover: #e4e4e7;
-    --uikit-primary-fg: #000000;
-    --uikit-secondary: #121212;
-    --uikit-secondary-hover: #1c1c1c;
-    --uikit-secondary-fg: #ffffff;
-    --uikit-border: #222222;
-    --uikit-border-hover: #333333;
-    --uikit-muted: #888888;
-    --uikit-muted-bg: #0d0d0d;
-    --uikit-success: #00ff66;
-    --uikit-success-bg: rgba(0, 255, 102, 0.08);
-    --uikit-warning: #ffd700;
-    --uikit-warning-bg: rgba(255, 215, 0, 0.08);
-    --uikit-error: #ff3333;
-    --uikit-error-bg: rgba(255, 51, 51, 0.08);
-    --uikit-info: #33ccff;
-    --uikit-info-bg: rgba(51, 204, 255, 0.08);
-    --uikit-shadow: 0 0 0 1px #222222;
-    --uikit-ring: rgba(255, 255, 255, 0.4);
-    --uikit-select-arrow: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
 }
 
 /* 3. White Theme */
@@ -599,12 +571,8 @@
     transform: translateY(-2px);
 }
 
-.uikit-theme-neutral .uikit-card-hoverable:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-}
-
 .uikit-theme-black .uikit-card-hoverable:hover {
-    box-shadow: 0 0 0 1px #444444, 0 10px 20px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
 }
 
 .uikit-theme-white .uikit-card-hoverable:hover {

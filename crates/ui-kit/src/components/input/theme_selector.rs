@@ -15,9 +15,7 @@ pub fn ThemeSelector(
     let (current_value, onchange_handler) = if let Some(mut theme_sig) = active_theme {
         let current_val = theme_sig.read().class_name().to_string();
         let handler = move |val: String| {
-            if val == "uikit-theme-neutral" {
-                theme_sig.set(AppTheme::Neutral);
-            } else if val == "uikit-theme-black" {
+            if val == "uikit-theme-black" {
                 theme_sig.set(AppTheme::Black);
             } else if val == "uikit-theme-white" {
                 theme_sig.set(AppTheme::White);
@@ -29,7 +27,6 @@ pub fn ThemeSelector(
     };
 
     let options = vec![
-        ("uikit-theme-neutral".to_string(), "Neutral".to_string()),
         ("uikit-theme-black".to_string(), "Black".to_string()),
         ("uikit-theme-white".to_string(), "White".to_string()),
     ];
