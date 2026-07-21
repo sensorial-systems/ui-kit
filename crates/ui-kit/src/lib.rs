@@ -17,6 +17,7 @@ pub use components::{
     EditableText, EditableTextVariant,
     OtpInput,
     Select,
+    ThemeSelector,
     Switch,
     ProgressBar,
     Sparkline,

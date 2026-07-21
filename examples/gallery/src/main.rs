@@ -340,22 +340,8 @@ fn App() -> Element {
                     }
                     div {
                         style: "max-width: 260px; flex-grow: 1;",
-                        Select {
-                            value: theme_sig.read().class_name().to_string(),
-                            onchange: move |val: String| {
-                                if val == "uikit-theme-neutral" {
-                                    theme_sig.set(AppTheme::Neutral);
-                                } else if val == "uikit-theme-black" {
-                                    theme_sig.set(AppTheme::Black);
-                                } else if val == "uikit-theme-white" {
-                                    theme_sig.set(AppTheme::White);
-                                }
-                            },
-                            options: vec![
-                                ("uikit-theme-neutral".to_string(), "Neutral".to_string()),
-                                ("uikit-theme-black".to_string(), "Black".to_string()),
-                                ("uikit-theme-white".to_string(), "White".to_string()),
-                            ],
+                        ThemeSelector {
+                            theme: theme_sig,
                             label: "Select Theme",
                             label_layout: LabelLayout::Top
                         }

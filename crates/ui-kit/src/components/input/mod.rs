@@ -11,6 +11,8 @@ pub mod slider;
 pub mod date_time_picker;
 pub mod editable_text;
 
+pub mod theme_selector;
+
 pub use button::{Button, ButtonSize, ButtonVariant};
 pub use checkbox::Checkbox;
 pub use circular_button::CircularButton;
@@ -22,3 +24,4 @@ pub use date_time_picker::DateTimePicker;
 pub use switch::Switch;
 pub use text_input::TextInput;
 pub use editable_text::{EditableText, EditableTextVariant};
+pub use theme_selector::ThemeSelector;
