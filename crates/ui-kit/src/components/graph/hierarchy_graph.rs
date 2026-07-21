@@ -962,7 +962,7 @@ pub fn HierarchyGraphViewer(
         let button_label = if is_collapsed {
             hidden_child_count.to_string()
         } else {
-            "-".to_string()
+            "−".to_string()
         };
         let toggle_node_id = node.id.clone();
         let enter_button_id = node.id.clone();

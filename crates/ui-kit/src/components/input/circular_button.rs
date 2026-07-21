@@ -78,10 +78,7 @@ pub fn CircularButton(
                     variant: SpinnerVariant::Inherit,
                 }
             } else {
-                span {
-                    class: "uikit-circular-btn-content",
-                    {children}
-                }
+                {children}
             }
         }
     }

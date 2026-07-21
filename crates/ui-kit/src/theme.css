@@ -234,16 +234,7 @@
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    line-height: 1;
-}
-
-.uikit-circular-btn-content {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-    height: 100%;
-    width: 100%;
+    line-height: 0;
 }
 
 .uikit-btn.uikit-circular-btn-sm {
@@ -1599,7 +1590,7 @@
     width: max-content;
 }
 
-.uikit-hierarchy-collapse-button {
+.uikit-btn.uikit-circular-btn.uikit-hierarchy-collapse-button {
     position: absolute;
     display: inline-flex;
     align-items: center;
@@ -1616,19 +1607,19 @@
     font-family: var(--uikit-font-sans);
     font-size: 11px;
     font-weight: 700;
-    line-height: 1;
+    line-height: 0;
     opacity: 0;
     pointer-events: auto;
     z-index: 3;
     transition: var(--uikit-transition-fast);
 }
 
-.uikit-hierarchy-collapse-button.is-visible,
-.uikit-hierarchy-collapse-button:hover {
+.uikit-btn.uikit-circular-btn.uikit-hierarchy-collapse-button.is-visible,
+.uikit-btn.uikit-circular-btn.uikit-hierarchy-collapse-button:hover {
     opacity: 1;
 }
 
-.uikit-hierarchy-collapse-button:hover {
+.uikit-btn.uikit-circular-btn.uikit-hierarchy-collapse-button:hover {
     border-color: var(--uikit-primary);
     color: var(--uikit-primary);
 }
