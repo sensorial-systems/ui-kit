@@ -1973,3 +1973,153 @@
 .uikit-wysiwyg-viewer-wrapper:hover .uikit-wysiwyg-hint {
     opacity: 0.8;
 }
+
+/* --- Table --- */
+.uikit-table-container {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: var(--uikit-radius-md);
+    border: 1px solid var(--uikit-border);
+    background-color: var(--uikit-card-bg);
+    position: relative;
+}
+
+.uikit-table-container.uikit-table-borderless {
+    border: none;
+}
+
+.uikit-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--uikit-font-sans);
+    font-size: 14px;
+    text-align: left;
+    color: var(--uikit-fg);
+}
+
+.uikit-table th {
+    font-weight: 600;
+    color: var(--uikit-muted);
+    background-color: var(--uikit-muted-bg);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--uikit-border);
+    border-right: 1px solid var(--uikit-border);
+    user-select: none;
+    white-space: nowrap;
+}
+
+.uikit-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--uikit-border);
+    border-right: 1px solid var(--uikit-border);
+    transition: var(--uikit-transition-fast);
+}
+
+.uikit-table th:last-child,
+.uikit-table td:last-child {
+    border-right: none;
+}
+
+/* Row states */
+.uikit-table tr:last-child td {
+    border-bottom: none;
+}
+
+.uikit-table-striped tbody tr:nth-child(even) {
+    background-color: rgba(255, 255, 255, 0.015);
+}
+.uikit-theme-white .uikit-table-striped tbody tr:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.015);
+}
+
+.uikit-table-hoverable tbody tr:hover {
+    background-color: var(--uikit-secondary) !important;
+}
+
+.uikit-table tr.uikit-table-row-selected {
+    background-color: rgba(59, 130, 246, 0.12) !important;
+}
+
+/* Compact mode */
+.uikit-table-compact th {
+    padding: 8px 12px;
+}
+.uikit-table-compact td {
+    padding: 8px 12px;
+}
+
+/* Alignments */
+.uikit-table-align-left {
+    text-align: left;
+}
+.uikit-table-align-center {
+    text-align: center;
+}
+.uikit-table-align-right {
+    text-align: right;
+}
+
+/* Sorting headers */
+.uikit-table-header-sortable {
+    cursor: pointer;
+    transition: var(--uikit-transition-fast);
+}
+.uikit-table-header-content {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+}
+
+.uikit-table-header-sortable:hover {
+    color: var(--uikit-fg);
+    background-color: var(--uikit-secondary-hover);
+}
+
+.uikit-table-sort-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    width: 14px;
+    height: 14px;
+    opacity: 0.5;
+    transition: var(--uikit-transition-fast);
+}
+
+.uikit-table-header-sortable:hover .uikit-table-sort-icon {
+    opacity: 0.9;
+}
+
+/* Loading Overlay */
+.uikit-table-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(1px);
+    transition: var(--uikit-transition-fast);
+}
+
+.uikit-theme-white .uikit-table-loading-overlay {
+    background-color: rgba(255, 255, 255, 0.4);
+}
+
+.uikit-table-loading-blur {
+    filter: blur(1.5px);
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+/* Empty State */
+.uikit-table-empty {
+    padding: 40px 16px;
+    text-align: center;
+    color: var(--uikit-muted);
+}
+

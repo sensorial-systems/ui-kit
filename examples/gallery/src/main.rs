@@ -288,6 +288,44 @@ fn App() -> Element {
         }
     });
 
+    // Table demonstration states
+    let mut table_striped = use_signal(|| true);
+    let mut table_hoverable = use_signal(|| true);
+    let mut table_compact = use_signal(|| false);
+    let mut table_borderless = use_signal(|| false);
+    let mut table_loading = use_signal(|| false);
+    let mut table_sort_col = use_signal(|| Some("name".to_string()));
+    let mut table_sort_dir = use_signal(|| Some(SortDirection::Ascending));
+    let table_raw_data = use_signal(|| vec![
+        ("1".to_string(), "Danilo Guanabara".to_string(), "danilo@sensorial.systems".to_string(), "Admin".to_string(), true),
+        ("2".to_string(), "Alice Smith".to_string(), "alice@example.com".to_string(), "User".to_string(), false),
+        ("3".to_string(), "Bob Jones".to_string(), "bob@example.com".to_string(), "Editor".to_string(), true),
+        ("4".to_string(), "Charlie Brown".to_string(), "charlie@example.com".to_string(), "User".to_string(), false),
+    ]);
+
+    let sorted_rows = use_memo(move || {
+        let mut data = table_raw_data.read().clone();
+        if let (Some(col), Some(dir)) = (table_sort_col.read().clone(), table_sort_dir.read().clone()) {
+            data.sort_by(|a, b| {
+                let cmp = match col.as_str() {
+                    "id" => a.0.cmp(&b.0),
+                    "name" => a.1.cmp(&b.1),
+                    "email" => a.2.cmp(&b.2),
+                    "role" => a.3.cmp(&b.3),
+                    "status" => a.4.cmp(&b.4),
+                    _ => std::cmp::Ordering::Equal,
+                };
+                match dir {
+                    SortDirection::Ascending => cmp,
+                    SortDirection::Descending => cmp.reverse(),
+                    SortDirection::None => std::cmp::Ordering::Equal,
+                }
+            });
+        }
+        data
+    });
+
+
     rsx! {
         ThemeProvider { theme: theme_sig,
             div {
@@ -771,6 +809,97 @@ fn App() -> Element {
                                         div {
                                             span { style: "font-size: 12px; color: var(--uikit-muted); display: block; margin-bottom: 8px;", "Large size (28px)" }
                                             Unit { value: "4.2", unit: "GB", size: UnitSize::Large }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 6. Table Component
+                    section {
+                        style: "display: flex; flex-direction: column; gap: 16px;",
+                        Heading { level: HeadingLevel::H2, bordered: true, "6. Table Component" }
+                        
+                        Card {
+                            div {
+                                style: "display: flex; flex-direction: column; gap: 20px;",
+                                
+                                // Controls
+                                div {
+                                    style: "display: flex; gap: 20px; flex-wrap: wrap; align-items: center;",
+                                    Checkbox {
+                                        checked: *table_striped.read(),
+                                        onchange: move |val| table_striped.set(val),
+                                        label: "Striped Rows"
+                                    }
+                                    Checkbox {
+                                        checked: *table_hoverable.read(),
+                                        onchange: move |val| table_hoverable.set(val),
+                                        label: "Hoverable Rows"
+                                    }
+                                    Checkbox {
+                                        checked: *table_compact.read(),
+                                        onchange: move |val| table_compact.set(val),
+                                        label: "Compact Cells"
+                                    }
+                                    Checkbox {
+                                        checked: *table_borderless.read(),
+                                        onchange: move |val| table_borderless.set(val),
+                                        label: "Borderless"
+                                    }
+                                    Checkbox {
+                                        checked: *table_loading.read(),
+                                        onchange: move |val| table_loading.set(val),
+                                        label: "Loading Overlay"
+                                    }
+                                }
+
+                                // Interactive Table
+                                {
+                                    let cols = vec![
+                                        TableColumn { id: "id".to_string(), title: "ID".to_string(), align: TableAlign::Left, width: Some("80px".to_string()), sortable: true },
+                                        TableColumn { id: "name".to_string(), title: "Name".to_string(), align: TableAlign::Left, width: None, sortable: true },
+                                        TableColumn { id: "email".to_string(), title: "Email".to_string(), align: TableAlign::Left, width: None, sortable: true },
+                                        TableColumn { id: "role".to_string(), title: "Role".to_string(), align: TableAlign::Center, width: Some("120px".to_string()), sortable: true },
+                                        TableColumn { id: "status".to_string(), title: "Status".to_string(), align: TableAlign::Right, width: Some("120px".to_string()), sortable: true },
+                                    ];
+
+                                    let rows = sorted_rows.read().iter().map(|(id, name, email, role, active)| {
+                                        TableRow {
+                                            id: id.clone(),
+                                            selected: id == "1",
+                                            cells: vec![
+                                                rsx! { span { style: "font-family: monospace; font-weight: bold;", "{id}" } },
+                                                rsx! { span { "{name}" } },
+                                                rsx! { span { style: "color: var(--uikit-muted);", "{email}" } },
+                                                rsx! { Badge { variant: BadgeVariant::Info, borderless: true, "{role}" } },
+                                                rsx! {
+                                                    if *active {
+                                                        Badge { variant: BadgeVariant::Success, "Active" }
+                                                    } else {
+                                                        Badge { variant: BadgeVariant::Default, "Inactive" }
+                                                    }
+                                                },
+                                            ]
+                                        }
+                                    }).collect::<Vec<_>>();
+
+                                    rsx! {
+                                        Table {
+                                            columns: cols,
+                                            rows: rows,
+                                            striped: *table_striped.read(),
+                                            hoverable: *table_hoverable.read(),
+                                            compact: *table_compact.read(),
+                                            borderless: *table_borderless.read(),
+                                            loading: *table_loading.read(),
+                                            active_sort_col: table_sort_col.read().clone(),
+                                            active_sort_dir: table_sort_dir.read().clone(),
+                                            onsort: move |(col, dir)| {
+                                                table_sort_col.set(Some(col));
+                                                table_sort_dir.set(Some(dir));
+                                            }
                                         }
                                     }
                                 }
