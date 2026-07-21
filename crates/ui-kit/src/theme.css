@@ -10,6 +10,8 @@
     --uikit-radius-md: 8px;
     --uikit-radius-lg: 12px;
     --uikit-radius-full: 9999px;
+    --uikit-danger: var(--uikit-error);
+    --uikit-danger-bg: var(--uikit-error-bg);
 }
 
 .uikit-root,
