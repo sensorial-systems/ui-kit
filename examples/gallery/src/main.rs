@@ -30,6 +30,7 @@ fn get_circle_connection(fx: f64, fy: f64, tx: f64, ty: f64, is_straight: bool) 
 #[component]
 fn App() -> Element {
     let mut theme_sig = use_signal(AppTheme::default);
+    let mut glass_strength = use_signal(|| 1.0);
 
     // Interactive states for components
     let mut btn_loading = use_signal(|| false);
@@ -327,7 +328,9 @@ fn App() -> Element {
 
 
     rsx! {
-        ThemeProvider { theme: theme_sig,
+        ThemeProvider {
+            theme: theme_sig,
+            glass_strength: glass_strength(),
             div {
                 style: "max-width: 1000px; margin: 0 auto; padding: 40px 20px; display: flex; flex-direction: column; gap: 40px;",
 
@@ -339,11 +342,29 @@ fn App() -> Element {
                         p { style: "margin: 8px 0 0 0; color: var(--uikit-muted); font-size: 14px;", "A premium collection of reusable and highly customizable components." }
                     }
                     div {
-                        style: "max-width: 260px; flex-grow: 1;",
-                        ThemeSelector {
-                            theme: theme_sig,
-                            label: "Select Theme",
-                            label_layout: LabelLayout::Top
+                        style: "display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap;",
+                        div {
+                            style: "width: 220px;",
+                            ThemeSelector {
+                                theme: theme_sig,
+                                label: "Select Theme",
+                                label_layout: LabelLayout::Top
+                            }
+                        }
+                        div {
+                            style: "width: 220px; display: flex; flex-direction: column; gap: 6px;",
+                            div {
+                                style: "display: flex; justify-content: space-between; font-size: 13px; font-weight: 500;",
+                                span { "Glass Strength" }
+                                span { style: "color: var(--uikit-muted);", "{(glass_strength() * 100.0).round()}%" }
+                            }
+                            Slider {
+                                value: glass_strength(),
+                                min: 0.0,
+                                max: 2.0,
+                                step: 0.05,
+                                on_change: move |val: f64| glass_strength.set(val),
+                            }
                         }
                     }
                 }

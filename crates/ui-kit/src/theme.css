@@ -1,8 +1,15 @@
 /* Theme Stylesheet for Dioxus UI Kit */
 
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
 :root,
 :host,
 .uikit-root {
+    --uikit-glass-strength: 1;
     --uikit-transition-fast: all 0.15s ease;
     --uikit-transition-normal: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     --uikit-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -552,15 +559,39 @@
 
 /* --- Card --- */
 .uikit-card {
-    background-color: var(--uikit-card-bg);
-    border: 1px solid var(--uikit-border);
-    border-radius: var(--uikit-radius-lg);
+    position: relative;
+    background: linear-gradient(135deg,
+        color-mix(in srgb, var(--uikit-card-bg) calc(100% - var(--uikit-glass-strength, 1) * 20%), var(--uikit-fg) calc(var(--uikit-glass-strength, 1) * 4%)) 0%,
+        color-mix(in srgb, var(--uikit-card-bg) calc(100% - var(--uikit-glass-strength, 1) * 50%), transparent) 48%,
+        color-mix(in srgb, var(--uikit-card-bg) calc(100% - var(--uikit-glass-strength, 1) * 25%), var(--uikit-primary) calc(var(--uikit-glass-strength, 1) * 12%)) 100%);
+    border: 1px solid color-mix(in srgb, var(--uikit-border) calc(100% - var(--uikit-glass-strength, 1) * 30%), var(--uikit-fg) calc(var(--uikit-glass-strength, 1) * 20%));
+    border-radius: calc(var(--uikit-radius-lg) + 8px);
     font-family: var(--uikit-font-sans);
-    overflow: visible;
+    overflow: hidden;
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--uikit-fg) calc(var(--uikit-glass-strength, 1) * 20%), transparent);
+    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 18px)) saturate(calc(100% + var(--uikit-glass-strength, 1) * 35%));
+    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 18px)) saturate(calc(100% + var(--uikit-glass-strength, 1) * 35%));
+}
+
+.uikit-theme-white .uikit-card {
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, calc(1 - var(--uikit-glass-strength, 1) * 0.15)) 0%,
+        color-mix(in srgb, #ffffff calc(100% - var(--uikit-glass-strength, 1) * 45%), #f1f5f9) 50%,
+        color-mix(in srgb, #ffffff calc(100% - var(--uikit-glass-strength, 1) * 35%), var(--uikit-primary) calc(var(--uikit-glass-strength, 1) * 6%)) 100%);
+    border: 1px solid color-mix(in srgb, var(--uikit-border) calc(100% - var(--uikit-glass-strength, 1) * 40%), #ffffff calc(var(--uikit-glass-strength, 1) * 60%));
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, calc(var(--uikit-glass-strength, 1) * 0.8)),
+        0 14px 30px -6px rgba(15, 23, 42, calc(0.02 + var(--uikit-glass-strength, 1) * 0.06)),
+        0 4px 10px -2px rgba(15, 23, 42, calc(0.02 + var(--uikit-glass-strength, 1) * 0.04));
+    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 20px)) saturate(calc(100% + var(--uikit-glass-strength, 1) * 50%)) brightness(calc(100% + var(--uikit-glass-strength, 1) * 5%));
+    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 20px)) saturate(calc(100% + var(--uikit-glass-strength, 1) * 50%)) brightness(calc(100% + var(--uikit-glass-strength, 1) * 5%));
 }
 
 .uikit-card-shadowed {
-    box-shadow: var(--uikit-shadow);
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, var(--uikit-fg) 10%, transparent),
+        0 14px 35px color-mix(in srgb, var(--uikit-bg) 55%, transparent),
+        var(--uikit-shadow);
 }
 
 .uikit-card-hoverable {
@@ -708,8 +739,9 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(4px);
+    background: color-mix(in srgb, var(--uikit-bg) calc(85% - var(--uikit-glass-strength, 1) * 35%), transparent);
+    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 14px)) saturate(calc(100% + var(--uikit-glass-strength, 1) * 30%));
+    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 14px)) saturate(calc(100% + var(--uikit-glass-strength, 1) * 30%));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -719,14 +751,45 @@
 }
 
 .uikit-modal-content {
-    background-color: var(--uikit-card-bg);
-    border: 1px solid var(--uikit-border);
-    border-radius: var(--uikit-radius-lg);
+    background: linear-gradient(135deg,
+        color-mix(in srgb, var(--uikit-card-bg) calc(100% - var(--uikit-glass-strength, 1) * 30%), var(--uikit-fg) calc(var(--uikit-glass-strength, 1) * 5%)) 0%,
+        color-mix(in srgb, var(--uikit-card-bg) calc(100% - var(--uikit-glass-strength, 1) * 55%), transparent) 52%,
+        color-mix(in srgb, var(--uikit-card-bg) calc(100% - var(--uikit-glass-strength, 1) * 30%), var(--uikit-primary) calc(var(--uikit-glass-strength, 1) * 5%)) 100%);
+    border: 1px solid color-mix(in srgb, var(--uikit-border) calc(100% - var(--uikit-glass-strength, 1) * 35%), var(--uikit-fg) calc(var(--uikit-glass-strength, 1) * 25%));
+    border-radius: calc(var(--uikit-radius-lg) + 10px);
     width: 100%;
     max-width: 500px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, var(--uikit-fg) calc(var(--uikit-glass-strength, 1) * 25%), transparent),
+        0 28px 80px color-mix(in srgb, var(--uikit-bg) 70%, transparent),
+        var(--uikit-shadow);
+    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 24px)) saturate(calc(100% + var(--uikit-glass-strength, 1) * 40%));
+    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 24px)) saturate(calc(100% + var(--uikit-glass-strength, 1) * 40%));
     overflow: hidden;
     animation: uikit-scale-up 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.uikit-theme-white .uikit-modal-content {
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, calc(1 - var(--uikit-glass-strength, 1) * 0.12)) 0%,
+        color-mix(in srgb, #ffffff calc(100% - var(--uikit-glass-strength, 1) * 40%), #f1f5f9) 50%,
+        color-mix(in srgb, #ffffff calc(100% - var(--uikit-glass-strength, 1) * 30%), var(--uikit-primary) calc(var(--uikit-glass-strength, 1) * 5%)) 100%);
+    border: 1px solid color-mix(in srgb, var(--uikit-border) calc(100% - var(--uikit-glass-strength, 1) * 40%), #ffffff calc(var(--uikit-glass-strength, 1) * 60%));
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, calc(var(--uikit-glass-strength, 1) * 0.9)),
+        0 25px 70px -10px rgba(15, 23, 42, calc(0.05 + var(--uikit-glass-strength, 1) * 0.08));
+    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 26px)) saturate(calc(100% + var(--uikit-glass-strength, 1) * 50%)) brightness(calc(100% + var(--uikit-glass-strength, 1) * 5%));
+    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 26px)) saturate(calc(100% + var(--uikit-glass-strength, 1) * 50%)) brightness(calc(100% + var(--uikit-glass-strength, 1) * 5%));
+}
+
+.uikit-modal-content > .uikit-card-header {
+    border-bottom: 1px solid color-mix(in srgb, var(--uikit-border) 75%, transparent);
+    background: transparent;
+}
+
+.uikit-modal-content > .uikit-card-footer {
+    border-top-color: color-mix(in srgb, var(--uikit-border) 75%, transparent);
+    background: color-mix(in srgb, var(--uikit-muted-bg) 44%, transparent);
 }
 
 @keyframes uikit-fade-in {
@@ -1381,7 +1444,8 @@
     border-radius: 8px;
     background: color-mix(in srgb, var(--uikit-card-bg) 88%, transparent);
     box-shadow: var(--uikit-shadow);
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 8px));
+    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 8px));
     cursor: grab;
 }
 
@@ -2070,7 +2134,8 @@
     align-items: center;
     justify-content: center;
     z-index: 10;
-    backdrop-filter: blur(1px);
+    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 1px));
+    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 1px));
     transition: var(--uikit-transition-fast);
 }
 
@@ -2090,4 +2155,3 @@
     text-align: center;
     color: var(--uikit-muted);
 }
-

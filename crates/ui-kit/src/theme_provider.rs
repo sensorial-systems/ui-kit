@@ -6,6 +6,8 @@ const THEME_CSS: &str = include_str!("theme.css");
 #[component]
 pub fn ThemeProvider(
     #[props(default)] theme: Option<Signal<AppTheme>>,
+    #[props(default)] glass_strength: Option<f64>,
+    #[props(default)] style: Option<String>,
     children: Element,
 ) -> Element {
     // If no signal is provided, manage the theme internally (default to AppTheme::default())
@@ -17,11 +19,18 @@ pub fn ThemeProvider(
     let theme_val = *active_theme.read();
     let class = theme_val.class_name();
 
+    let extra_style = style.unwrap_or_default();
+    let glass_style = if let Some(gs) = glass_strength {
+        format!("--uikit-glass-strength: {}; ", gs)
+    } else {
+        String::new()
+    };
+
     rsx! {
         style { {THEME_CSS} }
         div {
             class: "uikit-root {class}",
-            style: "min-height: 100vh; background-color: var(--uikit-bg); color: var(--uikit-fg); font-family: var(--uikit-font-sans); transition: var(--uikit-transition-normal); margin: 0; padding: 0;",
+            style: "min-height: 100vh; background-color: var(--uikit-bg); color: var(--uikit-fg); font-family: var(--uikit-font-sans); transition: var(--uikit-transition-normal); margin: 0; padding: 0; {glass_style}{extra_style}",
             {children}
         }
     }
