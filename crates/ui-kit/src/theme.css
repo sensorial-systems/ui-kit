@@ -575,16 +575,21 @@ body {
 
 .uikit-theme-white .uikit-card {
     background: linear-gradient(135deg,
-        rgba(255, 255, 255, calc(1 - var(--uikit-glass-strength, 1) * 0.15)) 0%,
-        color-mix(in srgb, #ffffff calc(100% - var(--uikit-glass-strength, 1) * 45%), #f1f5f9) 50%,
-        color-mix(in srgb, #ffffff calc(100% - var(--uikit-glass-strength, 1) * 35%), var(--uikit-primary) calc(var(--uikit-glass-strength, 1) * 6%)) 100%);
-    border: 1px solid color-mix(in srgb, var(--uikit-border) calc(100% - var(--uikit-glass-strength, 1) * 40%), #ffffff calc(var(--uikit-glass-strength, 1) * 60%));
+        rgba(255, 255, 255, calc(0.68 - var(--uikit-glass-strength, 1) * 0.28)) 0%,
+        color-mix(in srgb, rgba(255, 255, 255, calc(0.42 - var(--uikit-glass-strength, 1) * 0.22)) calc(100% - var(--uikit-glass-strength, 1) * 30%), transparent) 48%,
+        color-mix(in srgb, rgba(255, 255, 255, calc(0.52 - var(--uikit-glass-strength, 1) * 0.22)) calc(100% - var(--uikit-glass-strength, 1) * 20%), var(--uikit-primary) calc(var(--uikit-glass-strength, 1) * 10%)) 100%);
+    border: 1px solid color-mix(in srgb, rgba(255, 255, 255, 0.85) calc(100% - var(--uikit-glass-strength, 1) * 40%), var(--uikit-border) calc(var(--uikit-glass-strength, 1) * 60%));
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, calc(var(--uikit-glass-strength, 1) * 0.8)),
-        0 14px 30px -6px rgba(15, 23, 42, calc(0.02 + var(--uikit-glass-strength, 1) * 0.06)),
-        0 4px 10px -2px rgba(15, 23, 42, calc(0.02 + var(--uikit-glass-strength, 1) * 0.04));
-    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 20px)) saturate(calc(100% + var(--uikit-glass-strength, 1) * 50%)) brightness(calc(100% + var(--uikit-glass-strength, 1) * 5%));
-    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 20px)) saturate(calc(100% + var(--uikit-glass-strength, 1) * 50%)) brightness(calc(100% + var(--uikit-glass-strength, 1) * 5%));
+        inset 0 1px 1px 0 rgba(255, 255, 255, calc(var(--uikit-glass-strength, 1) * 0.95)),
+        0 14px 35px -6px rgba(15, 23, 42, calc(0.04 + var(--uikit-glass-strength, 1) * 0.06)),
+        0 4px 12px -2px rgba(15, 23, 42, calc(0.02 + var(--uikit-glass-strength, 1) * 0.04));
+    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 20px)) saturate(calc(125% + var(--uikit-glass-strength, 1) * 55%)) contrast(calc(100% + var(--uikit-glass-strength, 1) * 8%));
+    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 20px)) saturate(calc(125% + var(--uikit-glass-strength, 1) * 55%)) contrast(calc(100% + var(--uikit-glass-strength, 1) * 8%));
+}
+
+.uikit-theme-white .uikit-card-footer {
+    background-color: color-mix(in srgb, rgba(255, 255, 255, 0.5) 60%, var(--uikit-muted-bg) 40%);
+    border-top: 1px solid color-mix(in srgb, var(--uikit-border) 60%, transparent);
 }
 
 .uikit-card-shadowed {
@@ -771,15 +776,15 @@ body {
 
 .uikit-theme-white .uikit-modal-content {
     background: linear-gradient(135deg,
-        rgba(255, 255, 255, calc(1 - var(--uikit-glass-strength, 1) * 0.12)) 0%,
-        color-mix(in srgb, #ffffff calc(100% - var(--uikit-glass-strength, 1) * 40%), #f1f5f9) 50%,
-        color-mix(in srgb, #ffffff calc(100% - var(--uikit-glass-strength, 1) * 30%), var(--uikit-primary) calc(var(--uikit-glass-strength, 1) * 5%)) 100%);
-    border: 1px solid color-mix(in srgb, var(--uikit-border) calc(100% - var(--uikit-glass-strength, 1) * 40%), #ffffff calc(var(--uikit-glass-strength, 1) * 60%));
+        rgba(255, 255, 255, calc(0.75 - var(--uikit-glass-strength, 1) * 0.28)) 0%,
+        color-mix(in srgb, rgba(255, 255, 255, calc(0.48 - var(--uikit-glass-strength, 1) * 0.22)) calc(100% - var(--uikit-glass-strength, 1) * 30%), transparent) 50%,
+        color-mix(in srgb, rgba(255, 255, 255, calc(0.58 - var(--uikit-glass-strength, 1) * 0.22)) calc(100% - var(--uikit-glass-strength, 1) * 20%), var(--uikit-primary) calc(var(--uikit-glass-strength, 1) * 8%)) 100%);
+    border: 1px solid color-mix(in srgb, rgba(255, 255, 255, 0.85) calc(100% - var(--uikit-glass-strength, 1) * 40%), var(--uikit-border) calc(var(--uikit-glass-strength, 1) * 60%));
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, calc(var(--uikit-glass-strength, 1) * 0.9)),
-        0 25px 70px -10px rgba(15, 23, 42, calc(0.05 + var(--uikit-glass-strength, 1) * 0.08));
-    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 26px)) saturate(calc(100% + var(--uikit-glass-strength, 1) * 50%)) brightness(calc(100% + var(--uikit-glass-strength, 1) * 5%));
-    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 26px)) saturate(calc(100% + var(--uikit-glass-strength, 1) * 50%)) brightness(calc(100% + var(--uikit-glass-strength, 1) * 5%));
+        inset 0 1px 1px 0 rgba(255, 255, 255, calc(var(--uikit-glass-strength, 1) * 0.95)),
+        0 25px 70px -10px rgba(15, 23, 42, calc(0.08 + var(--uikit-glass-strength, 1) * 0.08));
+    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 26px)) saturate(calc(130% + var(--uikit-glass-strength, 1) * 60%)) contrast(calc(100% + var(--uikit-glass-strength, 1) * 8%));
+    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 26px)) saturate(calc(130% + var(--uikit-glass-strength, 1) * 60%)) contrast(calc(100% + var(--uikit-glass-strength, 1) * 8%));
 }
 
 .uikit-modal-content > .uikit-card-header {
@@ -1203,15 +1208,29 @@ body {
     top: calc(100% + 6px);
     left: 0;
     width: 290px;
-    background-color: var(--uikit-card-bg);
+    background: color-mix(in srgb, var(--uikit-card-bg) calc(100% - var(--uikit-glass-strength, 1) * 30%), transparent);
     border: 1px solid var(--uikit-border);
     border-radius: var(--uikit-radius-lg);
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 18px));
+    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 18px));
     z-index: 100;
     padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 12px;
+}
+
+.uikit-theme-white .uikit-datetime-popover {
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, calc(0.75 - var(--uikit-glass-strength, 1) * 0.25)) 0%,
+        rgba(255, 255, 255, calc(0.55 - var(--uikit-glass-strength, 1) * 0.20)) 100%);
+    border: 1px solid color-mix(in srgb, rgba(255, 255, 255, 0.9) calc(100% - var(--uikit-glass-strength, 1) * 40%), var(--uikit-border) calc(var(--uikit-glass-strength, 1) * 60%));
+    box-shadow:
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.9),
+        0 16px 40px -8px rgba(15, 23, 42, 0.12);
+    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 20px)) saturate(calc(125% + var(--uikit-glass-strength, 1) * 50%));
+    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 20px)) saturate(calc(125% + var(--uikit-glass-strength, 1) * 50%));
 }
 
 .uikit-datetime-popover-header {
@@ -2213,12 +2232,26 @@ body {
 .uikit-color-picker-panel {
     width: 250px;
     padding: 12px;
-    background-color: var(--uikit-card-bg);
+    background: color-mix(in srgb, var(--uikit-card-bg) calc(100% - var(--uikit-glass-strength, 1) * 30%), transparent);
     border: 1px solid var(--uikit-border);
     border-radius: var(--uikit-radius-lg);
+    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 18px));
+    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 18px));
     display: flex;
     flex-direction: column;
     gap: 12px;
+}
+
+.uikit-theme-white .uikit-color-picker-panel {
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, calc(0.75 - var(--uikit-glass-strength, 1) * 0.25)) 0%,
+        rgba(255, 255, 255, calc(0.55 - var(--uikit-glass-strength, 1) * 0.20)) 100%);
+    border: 1px solid color-mix(in srgb, rgba(255, 255, 255, 0.9) calc(100% - var(--uikit-glass-strength, 1) * 40%), var(--uikit-border) calc(var(--uikit-glass-strength, 1) * 60%));
+    box-shadow:
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.9),
+        0 16px 40px -8px rgba(15, 23, 42, 0.12);
+    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 20px)) saturate(calc(125% + var(--uikit-glass-strength, 1) * 50%));
+    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 20px)) saturate(calc(125% + var(--uikit-glass-strength, 1) * 50%));
 }
 
 .uikit-color-picker-tabs {
