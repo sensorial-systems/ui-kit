@@ -43,6 +43,8 @@ fn App() -> Element {
     let mut otp_val = use_signal(|| "".to_string());
     let mut slider_val = use_signal(|| 50.0);
     let mut datetime_val = use_signal(|| "2026-07-16 18:00".to_string());
+    let mut color_val = use_signal(|| "#3b82f6".to_string());
+    let mut inline_color_val = use_signal(|| "#10b981".to_string());
     let mut wysiwyg_val = use_signal(|| "<p>Hello <b>World</b>! This is a <i>WYSIWYG</i> editor.</p><p>Double-click this text block to edit formatting.</p>".to_string());
 
     let mut flow_active = use_signal(|| Some("build".to_string()));
@@ -557,6 +559,20 @@ fn App() -> Element {
                                         on_change: move |_| {},
                                         label: "Disabled Date & Time Picker",
                                         disabled: true,
+                                    }
+                                }
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 12px; border-top: 1px dashed var(--uikit-border); padding-top: 16px;",
+                                    ColorPicker {
+                                        value: color_val.read().clone(),
+                                        on_change: move |val| color_val.set(val),
+                                        label: "Accent Color Picker (Popover)",
+                                    }
+                                    ColorPicker {
+                                        value: inline_color_val.read().clone(),
+                                        on_change: move |val| inline_color_val.set(val),
+                                        label: "Inline Color Picker",
+                                        inline: true,
                                     }
                                 }
                                 div {

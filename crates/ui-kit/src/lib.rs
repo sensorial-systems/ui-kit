@@ -28,6 +28,8 @@ pub use components::{
     SpinnerVariant,
     Gauge,
     Slider,
+    ColorPicker,
+    ColorPickerMode,
     DateTimePicker,
     Node, NodeShape, GraphNodeData,
     Edge, EdgeType, ArrowHead, GraphEdgeData, EdgeDefs,
