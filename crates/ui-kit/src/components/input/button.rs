@@ -47,7 +47,10 @@ pub fn Button(
     #[props(into, default)] color: Option<String>,
     #[props(default)] disabled: bool,
     #[props(default)] loading: bool,
+    /// Optional timeout in milliseconds for the loading state.
+    #[props(default)] timeout_ms: Option<u64>,
     onclick: Option<EventHandler<MouseEvent>>,
+    ontimeout: Option<EventHandler<()>>,
     children: Element,
 ) -> Element {
     let variant_class = variant.class_name();
@@ -58,8 +61,33 @@ pub fn Button(
         .map(|color| format!("--uikit-btn-color: {color};"))
         .unwrap_or_default();
 
+    let mut is_timed_out = use_signal(|| false);
+
+    use_effect(use_reactive((&loading, &timeout_ms), move |(loading, timeout_ms)| {
+        if loading {
+            is_timed_out.set(false);
+            if let Some(ms) = timeout_ms {
+                spawn(async move {
+                    #[cfg(target_arch = "wasm32")]
+                    gloo_timers::future::TimeoutFuture::new(ms as u32).await;
+                    #[cfg(not(target_arch = "wasm32"))]
+                    tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
+                    
+                    is_timed_out.set(true);
+                    if let Some(ref handler) = ontimeout {
+                        handler.call(());
+                    }
+                });
+            }
+        } else {
+            is_timed_out.set(false);
+        }
+    }));
+
+    let effective_loading = loading && !*is_timed_out.read();
+
     let handle_click = move |e| {
-        if !disabled && !loading {
+        if !disabled && !effective_loading {
             if let Some(ref handler) = onclick {
                 handler.call(e);
             }
@@ -70,9 +98,9 @@ pub fn Button(
         button {
             class: "uikit-btn {variant_class} {size_class} {color_class}",
             style: "{custom_style}",
-            disabled: disabled || loading,
+            disabled: disabled || effective_loading,
             onclick: handle_click,
-            if loading {
+            if effective_loading {
                 Spinner {
                     size: SpinnerSize::Small,
                     variant: SpinnerVariant::Inherit,

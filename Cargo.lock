@@ -5450,8 +5450,10 @@ name = "ui-kit"
 version = "0.1.0"
 dependencies = [
  "dioxus",
+ "gloo-timers",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

@@ -45,6 +45,7 @@ fn App() -> Element {
 
     // Interactive states for components
     let mut btn_loading = use_signal(|| false);
+    let mut btn_timeout_loading = use_signal(|| false);
     let mut input_val = use_signal(|| "".to_string());
     let mut input_err = use_signal(|| None::<String>);
     let mut checkbox_val = use_signal(|| false);
@@ -904,6 +905,17 @@ fn App() -> Element {
                                                 },
                                                 "Reset"
                                             }
+                                        }
+                                        Button {
+                                            loading: *btn_timeout_loading.read(),
+                                            timeout_ms: 3000,
+                                            onclick: move |_| {
+                                                btn_timeout_loading.set(true);
+                                            },
+                                            ontimeout: move |_| {
+                                                btn_timeout_loading.set(false);
+                                            },
+                                            "Load (3s Timeout)"
                                         }
                                     }
                                 }

@@ -10,7 +10,10 @@ pub fn CircularButton(
     #[props(into, default)] color: Option<String>,
     #[props(default)] disabled: bool,
     #[props(default)] loading: bool,
+    /// Optional timeout in milliseconds for the loading state.
+    #[props(default)] timeout_ms: Option<u64>,
     onclick: Option<EventHandler<MouseEvent>>,
+    ontimeout: Option<EventHandler<()>>,
     onmouseenter: Option<EventHandler<MouseEvent>>,
     onmouseleave: Option<EventHandler<MouseEvent>>,
     #[props(into, default)] class: Option<String>,
@@ -35,8 +38,33 @@ pub fn CircularButton(
     let extra_style = style.unwrap_or_default();
     let combined_style = format!("{custom_style} {extra_style}");
 
+    let mut is_timed_out = use_signal(|| false);
+
+    use_effect(use_reactive((&loading, &timeout_ms), move |(loading, timeout_ms)| {
+        if loading {
+            is_timed_out.set(false);
+            if let Some(ms) = timeout_ms {
+                spawn(async move {
+                    #[cfg(target_arch = "wasm32")]
+                    gloo_timers::future::TimeoutFuture::new(ms as u32).await;
+                    #[cfg(not(target_arch = "wasm32"))]
+                    tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
+                    
+                    is_timed_out.set(true);
+                    if let Some(ref handler) = ontimeout {
+                        handler.call(());
+                    }
+                });
+            }
+        } else {
+            is_timed_out.set(false);
+        }
+    }));
+
+    let effective_loading = loading && !*is_timed_out.read();
+
     let handle_click = move |e| {
-        if !disabled && !loading {
+        if !disabled && !effective_loading {
             if let Some(ref handler) = onclick {
                 handler.call(e);
             }
@@ -67,12 +95,12 @@ pub fn CircularButton(
         button {
             class: "{combined_class}",
             style: "{combined_style}",
-            disabled: disabled || loading,
+            disabled: disabled || effective_loading,
             onclick: handle_click,
             onmouseenter: handle_mouseenter,
             onmouseleave: handle_mouseleave,
             aria_label: "{aria_lbl}",
-            if loading {
+            if effective_loading {
                 Spinner {
                     size: spinner_size,
                     variant: SpinnerVariant::Inherit,
