@@ -757,6 +757,106 @@ fn App() -> Element {
                 main {
                     style: "display: flex; flex-direction: column; gap: 40px;",
 
+                    // Navigation Section
+                    section {
+                        class: "gallery-nav-section",
+                        style: "display: flex; flex-direction: column; gap: 16px; position: relative; z-index: 1000;",
+                        style {
+                            ".gallery-nav-section .uikit-card, .gallery-nav-section .uikit-card-body {{ overflow: visible !important; }}"
+                        }
+                        Heading { level: HeadingLevel::H2, bordered: true, "Navigation" }
+                        Card {
+                            div {
+                                style: "display: flex; flex-direction: column; gap: 16px;",
+                                Heading { level: HeadingLevel::H4, muted: true, "Horizontal Menu" }
+                                HorizontalMenu {
+                                    items: vec![
+                                        HorizontalMenuItem {
+                                            id: "products".to_string(),
+                                            label: "Products".to_string(),
+                                            icon: None,
+                                            children: vec![
+                                                HorizontalMenuSubItem {
+                                                    id: "platform".to_string(),
+                                                    label: "Platform".to_string(),
+                                                    icon: None,
+                                                    sub_children: vec![
+                                                        HorizontalMenuLeafItem {
+                                                            id: "analytics".to_string(),
+                                                            label: "Analytics".to_string(),
+                                                            icon: None,
+                                                            description: Some("Real-time data insights and metrics".to_string()),
+                                                        },
+                                                        HorizontalMenuLeafItem {
+                                                            id: "automation".to_string(),
+                                                            label: "Automation".to_string(),
+                                                            icon: None,
+                                                            description: Some("Automate workflows and triggers".to_string()),
+                                                        },
+                                                    ],
+                                                },
+                                                HorizontalMenuSubItem {
+                                                    id: "integrations".to_string(),
+                                                    label: "Integrations".to_string(),
+                                                    icon: None,
+                                                    sub_children: vec![
+                                                        HorizontalMenuLeafItem {
+                                                            id: "api_keys".to_string(),
+                                                            label: "API Keys".to_string(),
+                                                            icon: None,
+                                                            description: Some("Manage security and access tokens".to_string()),
+                                                        },
+                                                        HorizontalMenuLeafItem {
+                                                            id: "webhooks".to_string(),
+                                                            label: "Webhooks".to_string(),
+                                                            icon: None,
+                                                            description: Some("Connect external notification sinks".to_string()),
+                                                        },
+                                                    ],
+                                                },
+                                            ],
+                                        },
+                                        HorizontalMenuItem {
+                                            id: "solutions".to_string(),
+                                            label: "Solutions".to_string(),
+                                            icon: None,
+                                            children: vec![
+                                                HorizontalMenuSubItem {
+                                                    id: "enterprise".to_string(),
+                                                    label: "Enterprise".to_string(),
+                                                    icon: None,
+                                                    sub_children: vec![
+                                                        HorizontalMenuLeafItem {
+                                                            id: "security".to_string(),
+                                                            label: "Security & Compliance".to_string(),
+                                                            icon: None,
+                                                            description: Some("SOC2 and ISO 27001 readiness".to_string()),
+                                                        },
+                                                    ],
+                                                },
+                                            ],
+                                        },
+                                        HorizontalMenuItem {
+                                            id: "pricing".to_string(),
+                                            label: "Pricing".to_string(),
+                                            icon: None,
+                                            children: vec![],
+                                        },
+                                        HorizontalMenuItem {
+                                            id: "docs".to_string(),
+                                            label: "Documentation".to_string(),
+                                            icon: None,
+                                            children: vec![],
+                                        },
+                                    ],
+                                    on_select: move |selected_id: String| {
+                                        println!("Selected menu item: {}", selected_id);
+                                    },
+                                }
+                            }
+                        }
+                    }
+
                     // Buttons Section
                     section {
                         style: "display: flex; flex-direction: column; gap: 16px;",

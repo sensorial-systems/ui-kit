@@ -2,6 +2,7 @@ pub mod containers;
 pub mod info;
 pub mod input;
 pub mod graph;
+pub mod navigation;
 
 pub use containers::{Card, Modal, Table, TableAlign, TableColumn, TableRow, SortDirection, Condition, FormFlowEngine, Question, QuestionAnswer, QuestionOption, QuestionType, DynamicFormModal};
 pub use info::{Badge, BadgeSize, BadgeVariant, Gauge, Heading, HeadingLevel, Notification, NotificationVariant, ProgressBar, Sparkline, Unit, UnitSize, Spinner, SpinnerSize, SpinnerVariant};
@@ -11,3 +12,7 @@ pub use graph::{
     Edge, EdgeType, ArrowHead, GraphEdgeData, EdgeDefs,
     FlowGraph, HierarchyGraphEditor, HierarchyGraphModel, HierarchyGraphViewer, HierarchyNode, NetworkGraph,
 };
+pub use navigation::{
+    HorizontalMenu, HorizontalMenuItem, HorizontalMenuSubItem, HorizontalMenuLeafItem,
+};
+

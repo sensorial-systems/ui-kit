@@ -36,6 +36,7 @@ pub use components::{
     FlowGraph, HierarchyGraphEditor, HierarchyGraphModel, HierarchyGraphViewer, HierarchyNode, NetworkGraph,
     Condition, FormFlowEngine, Question, QuestionAnswer, QuestionOption, QuestionType, DynamicFormModal,
     SelectableButton,
+    HorizontalMenu, HorizontalMenuItem, HorizontalMenuSubItem, HorizontalMenuLeafItem,
 };
 pub use theme::AppTheme;
 pub use theme_provider::ThemeProvider;
