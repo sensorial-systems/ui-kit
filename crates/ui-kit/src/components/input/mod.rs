@@ -14,6 +14,8 @@ pub mod editable_text;
 pub mod color_picker;
 pub mod theme_selector;
 
+pub mod selectable_button;
+
 pub use button::{Button, ButtonSize, ButtonVariant};
 pub use checkbox::Checkbox;
 pub use circular_button::CircularButton;
@@ -27,4 +29,6 @@ pub use text_input::TextInput;
 pub use editable_text::{EditableText, EditableTextVariant};
 pub use color_picker::{ColorPicker, ColorPickerMode};
 pub use theme_selector::ThemeSelector;
+pub use selectable_button::SelectableButton;
+
 

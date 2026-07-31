@@ -6,7 +6,13 @@ fn main() {
     dioxus::launch(App);
 }
 
-fn get_circle_connection(fx: f64, fy: f64, tx: f64, ty: f64, is_straight: bool) -> (f64, f64, f64, f64) {
+fn get_circle_connection(
+    fx: f64,
+    fy: f64,
+    tx: f64,
+    ty: f64,
+    is_straight: bool,
+) -> (f64, f64, f64, f64) {
     let dx = tx - fx;
     let dy = ty - fy;
     let dist = (dx * dx + dy * dy).sqrt();
@@ -18,7 +24,12 @@ fn get_circle_connection(fx: f64, fy: f64, tx: f64, ty: f64, is_straight: bool) 
         if dist > 0.01 {
             let nx = dx / dist;
             let ny = dy / dist;
-            (fx + nx * from_radius, fy + ny * from_radius, tx - nx * to_radius, ty - ny * to_radius)
+            (
+                fx + nx * from_radius,
+                fy + ny * from_radius,
+                tx - nx * to_radius,
+                ty - ny * to_radius,
+            )
         } else {
             (fx, fy, tx, ty)
         }
@@ -29,7 +40,7 @@ fn get_circle_connection(fx: f64, fy: f64, tx: f64, ty: f64, is_straight: bool) 
 
 #[component]
 fn App() -> Element {
-    let mut theme_sig = use_signal(AppTheme::default);
+    let theme_sig = use_signal(AppTheme::default);
     let mut glass_strength = use_signal(|| 1.0);
 
     // Interactive states for components
@@ -40,12 +51,16 @@ fn App() -> Element {
     let mut switch_val = use_signal(|| true);
     let mut select_val = use_signal(|| "rust".to_string());
     let mut modal_open = use_signal(|| false);
+    let mut dynamic_form_open = use_signal(|| false);
     let mut otp_val = use_signal(|| "".to_string());
     let mut slider_val = use_signal(|| 50.0);
     let mut datetime_val = use_signal(|| "2026-07-16 18:00".to_string());
     let mut color_val = use_signal(|| "#3b82f6".to_string());
     let mut inline_color_val = use_signal(|| "#10b981".to_string());
-    let mut wysiwyg_val = use_signal(|| "<p>Hello <b>World</b>! This is a <i>WYSIWYG</i> editor.</p><p>Double-click this text block to edit formatting.</p>".to_string());
+    let mut selectable_btn_val = use_signal(|| true);
+    let mut wysiwyg_val = use_signal(|| {
+        "<p>Hello <b>World</b>! This is a <i>WYSIWYG</i> editor.</p><p>Double-click this text block to edit formatting.</p>".to_string()
+    });
 
     let mut flow_active = use_signal(|| Some("build".to_string()));
     let mut tree_editable = use_signal(|| false);
@@ -66,7 +81,16 @@ fn App() -> Element {
 
     let flow_nodes = vec![
         (
-            GraphNodeData { id: "checkout".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-success)".to_string()), border: None, background_color: None, shape: NodeShape::Box, selected: false },
+            GraphNodeData {
+                id: "checkout".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: Some("var(--uikit-success)".to_string()),
+                border: None,
+                background_color: None,
+                shape: NodeShape::Box,
+                selected: false,
+            },
             rsx! {
                 div {
                     class: "uikit-graph-node-header",
@@ -74,10 +98,19 @@ fn App() -> Element {
                     span { class: "uikit-graph-node-status-indicator uikit-status-success" }
                 }
                 span { class: "uikit-graph-node-desc", "Source Code" }
-            }
+            },
         ),
         (
-            GraphNodeData { id: "lint".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-success)".to_string()), border: None, background_color: None, shape: NodeShape::Box, selected: false },
+            GraphNodeData {
+                id: "lint".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: Some("var(--uikit-success)".to_string()),
+                border: None,
+                background_color: None,
+                shape: NodeShape::Box,
+                selected: false,
+            },
             rsx! {
                 div {
                     class: "uikit-graph-node-header",
@@ -85,10 +118,19 @@ fn App() -> Element {
                     span { class: "uikit-graph-node-status-indicator uikit-status-success" }
                 }
                 span { class: "uikit-graph-node-desc", "Cargo clippy" }
-            }
+            },
         ),
         (
-            GraphNodeData { id: "test".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-success)".to_string()), border: None, background_color: None, shape: NodeShape::Box, selected: false },
+            GraphNodeData {
+                id: "test".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: Some("var(--uikit-success)".to_string()),
+                border: None,
+                background_color: None,
+                shape: NodeShape::Box,
+                selected: false,
+            },
             rsx! {
                 div {
                     class: "uikit-graph-node-header",
@@ -96,10 +138,19 @@ fn App() -> Element {
                     span { class: "uikit-graph-node-status-indicator uikit-status-success" }
                 }
                 span { class: "uikit-graph-node-desc", "Cargo test" }
-            }
+            },
         ),
         (
-            GraphNodeData { id: "build".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-primary)".to_string()), border: None, background_color: None, shape: NodeShape::Box, selected: false },
+            GraphNodeData {
+                id: "build".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: Some("var(--uikit-primary)".to_string()),
+                border: None,
+                background_color: None,
+                shape: NodeShape::Box,
+                selected: false,
+            },
             rsx! {
                 div {
                     class: "uikit-graph-node-header",
@@ -107,10 +158,19 @@ fn App() -> Element {
                     span { class: "uikit-graph-node-status-indicator uikit-status-primary" }
                 }
                 span { class: "uikit-graph-node-desc", "Cargo build --release" }
-            }
+            },
         ),
         (
-            GraphNodeData { id: "deploy".to_string(), x: 0.0, y: 0.0, color: None, border: None, background_color: None, shape: NodeShape::Box, selected: false },
+            GraphNodeData {
+                id: "deploy".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: None,
+                border: None,
+                background_color: None,
+                shape: NodeShape::Box,
+                selected: false,
+            },
             rsx! {
                 div {
                     class: "uikit-graph-node-header",
@@ -118,81 +178,283 @@ fn App() -> Element {
                     span { class: "uikit-graph-node-status-indicator uikit-status-primary" }
                 }
                 span { class: "uikit-graph-node-desc", "Deploy to AWS" }
-            }
+            },
         ),
     ];
     let flow_edges = vec![
-        GraphEdgeData { from: "checkout".to_string(), to: "lint".to_string(), label: None, edge_type: EdgeType::Orthogonal, color: Some("var(--uikit-success)".to_string()), animated: true, arrow: ArrowHead::End },
-        GraphEdgeData { from: "checkout".to_string(), to: "test".to_string(), label: None, edge_type: EdgeType::Orthogonal, color: Some("var(--uikit-success)".to_string()), animated: true, arrow: ArrowHead::End },
-        GraphEdgeData { from: "lint".to_string(), to: "build".to_string(), label: Some("Passed".to_string()), edge_type: EdgeType::Orthogonal, color: Some("var(--uikit-primary)".to_string()), animated: false, arrow: ArrowHead::End },
-        GraphEdgeData { from: "test".to_string(), to: "build".to_string(), label: Some("Passed".to_string()), edge_type: EdgeType::Orthogonal, color: Some("var(--uikit-primary)".to_string()), animated: false, arrow: ArrowHead::End },
-        GraphEdgeData { from: "build".to_string(), to: "deploy".to_string(), label: None, edge_type: EdgeType::Orthogonal, color: None, animated: false, arrow: ArrowHead::End },
+        GraphEdgeData {
+            from: "checkout".to_string(),
+            to: "lint".to_string(),
+            label: None,
+            edge_type: EdgeType::Orthogonal,
+            color: Some("var(--uikit-success)".to_string()),
+            animated: true,
+            arrow: ArrowHead::End,
+        },
+        GraphEdgeData {
+            from: "checkout".to_string(),
+            to: "test".to_string(),
+            label: None,
+            edge_type: EdgeType::Orthogonal,
+            color: Some("var(--uikit-success)".to_string()),
+            animated: true,
+            arrow: ArrowHead::End,
+        },
+        GraphEdgeData {
+            from: "lint".to_string(),
+            to: "build".to_string(),
+            label: Some("Passed".to_string()),
+            edge_type: EdgeType::Orthogonal,
+            color: Some("var(--uikit-primary)".to_string()),
+            animated: false,
+            arrow: ArrowHead::End,
+        },
+        GraphEdgeData {
+            from: "test".to_string(),
+            to: "build".to_string(),
+            label: Some("Passed".to_string()),
+            edge_type: EdgeType::Orthogonal,
+            color: Some("var(--uikit-primary)".to_string()),
+            animated: false,
+            arrow: ArrowHead::End,
+        },
+        GraphEdgeData {
+            from: "build".to_string(),
+            to: "deploy".to_string(),
+            label: None,
+            edge_type: EdgeType::Orthogonal,
+            color: None,
+            animated: false,
+            arrow: ArrowHead::End,
+        },
     ];
 
     let tree_nodes = vec![
         (
-            GraphNodeData { id: "root".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-primary)".to_string()), border: Some("none".to_string()), background_color: None, shape: NodeShape::Box, selected: false },
+            GraphNodeData {
+                id: "root".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: Some("var(--uikit-primary)".to_string()),
+                border: Some("none".to_string()),
+                background_color: None,
+                shape: NodeShape::Box,
+                selected: false,
+            },
             rsx! {
                 span { class: "uikit-graph-node-title", style: "font-size: 20px; font-weight: 750; text-align: center;", "Core App" }
-            }
+            },
         ),
         (
-            GraphNodeData { id: "ui".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-info)".to_string()), border: Some("none".to_string()), background_color: None, shape: NodeShape::Box, selected: false },
+            GraphNodeData {
+                id: "ui".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: Some("var(--uikit-info)".to_string()),
+                border: Some("none".to_string()),
+                background_color: None,
+                shape: NodeShape::Box,
+                selected: false,
+            },
             rsx! {
                 span { class: "uikit-graph-node-title", "UI Layer" }
-            }
+            },
         ),
         (
-            GraphNodeData { id: "db".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-warning)".to_string()), border: Some("none".to_string()), background_color: None, shape: NodeShape::Box, selected: false },
+            GraphNodeData {
+                id: "db".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: Some("var(--uikit-warning)".to_string()),
+                border: Some("none".to_string()),
+                background_color: None,
+                shape: NodeShape::Box,
+                selected: false,
+            },
             rsx! {
                 span { class: "uikit-graph-node-title", "Database" }
-            }
+            },
         ),
         (
-            GraphNodeData { id: "api".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-success)".to_string()), border: Some("none".to_string()), background_color: None, shape: NodeShape::Box, selected: false },
+            GraphNodeData {
+                id: "api".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: Some("var(--uikit-success)".to_string()),
+                border: Some("none".to_string()),
+                background_color: None,
+                shape: NodeShape::Box,
+                selected: false,
+            },
             rsx! {
                 span { class: "uikit-graph-node-title", "GraphQL API" }
-            }
+            },
         ),
         (
-            GraphNodeData { id: "views".to_string(), x: 0.0, y: 0.0, color: None, border: Some("none".to_string()), background_color: None, shape: NodeShape::Box, selected: false },
+            GraphNodeData {
+                id: "views".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: None,
+                border: Some("none".to_string()),
+                background_color: None,
+                shape: NodeShape::Box,
+                selected: false,
+            },
             rsx! {
                 span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Views & Pages" }
-            }
+            },
         ),
         (
-            GraphNodeData { id: "components".to_string(), x: 0.0, y: 0.0, color: None, border: Some("none".to_string()), background_color: None, shape: NodeShape::Box, selected: false },
+            GraphNodeData {
+                id: "components".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: None,
+                border: Some("none".to_string()),
+                background_color: None,
+                shape: NodeShape::Box,
+                selected: false,
+            },
             rsx! {
                 span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Shared Parts" }
-            }
+            },
         ),
         (
-            GraphNodeData { id: "web".to_string(), x: 0.0, y: 0.0, color: None, border: Some("none".to_string()), background_color: Some("transparent".to_string()), shape: NodeShape::Plain, selected: false },
-            rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Web Views" } }
+            GraphNodeData {
+                id: "web".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: None,
+                border: Some("none".to_string()),
+                background_color: Some("transparent".to_string()),
+                shape: NodeShape::Plain,
+                selected: false,
+            },
+            rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Web Views" } },
         ),
         (
-            GraphNodeData { id: "mobile".to_string(), x: 0.0, y: 0.0, color: None, border: Some("none".to_string()), background_color: Some("transparent".to_string()), shape: NodeShape::Plain, selected: false },
-            rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Mobile Views" } }
+            GraphNodeData {
+                id: "mobile".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: None,
+                border: Some("none".to_string()),
+                background_color: Some("transparent".to_string()),
+                shape: NodeShape::Plain,
+                selected: false,
+            },
+            rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Mobile Views" } },
         ),
         (
-            GraphNodeData { id: "forms".to_string(), x: 0.0, y: 0.0, color: None, border: Some("none".to_string()), background_color: Some("transparent".to_string()), shape: NodeShape::Plain, selected: false },
-            rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Form Controls" } }
+            GraphNodeData {
+                id: "forms".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: None,
+                border: Some("none".to_string()),
+                background_color: Some("transparent".to_string()),
+                shape: NodeShape::Plain,
+                selected: false,
+            },
+            rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Form Controls" } },
         ),
         (
-            GraphNodeData { id: "navigation".to_string(), x: 0.0, y: 0.0, color: None, border: Some("none".to_string()), background_color: Some("transparent".to_string()), shape: NodeShape::Plain, selected: false },
-            rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Navigation" } }
+            GraphNodeData {
+                id: "navigation".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: None,
+                border: Some("none".to_string()),
+                background_color: Some("transparent".to_string()),
+                shape: NodeShape::Plain,
+                selected: false,
+            },
+            rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Navigation" } },
         ),
     ];
     let tree_edges = vec![
-        GraphEdgeData { from: "root".to_string(), to: "ui".to_string(), label: None, edge_type: EdgeType::Bezier, color: Some("var(--uikit-info)".to_string()), animated: false, arrow: ArrowHead::None },
-        GraphEdgeData { from: "root".to_string(), to: "db".to_string(), label: None, edge_type: EdgeType::OrganicCurved, color: Some("var(--uikit-warning)".to_string()), animated: false, arrow: ArrowHead::None },
-        GraphEdgeData { from: "root".to_string(), to: "api".to_string(), label: None, edge_type: EdgeType::OrganicCurved, color: Some("var(--uikit-success)".to_string()), animated: false, arrow: ArrowHead::None },
-        GraphEdgeData { from: "ui".to_string(), to: "views".to_string(), label: None, edge_type: EdgeType::Bezier, color: None, animated: false, arrow: ArrowHead::None },
-        GraphEdgeData { from: "ui".to_string(), to: "components".to_string(), label: None, edge_type: EdgeType::Bezier, color: None, animated: false, arrow: ArrowHead::None },
-        GraphEdgeData { from: "views".to_string(), to: "web".to_string(), label: None, edge_type: EdgeType::Bezier, color: None, animated: false, arrow: ArrowHead::None },
-        GraphEdgeData { from: "views".to_string(), to: "mobile".to_string(), label: None, edge_type: EdgeType::Bezier, color: None, animated: false, arrow: ArrowHead::None },
-        GraphEdgeData { from: "components".to_string(), to: "forms".to_string(), label: None, edge_type: EdgeType::Bezier, color: None, animated: false, arrow: ArrowHead::None },
-        GraphEdgeData { from: "components".to_string(), to: "navigation".to_string(), label: None, edge_type: EdgeType::Bezier, color: None, animated: false, arrow: ArrowHead::None },
+        GraphEdgeData {
+            from: "root".to_string(),
+            to: "ui".to_string(),
+            label: None,
+            edge_type: EdgeType::Bezier,
+            color: Some("var(--uikit-info)".to_string()),
+            animated: false,
+            arrow: ArrowHead::None,
+        },
+        GraphEdgeData {
+            from: "root".to_string(),
+            to: "db".to_string(),
+            label: None,
+            edge_type: EdgeType::OrganicCurved,
+            color: Some("var(--uikit-warning)".to_string()),
+            animated: false,
+            arrow: ArrowHead::None,
+        },
+        GraphEdgeData {
+            from: "root".to_string(),
+            to: "api".to_string(),
+            label: None,
+            edge_type: EdgeType::OrganicCurved,
+            color: Some("var(--uikit-success)".to_string()),
+            animated: false,
+            arrow: ArrowHead::None,
+        },
+        GraphEdgeData {
+            from: "ui".to_string(),
+            to: "views".to_string(),
+            label: None,
+            edge_type: EdgeType::Bezier,
+            color: None,
+            animated: false,
+            arrow: ArrowHead::None,
+        },
+        GraphEdgeData {
+            from: "ui".to_string(),
+            to: "components".to_string(),
+            label: None,
+            edge_type: EdgeType::Bezier,
+            color: None,
+            animated: false,
+            arrow: ArrowHead::None,
+        },
+        GraphEdgeData {
+            from: "views".to_string(),
+            to: "web".to_string(),
+            label: None,
+            edge_type: EdgeType::Bezier,
+            color: None,
+            animated: false,
+            arrow: ArrowHead::None,
+        },
+        GraphEdgeData {
+            from: "views".to_string(),
+            to: "mobile".to_string(),
+            label: None,
+            edge_type: EdgeType::Bezier,
+            color: None,
+            animated: false,
+            arrow: ArrowHead::None,
+        },
+        GraphEdgeData {
+            from: "components".to_string(),
+            to: "forms".to_string(),
+            label: None,
+            edge_type: EdgeType::Bezier,
+            color: None,
+            animated: false,
+            arrow: ArrowHead::None,
+        },
+        GraphEdgeData {
+            from: "components".to_string(),
+            to: "navigation".to_string(),
+            label: None,
+            edge_type: EdgeType::Bezier,
+            color: None,
+            animated: false,
+            arrow: ArrowHead::None,
+        },
     ];
     let initial_tree_graph = HierarchyGraphModel {
         nodes: tree_nodes
@@ -214,63 +476,156 @@ fn App() -> Element {
 
     let net_nodes = vec![
         (
-            GraphNodeData { id: "gateway".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-info)".to_string()), border: None, background_color: None, shape: NodeShape::Circle, selected: false },
+            GraphNodeData {
+                id: "gateway".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: Some("var(--uikit-info)".to_string()),
+                border: None,
+                background_color: None,
+                shape: NodeShape::Circle,
+                selected: false,
+            },
             rsx! {
                 div {
                     class: "uikit-graph-node-title",
                     title: "Gateway",
                     "Gateway"
                 }
-            }
+            },
         ),
         (
-            GraphNodeData { id: "auth".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-success)".to_string()), border: None, background_color: None, shape: NodeShape::Circle, selected: false },
+            GraphNodeData {
+                id: "auth".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: Some("var(--uikit-success)".to_string()),
+                border: None,
+                background_color: None,
+                shape: NodeShape::Circle,
+                selected: false,
+            },
             rsx! {
                 div {
                     class: "uikit-graph-node-title",
                     title: "Auth Svc",
                     "Auth Svc"
                 }
-            }
+            },
         ),
         (
-            GraphNodeData { id: "payment".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-error)".to_string()), border: None, background_color: None, shape: NodeShape::Circle, selected: false },
+            GraphNodeData {
+                id: "payment".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: Some("var(--uikit-error)".to_string()),
+                border: None,
+                background_color: None,
+                shape: NodeShape::Circle,
+                selected: false,
+            },
             rsx! {
                 div {
                     class: "uikit-graph-node-title",
                     title: "Billing",
                     "Billing"
                 }
-            }
+            },
         ),
         (
-            GraphNodeData { id: "db".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-warning)".to_string()), border: None, background_color: None, shape: NodeShape::Circle, selected: false },
+            GraphNodeData {
+                id: "db".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: Some("var(--uikit-warning)".to_string()),
+                border: None,
+                background_color: None,
+                shape: NodeShape::Circle,
+                selected: false,
+            },
             rsx! {
                 div {
                     class: "uikit-graph-node-title",
                     title: "Shared DB",
                     "Shared DB"
                 }
-            }
+            },
         ),
         (
-            GraphNodeData { id: "cache".to_string(), x: 0.0, y: 0.0, color: Some("var(--uikit-primary)".to_string()), border: None, background_color: None, shape: NodeShape::Circle, selected: false },
+            GraphNodeData {
+                id: "cache".to_string(),
+                x: 0.0,
+                y: 0.0,
+                color: Some("var(--uikit-primary)".to_string()),
+                border: None,
+                background_color: None,
+                shape: NodeShape::Circle,
+                selected: false,
+            },
             rsx! {
                 div {
                     class: "uikit-graph-node-title",
                     title: "Redis",
                     "Redis"
                 }
-            }
+            },
         ),
     ];
     let net_edges = vec![
-        GraphEdgeData { from: "gateway".to_string(), to: "auth".to_string(), label: Some("Active".to_string()), edge_type: EdgeType::Straight, color: Some("var(--uikit-info)".to_string()), animated: true, arrow: ArrowHead::Both },
-        GraphEdgeData { from: "gateway".to_string(), to: "payment".to_string(), label: None, edge_type: EdgeType::Straight, color: Some("var(--uikit-error)".to_string()), animated: false, arrow: ArrowHead::End },
-        GraphEdgeData { from: "auth".to_string(), to: "db".to_string(), label: None, edge_type: EdgeType::Straight, color: Some("var(--uikit-success)".to_string()), animated: false, arrow: ArrowHead::End },
-        GraphEdgeData { from: "payment".to_string(), to: "db".to_string(), label: None, edge_type: EdgeType::Straight, color: Some("var(--uikit-warning)".to_string()), animated: false, arrow: ArrowHead::End },
-        GraphEdgeData { from: "db".to_string(), to: "cache".to_string(), label: Some("Sync".to_string()), edge_type: EdgeType::Straight, color: Some("var(--uikit-primary)".to_string()), animated: true, arrow: ArrowHead::Both },
-        GraphEdgeData { from: "gateway".to_string(), to: "cache".to_string(), label: None, edge_type: EdgeType::Straight, color: None, animated: false, arrow: ArrowHead::End },
+        GraphEdgeData {
+            from: "gateway".to_string(),
+            to: "auth".to_string(),
+            label: Some("Active".to_string()),
+            edge_type: EdgeType::Straight,
+            color: Some("var(--uikit-info)".to_string()),
+            animated: true,
+            arrow: ArrowHead::Both,
+        },
+        GraphEdgeData {
+            from: "gateway".to_string(),
+            to: "payment".to_string(),
+            label: None,
+            edge_type: EdgeType::Straight,
+            color: Some("var(--uikit-error)".to_string()),
+            animated: false,
+            arrow: ArrowHead::End,
+        },
+        GraphEdgeData {
+            from: "auth".to_string(),
+            to: "db".to_string(),
+            label: None,
+            edge_type: EdgeType::Straight,
+            color: Some("var(--uikit-success)".to_string()),
+            animated: false,
+            arrow: ArrowHead::End,
+        },
+        GraphEdgeData {
+            from: "payment".to_string(),
+            to: "db".to_string(),
+            label: None,
+            edge_type: EdgeType::Straight,
+            color: Some("var(--uikit-warning)".to_string()),
+            animated: false,
+            arrow: ArrowHead::End,
+        },
+        GraphEdgeData {
+            from: "db".to_string(),
+            to: "cache".to_string(),
+            label: Some("Sync".to_string()),
+            edge_type: EdgeType::Straight,
+            color: Some("var(--uikit-primary)".to_string()),
+            animated: true,
+            arrow: ArrowHead::Both,
+        },
+        GraphEdgeData {
+            from: "gateway".to_string(),
+            to: "cache".to_string(),
+            label: None,
+            edge_type: EdgeType::Straight,
+            color: None,
+            animated: false,
+            arrow: ArrowHead::End,
+        },
     ];
 
     let select_options = vec![
@@ -299,16 +654,44 @@ fn App() -> Element {
     let mut table_loading = use_signal(|| false);
     let mut table_sort_col = use_signal(|| Some("name".to_string()));
     let mut table_sort_dir = use_signal(|| Some(SortDirection::Ascending));
-    let table_raw_data = use_signal(|| vec![
-        ("1".to_string(), "Danilo Guanabara".to_string(), "danilo@sensorial.systems".to_string(), "Admin".to_string(), true),
-        ("2".to_string(), "Alice Smith".to_string(), "alice@example.com".to_string(), "User".to_string(), false),
-        ("3".to_string(), "Bob Jones".to_string(), "bob@example.com".to_string(), "Editor".to_string(), true),
-        ("4".to_string(), "Charlie Brown".to_string(), "charlie@example.com".to_string(), "User".to_string(), false),
-    ]);
+    let table_raw_data = use_signal(|| {
+        vec![
+            (
+                "1".to_string(),
+                "Danilo Guanabara".to_string(),
+                "danilo@sensorial.systems".to_string(),
+                "Admin".to_string(),
+                true,
+            ),
+            (
+                "2".to_string(),
+                "Alice Smith".to_string(),
+                "alice@example.com".to_string(),
+                "User".to_string(),
+                false,
+            ),
+            (
+                "3".to_string(),
+                "Bob Jones".to_string(),
+                "bob@example.com".to_string(),
+                "Editor".to_string(),
+                true,
+            ),
+            (
+                "4".to_string(),
+                "Charlie Brown".to_string(),
+                "charlie@example.com".to_string(),
+                "User".to_string(),
+                false,
+            ),
+        ]
+    });
 
     let sorted_rows = use_memo(move || {
         let mut data = table_raw_data.read().clone();
-        if let (Some(col), Some(dir)) = (table_sort_col.read().clone(), table_sort_dir.read().clone()) {
+        if let (Some(col), Some(dir)) =
+            (table_sort_col.read().clone(), table_sort_dir.read().clone())
+        {
             data.sort_by(|a, b| {
                 let cmp = match col.as_str() {
                     "id" => a.0.cmp(&b.0),
@@ -327,7 +710,6 @@ fn App() -> Element {
         }
         data
     });
-
 
     rsx! {
         ThemeProvider {
@@ -438,6 +820,33 @@ fn App() -> Element {
                                         CircularButton { disabled: true, "D" }
                                         CircularButton { loading: true, "L" }
                                         CircularButton { color: "red".to_string(), "R" }
+                                    }
+                                }
+                                div {
+                                    Heading { level: HeadingLevel::H4, muted: true, style: "margin-bottom: 12px;", "Selectable Buttons (Tags / Filters)" }
+                                    div {
+                                        style: "display: flex; gap: 12px; flex-wrap: wrap; align-items: center;",
+                                        SelectableButton {
+                                            label: "Selectable",
+                                            selected: *selectable_btn_val.read(),
+                                            onselect: move |sel| selectable_btn_val.set(sel),
+                                        }
+                                        SelectableButton {
+                                            label: "Not selected",
+                                            selected: false,
+                                            onselect: move |_| {},
+                                        }
+                                        SelectableButton {
+                                            label: "Selected",
+                                            selected: true,
+                                            onselect: move |_| {},
+                                        }
+                                        SelectableButton {
+                                            label: "Disabled",
+                                            disabled: true,
+                                            selected: false,
+                                            onselect: move |_| {},
+                                        }
                                     }
                                 }
                             }
@@ -684,15 +1093,23 @@ fn App() -> Element {
                     // Overlay / Interactive Modal
                     section {
                         style: "display: flex; flex-direction: column; gap: 16px;",
-                        Heading { level: HeadingLevel::H2, bordered: true, "4. Modals & Dialogs" }
+                        Heading { level: HeadingLevel::H2, bordered: true, "4. Modals & Dynamic Form Flow Engine" }
                         Card {
                             div {
-                                style: "display: flex; flex-direction: column; gap: 12px; align-items: flex-start;",
-                                p { style: "margin: 0 0 12px 0; color: var(--uikit-muted);", "Click below to trigger a dialog box with background blur and close interactions." }
-                                Button {
-                                    variant: ButtonVariant::Primary,
-                                    onclick: move |_| modal_open.set(true),
-                                    "Open Interactive Modal"
+                                style: "display: flex; flex-direction: column; gap: 16px; align-items: flex-start;",
+                                p { style: "margin: 0; color: var(--uikit-muted);", "Explore modal dialogs as well as dynamic, conditional step-by-step survey flows with real-time branching logic and validation." }
+                                div {
+                                    style: "display: flex; gap: 12px; flex-wrap: wrap;",
+                                    Button {
+                                        variant: ButtonVariant::Primary,
+                                        onclick: move |_| modal_open.set(true),
+                                        "Open Standard Modal"
+                                    }
+                                    Button {
+                                        variant: ButtonVariant::Outline,
+                                        onclick: move |_| dynamic_form_open.set(true),
+                                        "Launch Dynamic Form Demo"
+                                    }
                                 }
                             }
                         }
@@ -843,11 +1260,11 @@ fn App() -> Element {
                     section {
                         style: "display: flex; flex-direction: column; gap: 16px;",
                         Heading { level: HeadingLevel::H2, bordered: true, "6. Table Component" }
-                        
+
                         Card {
                             div {
                                 style: "display: flex; flex-direction: column; gap: 20px;",
-                                
+
                                 // Controls
                                 div {
                                     style: "display: flex; gap: 20px; flex-wrap: wrap; align-items: center;",
@@ -1021,7 +1438,7 @@ fn App() -> Element {
                                             div {
                                                 class: "uikit-graph-container uikit-graph-grid",
                                                 style: "position: relative; width: 100%; max-width: 760px; height: 180px;",
-                                                
+
                                                 // Default Shapes
                                                 Node { id: "n-def-p".to_string(), x: 120.0, y: 50.0, color: None, shape: NodeShape::Pill, span { "Default Pill" } }
                                                 Node { id: "n-def-b".to_string(), x: 300.0, y: 50.0, color: None, shape: NodeShape::Box, div { style: "text-align: center;", span { style: "font-weight: 600;", "Default Box" } } }
@@ -1046,7 +1463,7 @@ fn App() -> Element {
                                             let (s3_x, s3_y, e3_x, e3_y) = get_circle_connection(510.0, 50.0, 620.0, 140.0, false);
                                             let (s4_x, s4_y, e4_x, e4_y) = get_circle_connection(150.0, 230.0, 270.0, 320.0, false);
                                             let (s5_x, s5_y, e5_x, e5_y) = get_circle_connection(440.0, 230.0, 560.0, 320.0, false);
-                                            
+
                                             rsx! {
                                                 div {
                                                     style: "width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;",
@@ -1058,33 +1475,33 @@ fn App() -> Element {
                                                             style: "width: 100%; height: 100%; pointer-events: none;",
                                                             view_box: "0 0 700 370",
                                                             EdgeDefs {}
-                                                            
+
                                                             // 1. Straight Edge
                                                             Edge { from_x: s1_x, from_y: s1_y, to_x: e1_x, to_y: e1_y, edge_type: EdgeType::Straight, arrow: ArrowHead::End, label: Some("Straight".to_string()), color: Some("var(--uikit-success)".to_string()) }
-                                                            
+
                                                             // 2. Bezier Edge
                                                             Edge { from_x: s2_x, from_y: s2_y, to_x: e2_x, to_y: e2_y, edge_type: EdgeType::Bezier, arrow: ArrowHead::End, label: Some("Bezier".to_string()), color: Some("var(--uikit-info)".to_string()) }
-                                                            
+
                                                             // 3. Orthogonal Edge
                                                             Edge { from_x: s3_x, from_y: s3_y, to_x: e3_x, to_y: e3_y, edge_type: EdgeType::Orthogonal, arrow: ArrowHead::End, label: Some("Orthogonal".to_string()), color: Some("var(--uikit-warning)".to_string()) }
-                                                            
+
                                                             // 4. Curved Orthogonal Edge
                                                             Edge { from_x: s4_x, from_y: s4_y, to_x: e4_x, to_y: e4_y, edge_type: EdgeType::CurvedOrthogonal, arrow: ArrowHead::End, label: Some("Curved Ortho".to_string()), color: Some("var(--uikit-error)".to_string()) }
 
                                                             // 5. Long boundary-anchored XMind curve
                                                             Edge { from_x: s5_x, from_y: s5_y, to_x: e5_x, to_y: e5_y, from_normal: Some((0.0, 1.0)), to_normal: Some((-1.0, 0.0)), edge_type: EdgeType::OrganicCurved, arrow: ArrowHead::End, label: Some("Organic Curved".to_string()), color: Some("var(--uikit-primary)".to_string()) }
                                                         }
-                                                        
+
                                                         // Labeled Endpoint Nodes
                                                         Node { id: "ep-s1".to_string(), x: 50.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
                                                         Node { id: "ep-e1".to_string(), x: 160.0, y: 140.0, color: Some("var(--uikit-success)".to_string()), shape: NodeShape::Circle, span { "End" } }
-                                                        
+
                                                         Node { id: "ep-s2".to_string(), x: 280.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
                                                         Node { id: "ep-e2".to_string(), x: 390.0, y: 140.0, color: Some("var(--uikit-info)".to_string()), shape: NodeShape::Circle, span { "End" } }
-                                                        
+
                                                         Node { id: "ep-s3".to_string(), x: 510.0, y: 50.0, color: None, shape: NodeShape::Circle, span { "Start" } }
                                                         Node { id: "ep-e3".to_string(), x: 620.0, y: 140.0, color: Some("var(--uikit-warning)".to_string()), shape: NodeShape::Circle, span { "End" } }
-                                                        
+
                                                         Node { id: "ep-s4".to_string(), x: 150.0, y: 230.0, color: None, shape: NodeShape::Circle, span { "Start" } }
                                                         Node { id: "ep-e4".to_string(), x: 270.0, y: 320.0, color: Some("var(--uikit-error)".to_string()), shape: NodeShape::Circle, span { "End" } }
 
@@ -1127,6 +1544,82 @@ fn App() -> Element {
                         "This operation cannot be undone."
                     }
                 }
+            }
+
+            // Dynamic Form Interactive Flow Modal
+            DynamicFormModal {
+                open: *dynamic_form_open.read(),
+                lang: "en".to_string(),
+                onclose: move |_| dynamic_form_open.set(false),
+                onsubmit: move |json_result: String| {
+                    dynamic_form_open.set(false);
+                    println!("Form submission result: {}", json_result);
+                },
+                questions: vec![
+                    Question {
+                        id: "welcome".to_string(),
+                        section: "Introduction".to_string(),
+                        title: "Welcome to the Dynamic Form Demo".to_string(),
+                        description: Some("Experience intuitive step-by-step interactive forms with logical conditional branching.".to_string()),
+                        question_type: QuestionType::Statement,
+                        required: false,
+                        options: None,
+                        placeholder: None,
+                        help_examples: None,
+                        visible_when: None,
+                        next_question_id: None,
+                    },
+                    Question {
+                        id: "role".to_string(),
+                        section: "About You".to_string(),
+                        title: "What is your primary role?".to_string(),
+                        description: Some("We customize your onboarding flow according to your background.".to_string()),
+                        question_type: QuestionType::SingleChoice,
+                        required: true,
+                        options: Some(vec![
+                            QuestionOption::new("developer", "Software Engineer / Developer").with_shortcut("A"),
+                            QuestionOption::new("designer", "UI/UX Designer").with_shortcut("B"),
+                            QuestionOption::new("pm", "Product Manager").with_shortcut("C"),
+                        ]),
+                        placeholder: None,
+                        help_examples: None,
+                        visible_when: None,
+                        next_question_id: None,
+                    },
+                    Question {
+                        id: "tech_stack".to_string(),
+                        section: "Preferences".to_string(),
+                        title: "Which languages or frameworks do you use daily?".to_string(),
+                        description: Some("Select all that apply.".to_string()),
+                        question_type: QuestionType::MultipleChoice,
+                        required: false,
+                        options: Some(vec![
+                            QuestionOption::new("rust", "Rust & Dioxus").with_shortcut("A"),
+                            QuestionOption::new("ts", "TypeScript & React").with_shortcut("B"),
+                            QuestionOption::new("python", "Python & AI Stack").with_shortcut("C"),
+                        ]),
+                        placeholder: None,
+                        help_examples: None,
+                        visible_when: Some(Condition::Equals {
+                            question_id: "role".to_string(),
+                            value: "developer".to_string(),
+                        }),
+                        next_question_id: None,
+                    },
+                    Question {
+                        id: "feedback".to_string(),
+                        section: "Feedback".to_string(),
+                        title: "How can we make Sensorial UI Kit better for you?".to_string(),
+                        description: Some("Tell us about features, components, or improvements you'd like to see.".to_string()),
+                        question_type: QuestionType::LongText,
+                        required: false,
+                        options: None,
+                        placeholder: Some("Type your thoughts and suggestions here...".to_string()),
+                        help_examples: Some(vec!["New chart/graph types".to_string(), "Dark mode optimizations".to_string()]),
+                        visible_when: None,
+                        next_question_id: None,
+                    },
+                ],
             }
         }
     }

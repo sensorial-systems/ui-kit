@@ -186,6 +186,61 @@ body {
     border-color: color-mix(in srgb, var(--uikit-btn-color) 85%, black);
 }
 
+/* --- Selectable Button --- */
+.uikit-selectable-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-family: var(--uikit-font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: var(--uikit-radius-md);
+    border: 1px solid var(--uikit-border);
+    background-color: var(--uikit-secondary);
+    color: var(--uikit-fg);
+    cursor: pointer;
+    user-select: none;
+    outline: none;
+    transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.1s ease;
+}
+
+.uikit-selectable-button:not(:disabled):hover {
+    background-color: var(--uikit-secondary-hover);
+    border-color: var(--uikit-border-hover);
+}
+
+.uikit-selectable-button:not(:disabled):active {
+    transform: scale(0.97);
+}
+
+.uikit-selectable-button:focus-visible {
+    box-shadow: 0 0 0 2px var(--uikit-bg), 0 0 0 4px var(--uikit-ring);
+}
+
+.uikit-selectable-button-selected {
+    background-color: color-mix(in srgb, var(--uikit-primary) 15%, transparent);
+    border-color: var(--uikit-primary);
+    color: var(--uikit-primary);
+    font-weight: 600;
+}
+
+.uikit-selectable-button-selected:not(:disabled):hover {
+    background-color: color-mix(in srgb, var(--uikit-primary) 22%, transparent);
+    border-color: var(--uikit-primary-hover);
+    color: var(--uikit-primary-hover);
+}
+
+.uikit-selectable-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Button Sizes */
 .uikit-btn-sm {
     padding: 6px 12px;
