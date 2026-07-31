@@ -57,11 +57,52 @@ fn App() -> Element {
     let mut slider_val = use_signal(|| 50.0);
     let mut datetime_val = use_signal(|| "2026-07-16 18:00".to_string());
     let mut color_val = use_signal(|| "#3b82f6".to_string());
-    let mut inline_color_val = use_signal(|| "#10b981".to_string());
     let mut selectable_btn_val = use_signal(|| true);
+    let mut inline_color_val = use_signal(|| "#10b981".to_string());
     let mut wysiwyg_val = use_signal(|| {
         "<p>Hello <b>World</b>! This is a <i>WYSIWYG</i> editor.</p><p>Double-click this text block to edit formatting.</p>".to_string()
     });
+    let mut requests_count = use_signal(|| 1234);
+    let mut cpu_usage = use_signal(|| 75.4);
+    let mut memory_load = use_signal(|| 4.2);
+    let mut sparkline_data = use_signal(|| vec![1.2, 1.5, 2.0, 1.8, 2.4, 3.1, 2.8, 3.5, 4.2]);
+
+    use_effect(move || {
+        spawn(async move {
+            let mut tick = 0u64;
+            loop {
+                #[cfg(target_arch = "wasm32")]
+                gloo_timers::future::TimeoutFuture::new(1000).await;
+                #[cfg(not(target_arch = "wasm32"))]
+                std::thread::sleep(std::time::Duration::from_secs(1));
+
+                tick += 1;
+
+                // Update requests count
+                let delta = (tick % 7) * 3 + 1;
+                requests_count.with_mut(|v| *v += delta);
+
+                // Update CPU usage (sine wave fluctuation between 40.0 and 90.0)
+                let new_cpu = (65.0 + 25.0 * ((tick as f64 * 0.3).sin())).round() / 10.0 + (tick % 5) as f64 - 2.0;
+                let clamped_cpu = new_cpu.clamp(10.0, 99.9);
+                cpu_usage.set((clamped_cpu * 10.0).round() / 10.0);
+
+                // Update Memory load and Sparkline history
+                let last_mem = *memory_load.read();
+                let step = (((tick * 13) % 9) as f64 - 4.0) * 0.15;
+                let new_mem = ((last_mem + step).clamp(1.0, 8.0) * 10.0).round() / 10.0;
+                memory_load.set(new_mem);
+
+                sparkline_data.with_mut(|data| {
+                    data.push(new_mem);
+                    if data.len() > 10 {
+                        data.remove(0);
+                    }
+                });
+            }
+        });
+    });
+
 
     let mut flow_active = use_signal(|| Some("build".to_string()));
     let mut tree_editable = use_signal(|| false);
@@ -1251,7 +1292,7 @@ fn App() -> Element {
                                                     span { class: "uikit-metric-label", "Requests Count" }
                                                 }
                                             },
-                                            Unit { value: "1,234", unit: "reqs" }
+                                            Unit { value: format!("{requests_count}"), unit: "reqs" }
                                         }
 
                                         // Gauge Card
@@ -1264,9 +1305,9 @@ fn App() -> Element {
                                                 }
                                             },
                                             div { style: "display: flex; flex-direction: column; gap: 8px;",
-                                                Unit { value: "75.4", unit: "%" }
+                                                Unit { value: format!("{cpu_usage:.1}"), unit: "%" }
                                                 Gauge {
-                                                    value: 75.4,
+                                                    value: *cpu_usage.read(),
                                                     min_label: "0.0",
                                                     max_label: "100.0"
                                                 }
@@ -1283,10 +1324,10 @@ fn App() -> Element {
                                                 }
                                             },
                                             Badge {
-                                                variant: BadgeVariant::Success,
+                                                variant: if *cpu_usage.read() > 85.0 { BadgeVariant::Warning } else { BadgeVariant::Success },
                                                 size: BadgeSize::Large,
                                                 borderless: true,
-                                                "Healthy"
+                                                if *cpu_usage.read() > 85.0 { "High Load" } else { "Healthy" }
                                             }
                                         }
 
@@ -1300,9 +1341,9 @@ fn App() -> Element {
                                                 }
                                             },
                                             div { style: "display: flex; flex-direction: column; gap: 12px;",
-                                                Unit { value: "4.2", unit: "GB" }
+                                                Unit { value: format!("{memory_load:.1}"), unit: "GB" }
                                                 Sparkline {
-                                                    data: vec![1.2, 1.5, 2.0, 1.8, 2.4, 3.1, 2.8, 3.5, 4.2],
+                                                    data: sparkline_data.read().clone(),
                                                     fill: true
                                                 }
                                             }

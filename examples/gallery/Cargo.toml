@@ -6,4 +6,5 @@ publish = false
 
 [dependencies]
 dioxus = { version = "0.7.1", features = ["web"] }
+gloo-timers = { version = "0.3", features = ["futures"] }
 ui-kit = { path = "../../crates/ui-kit" }
