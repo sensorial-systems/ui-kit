@@ -67,6 +67,28 @@ fn App() -> Element {
     let mut memory_load = use_signal(|| 4.2);
     let mut sparkline_data = use_signal(|| vec![1.2, 1.5, 2.0, 1.8, 2.4, 3.1, 2.8, 3.5, 4.2]);
 
+    let bill_data_sig = use_signal(|| {
+        let items = vec![
+            BillItem::new("item-101", "Cloud Server Cluster (Monthly - 8 Nodes)", 8.0, 125.0)
+                .with_category("Infrastructure"),
+            BillItem::new("item-102", "UI Kit Enterprise License & Support", 1.0, 500.0)
+                .with_category("Software License")
+                .with_discount(50.0),
+            BillItem::new("item-103", "Custom Component Engineering", 12.0, 85.0)
+                .with_category("Engineering"),
+        ];
+
+        BillData::new("INV-2026-8801")
+            .with_dates("2026-08-01", "2026-08-15")
+            .with_status(BillStatus::Pending)
+            .with_currency("$")
+            .with_items(items)
+            .with_tax_rate(10.0)
+            .with_discount(25.0)
+            .with_shipping_fee(15.0)
+            .with_notes("Payment is due within 15 days of invoice date.\nPlease remit payment to Bank Account: ACME-BANK-9988.")
+    });
+
     use_effect(move || {
         spawn(async move {
             let mut tick = 0u64;
@@ -1492,6 +1514,46 @@ fn App() -> Element {
                                             onsort: move |(col, dir)| {
                                                 table_sort_col.set(Some(col));
                                                 table_sort_dir.set(Some(dir));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 7. Bill Component
+                    section {
+                        style: "display: flex; flex-direction: column; gap: 16px;",
+                        Heading { level: HeadingLevel::H2, bordered: true, "7. Bill Component" }
+                        p {
+                            style: "color: var(--uikit-muted); font-size: 14px; margin-top: -8px;",
+                            "Streamlined, display-only bill component displaying item breakdown, quantity, unit cost, and aligned total sum."
+                        }
+
+                        Card {
+                            div {
+                                style: "display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start;",
+                                div {
+                                    style: "flex: 1; min-width: 320px; max-width: 380px;",
+                                    span { style: "font-size: 11px; font-weight: 700; color: var(--uikit-muted); display: block; margin-bottom: 8px; text-transform: uppercase;", "Active Bill Widget" }
+                                    Bill {
+                                        bill: bill_data_sig.read().clone(),
+                                    }
+                                }
+                                div {
+                                    style: "flex: 1; min-width: 320px; max-width: 380px;",
+                                    span { style: "font-size: 11px; font-weight: 700; color: var(--uikit-muted); display: block; margin-bottom: 8px; text-transform: uppercase;", "Secondary Invoice Summary" }
+                                    {
+                                        let mut sample_bill = bill_data_sig.read().clone();
+                                        sample_bill.id = "INV-2026-9042".to_string();
+                                        sample_bill.items = vec![
+                                            BillItem::new("item-201", "Design System Audit & Review", 1.0, 1200.0),
+                                            BillItem::new("item-202", "Custom Theme Token Preset", 2.0, 350.0),
+                                        ];
+                                        rsx! {
+                                            Bill {
+                                                bill: sample_bill,
                                             }
                                         }
                                     }
