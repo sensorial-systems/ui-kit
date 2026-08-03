@@ -5,6 +5,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn Bill(
     bill: BillData,
+    #[props(into, default)] class: Option<String>,
 ) -> Element {
     let currency = &bill.currency;
     let decimals = bill.decimal_places;
@@ -18,9 +19,11 @@ pub fn Bill(
         }
     };
 
+    let extra_class = class.as_deref().unwrap_or_default();
+
     rsx! {
         div {
-            class: "uikit-bill",
+            class: "uikit-bill {extra_class}",
             Card {
                 header: header_elem,
                 div {

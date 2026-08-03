@@ -2734,7 +2734,6 @@ body {
    ========================================================================== */
 
 .uikit-bill {
-    max-width: 380px;
     font-size: 13px;
 }
 
@@ -2767,9 +2766,9 @@ body {
 
 .uikit-bill-item-row {
     display: grid;
-    grid-template-columns: 1fr 45px 85px;
+    grid-template-columns: 1fr auto max-content;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     padding: 10px 12px;
     font-size: 12px;
     background: rgba(0, 0, 0, 0.03);
@@ -2795,12 +2794,14 @@ body {
     color: var(--uikit-muted);
     font-size: 11px;
     text-align: right;
+    white-space: nowrap;
 }
 
 .uikit-bill-item-total {
     font-weight: 600;
     color: var(--uikit-primary);
     text-align: right;
+    white-space: nowrap;
 }
 
 /* Total row inside items container - 100% aligned with grid */
@@ -2813,14 +2814,13 @@ body {
     background: rgba(255, 255, 255, 0.07);
 }
 
-
-
 .uikit-bill-total-label {
     font-size: 12px;
     color: var(--uikit-fg);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+    white-space: nowrap;
 }
 
 .uikit-bill-total-qty {
@@ -2832,6 +2832,7 @@ body {
     font-weight: 800;
     color: var(--uikit-primary);
     text-align: right;
+    white-space: nowrap;
 }
 
 
