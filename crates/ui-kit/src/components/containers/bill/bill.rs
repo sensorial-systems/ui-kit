@@ -11,6 +11,13 @@ pub fn Bill(
     let decimals = bill.decimal_places;
     let total_sum = bill.total_sum();
     let formatted_total = format!("{:.*}", decimals, total_sum);
+    let total_color_class = if total_sum > 1e-9 {
+        "uikit-bill-item-positive"
+    } else if total_sum < -1e-9 {
+        "uikit-bill-item-negative"
+    } else {
+        "uikit-bill-item-neutral"
+    };
 
     let header_elem = rsx! {
         div {
@@ -35,13 +42,20 @@ pub fn Bill(
                             bill.items.iter().map(|item| {
                                 let item_total = item.total();
                                 let formatted_item_total = format!("{:.*}", decimals, item_total);
+                                let color_class = if item_total > 1e-9 {
+                                    "uikit-bill-item-positive"
+                                } else if item_total < -1e-9 {
+                                    "uikit-bill-item-negative"
+                                } else {
+                                    "uikit-bill-item-neutral"
+                                };
                                 rsx! {
                                     div {
                                         key: "{item.id}",
                                         class: "uikit-bill-item-row",
                                         span { class: "uikit-bill-item-desc", "{item.description}" }
                                         span { class: "uikit-bill-item-qty", "x{item.amount}" }
-                                        span { class: "uikit-bill-item-total", "{currency} {formatted_item_total}" }
+                                        span { class: "uikit-bill-item-total {color_class}", "{currency} {formatted_item_total}" }
                                     }
                                 }
                             })
@@ -52,7 +66,7 @@ pub fn Bill(
                         class: "uikit-bill-item-row uikit-bill-total-row",
                         span { class: "uikit-bill-total-label", "Total" }
                         span { class: "uikit-bill-total-qty", "" }
-                        span { class: "uikit-bill-total-value", "{currency} {formatted_total}" }
+                        span { class: "uikit-bill-total-value {total_color_class}", "{currency} {formatted_total}" }
                     }
                 }
             }

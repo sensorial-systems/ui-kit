@@ -74,8 +74,10 @@ fn App() -> Element {
             BillItem::new("item-102", "UI Kit Enterprise License & Support", 1.0, 500.0)
                 .with_category("Software License")
                 .with_discount(50.0),
-            BillItem::new("item-103", "Custom Component Engineering", 12.0, 85.0)
-                .with_category("Engineering"),
+            BillItem::new("item-103", "Promotional Refund / Service Credit", 1.0, -150.0)
+                .with_category("Credits"),
+            BillItem::new("item-104", "Included Tier Support", 1.0, 0.0)
+                .with_category("Support"),
         ];
 
         BillData::new("INV-2026-8801")
@@ -1545,14 +1547,13 @@ fn App() -> Element {
                                     style: "flex: 1; min-width: 320px; max-width: 380px;",
                                     span { style: "font-size: 11px; font-weight: 700; color: var(--uikit-muted); display: block; margin-bottom: 8px; text-transform: uppercase;", "Secondary Invoice Summary" }
                                     {
-                                        let mut sample_bill = bill_data_sig.read().clone();
-                                        sample_bill.id = "INV-2026-9042".to_string();
-                                        sample_bill.currency = "SOL".to_string();
-                                        sample_bill.decimal_places = 6;
-                                        sample_bill.items = vec![
-                                            BillItem::new("item-201", "Design System Audit & Review", 1.0, 0.004251),
-                                            BillItem::new("item-202", "Custom Theme Token Preset", 2.0, 0.000125),
-                                        ];
+                                        let sample_bill = BillData::new("INV-2026-9042")
+                                            .with_currency("SOL")
+                                            .with_decimal_places(6)
+                                            .with_items(vec![
+                                                BillItem::new("item-201", "Design System Audit & Review", 1.0, 0.004251),
+                                                BillItem::new("item-202", "Custom Theme Token Preset", 2.0, 0.000125),
+                                            ]);
                                         rsx! {
                                             Bill {
                                                 bill: sample_bill,

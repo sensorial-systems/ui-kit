@@ -2835,6 +2835,19 @@ body {
     white-space: nowrap;
 }
 
+/* Bill Item Color Coding */
+.uikit-bill-item-positive {
+    color: var(--uikit-primary) !important;
+}
+
+.uikit-bill-item-negative {
+    color: var(--uikit-success) !important;
+}
+
+.uikit-bill-item-neutral {
+    color: var(--uikit-primary) !important;
+}
+
 
 
 

@@ -104,6 +104,6 @@ impl BillData {
         let sub = self.subtotal();
         let disc = self.item_discounts() + self.discount;
         let tax = self.total_tax();
-        (sub - disc + tax + self.shipping_fee).max(0.0)
+        sub - disc + tax + self.shipping_fee
     }
 }
