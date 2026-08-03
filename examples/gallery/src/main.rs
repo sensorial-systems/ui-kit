@@ -1547,9 +1547,11 @@ fn App() -> Element {
                                     {
                                         let mut sample_bill = bill_data_sig.read().clone();
                                         sample_bill.id = "INV-2026-9042".to_string();
+                                        sample_bill.currency = "SOL".to_string();
+                                        sample_bill.decimal_places = 6;
                                         sample_bill.items = vec![
-                                            BillItem::new("item-201", "Design System Audit & Review", 1.0, 1200.0),
-                                            BillItem::new("item-202", "Custom Theme Token Preset", 2.0, 350.0),
+                                            BillItem::new("item-201", "Design System Audit & Review", 1.0, 0.004251),
+                                            BillItem::new("item-202", "Custom Theme Token Preset", 2.0, 0.000125),
                                         ];
                                         rsx! {
                                             Bill {

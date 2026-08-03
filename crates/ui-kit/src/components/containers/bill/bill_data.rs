@@ -13,6 +13,7 @@ pub struct BillData {
     pub discount: f64,
     pub shipping_fee: f64,
     pub notes: Option<String>,
+    pub decimal_places: usize,
 }
 
 impl BillData {
@@ -28,7 +29,13 @@ impl BillData {
             discount: 0.0,
             shipping_fee: 0.0,
             notes: None,
+            decimal_places: 2,
         }
+    }
+
+    pub fn with_decimal_places(mut self, decimal_places: usize) -> Self {
+        self.decimal_places = decimal_places;
+        self
     }
 
     pub fn with_dates(mut self, issue_date: impl Into<String>, due_date: impl Into<String>) -> Self {
