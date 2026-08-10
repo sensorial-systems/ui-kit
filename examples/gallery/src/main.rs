@@ -1735,9 +1735,108 @@ fn App() -> Element {
                         }
                     }
                 }
+
+                // Data Visualization & Charts Card
+                Card {
+                    header: rsx! { "Data Visualization & Charts" },
+                    div {
+                        style: "display: flex; flex-direction: column; gap: 32px;",
+                        div {
+                            style: "display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; align-items: start;",
+
+                            // 1. Pie Chart
+                            div {
+                                style: "display: flex; flex-direction: column; gap: 12px; align-items: center;",
+                                Heading { level: HeadingLevel::H3, "Pie Chart" }
+                                PieChart {
+                                    data: vec![
+                                        PieChartSlice::new("Infrastructure", 45.0, "var(--uikit-primary)"),
+                                        PieChartSlice::new("Licenses", 25.0, "var(--uikit-success)"),
+                                        PieChartSlice::new("Support", 15.0, "var(--uikit-warning)"),
+                                        PieChartSlice::new("Other", 15.0, "var(--uikit-info)"),
+                                    ],
+                                    size: 220.0,
+                                }
+                            }
+
+                            // 2. Donut Chart with Center Info
+                            div {
+                                style: "display: flex; flex-direction: column; gap: 12px; align-items: center;",
+                                Heading { level: HeadingLevel::H3, "Donut Chart (Center Info)" }
+                                DonutChart {
+                                    data: vec![
+                                        PieChartSlice::new("Completed", 68.0, "var(--uikit-success)"),
+                                        PieChartSlice::new("In Progress", 22.0, "var(--uikit-primary)"),
+                                        PieChartSlice::new("Pending", 10.0, "var(--uikit-warning)"),
+                                    ],
+                                    size: 220.0,
+                                    inner_radius_ratio: 0.65,
+                                    span { style: "font-size: 24px; font-weight: 800; color: var(--uikit-fg); line-height: 1.1;", "68%" }
+                                    span { style: "font-size: 11px; font-weight: 500; color: var(--uikit-muted); text-transform: uppercase;", "Tasks Done" }
+                                }
+                            }
+                        }
+
+                        div {
+                            style: "display: flex; flex-direction: column; gap: 20px;",
+                            Heading { level: HeadingLevel::H3, "Stacked Bar Charts" }
+
+                            div {
+                                style: "display: flex; flex-direction: column; gap: 24px;",
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 8px;",
+                                    span { style: "font-size: 13px; font-weight: 600; color: var(--uikit-muted);", "Horizontal Stacked Bar Chart (Normalized 100%)" }
+                                    StackedBarChart {
+                                        orientation: ChartOrientation::Horizontal,
+                                        normalize_100: true,
+                                        groups: vec![
+                                            StackedBarGroup::new("Q1 2026", vec![
+                                                BarSegment::new("Direct", 400.0, "var(--uikit-primary)"),
+                                                BarSegment::new("Referral", 300.0, "var(--uikit-success)"),
+                                                BarSegment::new("Social", 200.0, "var(--uikit-warning)"),
+                                            ]),
+                                            StackedBarGroup::new("Q2 2026", vec![
+                                                BarSegment::new("Direct", 550.0, "var(--uikit-primary)"),
+                                                BarSegment::new("Referral", 250.0, "var(--uikit-success)"),
+                                                BarSegment::new("Social", 350.0, "var(--uikit-warning)"),
+                                            ]),
+                                        ],
+                                    }
+                                }
+
+                                div {
+                                    style: "display: flex; flex-direction: column; gap: 8px;",
+                                    span { style: "font-size: 13px; font-weight: 600; color: var(--uikit-muted);", "Vertical Stacked Bar Chart (Absolute Values)" }
+                                    StackedBarChart {
+                                        orientation: ChartOrientation::Vertical,
+                                        bar_thickness: 44.0,
+                                        groups: vec![
+                                            StackedBarGroup::new("2024", vec![
+                                                BarSegment::new("Frontend", 120.0, "var(--uikit-primary)"),
+                                                BarSegment::new("Backend", 90.0, "var(--uikit-info)"),
+                                                BarSegment::new("DevOps", 40.0, "var(--uikit-warning)"),
+                                            ]),
+                                            StackedBarGroup::new("2025", vec![
+                                                BarSegment::new("Frontend", 180.0, "var(--uikit-primary)"),
+                                                BarSegment::new("Backend", 140.0, "var(--uikit-info)"),
+                                                BarSegment::new("DevOps", 70.0, "var(--uikit-warning)"),
+                                            ]),
+                                            StackedBarGroup::new("2026", vec![
+                                                BarSegment::new("Frontend", 240.0, "var(--uikit-primary)"),
+                                                BarSegment::new("Backend", 210.0, "var(--uikit-info)"),
+                                                BarSegment::new("DevOps", 110.0, "var(--uikit-warning)"),
+                                            ]),
+                                        ],
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // Modal Component
+
             Modal {
                 open: *modal_open.read(),
                 onclose: move |_| modal_open.set(false),
