@@ -6,6 +6,84 @@ fn main() {
     dioxus::launch(App);
 }
 
+fn gallery_menu_items() -> Vec<MenuItem> {
+    vec![
+        MenuItem {
+            id: "products".to_string(),
+            label: "Products".to_string(),
+            icon: None,
+            children: vec![
+                MenuSubItem {
+                    id: "platform".to_string(),
+                    label: "Platform".to_string(),
+                    icon: None,
+                    sub_children: vec![
+                        MenuLeafItem {
+                            id: "analytics".to_string(),
+                            label: "Analytics".to_string(),
+                            icon: None,
+                            description: Some("Real-time data insights and metrics".to_string()),
+                        },
+                        MenuLeafItem {
+                            id: "automation".to_string(),
+                            label: "Automation".to_string(),
+                            icon: None,
+                            description: Some("Automate workflows and triggers".to_string()),
+                        },
+                    ],
+                },
+                MenuSubItem {
+                    id: "integrations".to_string(),
+                    label: "Integrations".to_string(),
+                    icon: None,
+                    sub_children: vec![
+                        MenuLeafItem {
+                            id: "api_keys".to_string(),
+                            label: "API Keys".to_string(),
+                            icon: None,
+                            description: Some("Manage security and access tokens".to_string()),
+                        },
+                        MenuLeafItem {
+                            id: "webhooks".to_string(),
+                            label: "Webhooks".to_string(),
+                            icon: None,
+                            description: Some("Connect external notification sinks".to_string()),
+                        },
+                    ],
+                },
+            ],
+        },
+        MenuItem {
+            id: "solutions".to_string(),
+            label: "Solutions".to_string(),
+            icon: None,
+            children: vec![MenuSubItem {
+                id: "enterprise".to_string(),
+                label: "Enterprise".to_string(),
+                icon: None,
+                sub_children: vec![MenuLeafItem {
+                    id: "security".to_string(),
+                    label: "Security & Compliance".to_string(),
+                    icon: None,
+                    description: Some("SOC2 and ISO 27001 readiness".to_string()),
+                }],
+            }],
+        },
+        MenuItem {
+            id: "pricing".to_string(),
+            label: "Pricing".to_string(),
+            icon: None,
+            children: vec![],
+        },
+        MenuItem {
+            id: "docs".to_string(),
+            label: "Documentation".to_string(),
+            icon: None,
+            children: vec![],
+        },
+    ]
+}
+
 fn get_circle_connection(
     fx: f64,
     fy: f64,
@@ -918,6 +996,17 @@ fn App() -> Element {
                                     on_select: move |selected_id: String| {
                                         println!("Selected menu item: {}", selected_id);
                                     },
+                                }
+                                Heading { level: HeadingLevel::H4, muted: true, "Vertical Menu" }
+                                div {
+                                    style: "width: 240px;",
+                                    Menu {
+                                        items: gallery_menu_items(),
+                                        layout: MenuLayout::Vertical,
+                                        on_select: move |selected_id: String| {
+                                            println!("Selected vertical menu item: {}", selected_id);
+                                        },
+                                    }
                                 }
                             }
                         }

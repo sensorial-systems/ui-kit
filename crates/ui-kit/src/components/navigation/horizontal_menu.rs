@@ -1,40 +1,46 @@
 use dioxus::prelude::*;
 
 #[derive(Clone, PartialEq)]
-pub struct HorizontalMenuItem {
+pub struct MenuItem {
     pub id: String,
     pub label: String,
     pub icon: Option<String>,
-    pub children: Vec<HorizontalMenuSubItem>,
+    pub children: Vec<MenuSubItem>,
 }
 
 #[derive(Clone, PartialEq)]
-pub struct HorizontalMenuSubItem {
+pub struct MenuSubItem {
     pub id: String,
     pub label: String,
     pub icon: Option<String>,
-    pub sub_children: Vec<HorizontalMenuLeafItem>,
+    pub sub_children: Vec<MenuLeafItem>,
 }
 
 #[derive(Clone, PartialEq)]
-pub struct HorizontalMenuLeafItem {
+pub struct MenuLeafItem {
     pub id: String,
     pub label: String,
     pub icon: Option<String>,
     pub description: Option<String>,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MenuLayout {
+    #[default]
+    Horizontal,
+    Vertical,
+}
+
 #[component]
-pub fn HorizontalMenu(
-    #[props(default)] items: Vec<HorizontalMenuItem>,
+pub fn Menu(
+    #[props(default)] items: Vec<MenuItem>,
     #[props(default)] on_select: Option<EventHandler<String>>,
     #[props(default)] class: Option<String>,
+    #[props(default)] layout: MenuLayout,
 ) -> Element {
+    let vertical = layout == MenuLayout::Vertical;
     let mut active_item = use_signal(|| None::<String>);
     let mut active_sub_item = use_signal(|| None::<String>);
-
-    let mut is_hovering_bar = use_signal(|| false);
-    let mut is_hovering_dropdown = use_signal(|| false);
 
     let is_open = active_item.read().is_some();
     let current_active_item_id = active_item.read().clone();
@@ -79,7 +85,7 @@ pub fn HorizontalMenu(
         }
     }).cloned();
 
-    let mut last_active_item_data = use_signal(|| None::<HorizontalMenuItem>);
+    let mut last_active_item_data = use_signal(|| None::<MenuItem>);
     let mut last_active_sub_id = use_signal(|| None::<String>);
 
     if let Some(ref data) = active_item_data {
@@ -134,7 +140,8 @@ pub fn HorizontalMenu(
     let dropdown_width = if has_sub_active { 480 } else { 220 };
 
     let class_str = format!(
-        "uikit-horizontal-menu-root {}",
+        "uikit-horizontal-menu-root {} {}",
+        if vertical { "uikit-horizontal-menu-root-vertical" } else { "" },
         class.unwrap_or_default()
     );
 
@@ -142,33 +149,11 @@ pub fn HorizontalMenu(
         div {
             class: "{class_str}",
             onmouseleave: move |_| {
-                is_hovering_bar.set(false);
-                is_hovering_dropdown.set(false);
                 close_menu();
             },
-            // Background overlay with darken & blur when expanded
-            div {
-                key: "horizontal-menu-backdrop",
-                class: format!(
-                    "uikit-horizontal-menu-backdrop {}",
-                    if is_open && has_children { "is-active" } else { "" }
-                ),
-                onclick: move |_| close_menu(),
-            }
-
             // Top Menu Bar
             div {
                 class: "uikit-horizontal-menu-bar",
-                onmouseenter: move |_| {
-                    is_hovering_bar.set(true);
-                },
-                onmouseleave: move |evt: MouseEvent| {
-                    is_hovering_bar.set(false);
-                    let coords = evt.element_coordinates();
-                    if coords.y < 34.0 || coords.x <= 2.0 {
-                        close_menu();
-                    }
-                },
                 for item in items.clone() {
                     {
                         let item_id = item.id.clone();
@@ -251,15 +236,10 @@ pub fn HorizontalMenu(
                     if is_open && has_children { "is-expanded" } else { "is-collapsed" },
                     if has_sub_active { "has-sub-active" } else { "" }
                 ),
-                style: format!("left: {}px;", dropdown_left_offset),
-                onmouseenter: move |_| {
-                    is_hovering_dropdown.set(true);
-                },
-                onmouseleave: move |_| {
-                    is_hovering_dropdown.set(false);
-                    if !*is_hovering_bar.read() {
-                        close_menu();
-                    }
+                style: if vertical {
+                    format!("left: 100%; top: {}px;", active_item_index.unwrap_or_default() * 42)
+                } else {
+                    format!("left: {}px;", dropdown_left_offset)
                 },
                 div {
                     class: "uikit-horizontal-menu-dropdown-content",
@@ -389,4 +369,18 @@ pub fn HorizontalMenu(
             }
         }
     }
+}
+
+pub type HorizontalMenuItem = MenuItem;
+pub type HorizontalMenuSubItem = MenuSubItem;
+pub type HorizontalMenuLeafItem = MenuLeafItem;
+
+#[allow(deprecated)]
+#[component]
+pub fn HorizontalMenu(
+    #[props(default)] items: Vec<MenuItem>,
+    #[props(default)] on_select: Option<EventHandler<String>>,
+    #[props(default)] class: Option<String>,
+) -> Element {
+    rsx! { Menu { items, on_select, class, layout: MenuLayout::Horizontal } }
 }

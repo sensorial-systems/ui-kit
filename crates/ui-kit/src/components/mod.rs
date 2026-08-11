@@ -13,6 +13,6 @@ pub use graph::{
     FlowGraph, HierarchyGraphEditor, HierarchyGraphModel, HierarchyGraphViewer, HierarchyNode, NetworkGraph,
 };
 pub use navigation::{
-    HorizontalMenu, HorizontalMenuItem, HorizontalMenuSubItem, HorizontalMenuLeafItem,
+    HorizontalMenu, HorizontalMenuItem, HorizontalMenuSubItem, HorizontalMenuLeafItem, Menu,
+    MenuItem, MenuLayout, MenuLeafItem, MenuSubItem,
 };
-
