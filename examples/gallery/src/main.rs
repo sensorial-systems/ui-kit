@@ -830,6 +830,24 @@ fn App() -> Element {
             ),
         ]
     });
+    let mut pipeline_cards = use_signal(|| vec![
+        PipelineCard { id: "research".into(), column_id: "backlog".into(), title: "Research customer needs".into(), group: "Discovery".into(), color: "#8b5cf6".into(), meta: "Research · Medium · Aug 11–12".into() },
+        PipelineCard { id: "brief".into(), column_id: "planned".into(), title: "Prepare implementation brief".into(), group: "Planning".into(), color: "#ec4899".into(), meta: "Planning · Medium · Aug 12–13".into() },
+        PipelineCard { id: "tokens".into(), column_id: "progress".into(), title: "Define semantic tokens".into(), group: "Design system".into(), color: "#3b82f6".into(), meta: "Design · High · Aug 12–15".into() },
+        PipelineCard { id: "docs".into(), column_id: "review".into(), title: "Review component docs".into(), group: "Documentation".into(), color: "#f59e0b".into(), meta: "Docs · Low · Aug 14–15".into() },
+        PipelineCard { id: "release".into(), column_id: "done".into(), title: "Publish alpha release".into(), group: "UI kit".into(), color: "#10b981".into(), meta: "Release · Medium · Aug 8–10".into() },
+    ]);
+    let mut pipeline_selected = use_signal(Vec::<String>::new);
+    let mut pipeline_dragging = use_signal(|| None::<String>);
+    let mut pipeline_hovered = use_signal(|| None::<String>);
+    let mut pipeline_pointer = use_signal(|| None::<(f64, f64)>);
+    let mut timeline_zoom = use_signal(|| 92.0_f64);
+    let mut timeline_expanded = use_signal(|| true);
+    let mut timeline_milestone_expanded = use_signal(|| true);
+    let mut timeline_task_selected = use_signal(|| false);
+    let mut timeline_task_left = use_signal(|| 78.0_f64);
+    let mut timeline_task_width = use_signal(|| 18.0_f64);
+    let mut timeline_drag = use_signal(|| None::<(bool, f64, f64)>);
 
     let sorted_rows = use_memo(move || {
         let mut data = table_raw_data.read().clone();
@@ -1613,10 +1631,145 @@ fn App() -> Element {
                         }
                     }
 
-                    // 7. Bill Component
+                    // 7. Pipeline Board and Timeline
                     section {
                         style: "display: flex; flex-direction: column; gap: 16px;",
-                        Heading { level: HeadingLevel::H2, bordered: true, "7. Bill Component" }
+                        Heading { level: HeadingLevel::H2, bordered: true, "7. Planning Components" }
+                        p { style: "color: var(--uikit-muted); font-size: 14px; margin-top: -8px;", "Reusable workflow and scheduling views. Drag pipeline cards between columns; use Shift-click for multi-selection." }
+
+                        Card {
+                            div {
+                                style: "display: flex; flex-direction: column; gap: 14px;",
+                                onmousemove: move |event| {
+                                    if pipeline_dragging().is_some() {
+                                        let point = event.data().client_coordinates();
+                                        pipeline_pointer.set(Some((point.x, point.y)));
+                                    }
+                                },
+                                onmouseup: move |_| {
+                                    pipeline_dragging.set(None);
+                                    pipeline_hovered.set(None);
+                                    pipeline_pointer.set(None);
+                                },
+                                Heading { level: HeadingLevel::H3, "PipelineBoard" }
+                                PipelineBoard {
+                                    columns: vec![
+                                        PipelineColumn { id: "backlog".into(), label: "Backlog".into(), class: "backlog".into() },
+                                        PipelineColumn { id: "planned".into(), label: "Planned".into(), class: "planned".into() },
+                                        PipelineColumn { id: "progress".into(), label: "In progress".into(), class: "in-progress".into() },
+                                        PipelineColumn { id: "review".into(), label: "Review".into(), class: "review".into() },
+                                        PipelineColumn { id: "done".into(), label: "Done".into(), class: "done".into() },
+                                    ],
+                                    cards: pipeline_cards(),
+                                    selected: pipeline_selected(),
+                                    dragging: pipeline_dragging(),
+                                    hovered_column: pipeline_hovered(),
+                                    empty_label: "No work items".to_string(),
+                                    empty_column_label: "Drop items here".to_string(),
+                                    onselect: move |(id, extend): (String, bool)| {
+                                        if extend {
+                                            pipeline_selected.with_mut(|items| {
+                                                if items.contains(&id) { items.retain(|item| item != &id); } else { items.push(id); }
+                                            });
+                                        } else {
+                                            pipeline_selected.set(vec![id]);
+                                        }
+                                    },
+                                    onpointerdown: move |(id, x, y): (String, f64, f64)| {
+                                        pipeline_dragging.set(Some(id));
+                                        pipeline_pointer.set(Some((x, y)));
+                                    },
+                                    onhovercolumn: move |id| pipeline_hovered.set(id),
+                                    ondrop: move |column_id: String| {
+                                        if let Some(card_id) = pipeline_dragging() {
+                                            pipeline_cards.with_mut(|cards| {
+                                                if let Some(card) = cards.iter_mut().find(|card| card.id == card_id) { card.column_id = column_id; }
+                                            });
+                                        }
+                                        pipeline_dragging.set(None);
+                                        pipeline_hovered.set(None);
+                                        pipeline_pointer.set(None);
+                                    },
+                                }
+                                if let (Some(card_id), Some((x, y))) = (pipeline_dragging(), pipeline_pointer()) {
+                                    if let Some(card) = pipeline_cards().into_iter().find(|card| card.id == card_id) {
+                                        PipelineDragPreview { card, count: pipeline_selected().len().max(1), x, y }
+                                    }
+                                }
+                            }
+                        }
+
+                        Card {
+                            div { style: "display: flex; flex-direction: column; gap: 14px;",
+                                div { style: "display: flex; align-items: center; justify-content: space-between; gap: 12px;",
+                                    Heading { level: HeadingLevel::H3, "Timeline" }
+                                    div { style: "display: flex; gap: 8px;",
+                                        Button { variant: ButtonVariant::Secondary, size: ButtonSize::Small, onclick: move |_| timeline_zoom.with_mut(|width| *width = (*width / 1.16).max(58.0)), "− Zoom" }
+                                        Button { variant: ButtonVariant::Secondary, size: ButtonSize::Small, onclick: move |_| timeline_zoom.with_mut(|width| *width = (*width * 1.16).min(180.0)), "+ Zoom" }
+                                    }
+                                }
+                                div {
+                                    onmousemove: move |event| {
+                                        if let Some((resizing, start_x, original)) = timeline_drag() {
+                                            let delta = (event.data().client_coordinates().x - start_x) / (timeline_zoom() * 6.0) * 100.0;
+                                            if resizing {
+                                                timeline_task_width.set((original + delta).clamp(5.0, 100.0 - timeline_task_left()));
+                                            } else {
+                                                timeline_task_left.set((original + delta).clamp(0.0, 100.0 - timeline_task_width()));
+                                            }
+                                        }
+                                    },
+                                    onmouseup: move |_| timeline_drag.set(None),
+                                    Timeline {
+                                    columns: ["Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 15", "Aug 16"].into_iter().enumerate().map(|(index, label)| TimelineColumn {
+                                        label: label.to_string(),
+                                        accent: (index == 0).then(|| "Today".to_string()),
+                                    }).collect::<Vec<_>>(),
+                                    lane_width: 170.0,
+                                    unit_width: timeline_zoom(),
+                                    class: "gallery-timeline".to_string(),
+                                    projects: vec![TimelineProject {
+                                        id: "design-system".to_string(),
+                                        title: "Design system".to_string(),
+                                        color: "#3b82f6".to_string(),
+                                        selected: true,
+                                        expanded: timeline_expanded(),
+                                        milestones: vec![TimelineMilestone {
+                                            id: "foundation".to_string(),
+                                            title: "Foundation".to_string(),
+                                            description: "Tokens and component documentation".to_string(),
+                                            progress: 60,
+                                            span_label: "Aug 11 - Aug 15".to_string(),
+                                            range: TimelineRange { left: 7.0, width: 73.0 },
+                                            expanded: timeline_milestone_expanded(),
+                                            tasks: vec![
+                                                TimelineTask { id: "tokens".to_string(), title: "Semantic tokens".to_string(), meta: "Design / High / In Progress".to_string(), span_label: "Aug 11 - 4 days".to_string(), status_class: "in-progress".to_string(), range: TimelineRange { left: 7.0, width: 58.0 }, relative_range: Some(TimelineRange { left: 0.0, width: 78.0 }), selected: false },
+                                                TimelineTask { id: "publish".to_string(), title: "Publish alpha".to_string(), meta: "Release / Medium / Done".to_string(), span_label: "Aug 15 - 1 day".to_string(), status_class: "done".to_string(), range: TimelineRange { left: timeline_task_left(), width: timeline_task_width() }, relative_range: Some(TimelineRange { left: 86.0, width: 14.0 }), selected: timeline_task_selected() },
+                                            ],
+                                        }],
+                                        unassociated_tasks: vec![TimelineTask { id: "docs".to_string(), title: "Component docs".to_string(), meta: "Docs / Low / Review".to_string(), span_label: "Aug 13 - 2 days".to_string(), status_class: "review".to_string(), range: TimelineRange { left: 42.0, width: 38.0 }, relative_range: None, selected: false }],
+                                    }],
+                                    onmounted: move |_| {},
+                                    onwheel: move |_| {},
+                                    onmousedown: move |_| {},
+                                    ontoggleproject: move |_| timeline_expanded.toggle(),
+                                    ontogglemilestone: move |_| timeline_milestone_expanded.toggle(),
+                                    onselectproject: move |_| timeline_task_selected.set(false),
+                                    onselectmilestone: move |_| timeline_task_selected.set(false),
+                                    onselecttask: move |id: String| timeline_task_selected.set(id == "publish"),
+                                    onstartmilestonemove: move |_: (String, f64)| {},
+                                    onstarttaskmove: move |(id, x): (String, f64)| if id == "publish" { timeline_drag.set(Some((false, x, timeline_task_left()))); },
+                                    onstarttaskresize: move |(id, x): (String, f64)| if id == "publish" { timeline_drag.set(Some((true, x, timeline_task_width()))); },
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 8. Bill Component
+                    section {
+                        style: "display: flex; flex-direction: column; gap: 16px;",
+                        Heading { level: HeadingLevel::H2, bordered: true, "8. Bill Component" }
                         p {
                             style: "color: var(--uikit-muted); font-size: 14px; margin-top: -8px;",
                             "Streamlined, display-only bill component displaying item breakdown, quantity, unit cost, and aligned total sum."
