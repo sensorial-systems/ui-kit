@@ -6,7 +6,10 @@ pub mod pipeline_board;
 pub mod table;
 pub mod timeline;
 
-pub use bill::{Bill, BillData, BillItem, BillStatus};
+pub use bill::{
+    format_amount, format_currency, Bill, BillConversion, BillData, BillItem, BillStatus,
+    CurrencyPosition,
+};
 pub use card::Card;
 pub use dynamic_form::{
     Condition, DynamicFormModal, FormFlowEngine, Question, QuestionAnswer, QuestionOption,

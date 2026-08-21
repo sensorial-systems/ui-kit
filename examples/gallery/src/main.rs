@@ -1789,9 +1789,13 @@ fn App() -> Element {
                                     style: "flex: 1; min-width: 320px; max-width: 380px;",
                                     span { style: "font-size: 11px; font-weight: 700; color: var(--uikit-muted); display: block; margin-bottom: 8px; text-transform: uppercase;", "Secondary Invoice Summary" }
                                     {
+                                        // A currency written after the amount rather than before
+                                        // it, and read a second time in one people price things in.
                                         let sample_bill = BillData::new("INV-2026-9042")
                                             .with_currency("SOL")
+                                            .with_currency_position(CurrencyPosition::Suffix)
                                             .with_decimal_places(6)
+                                            .with_conversion(BillConversion::new(76.20, "USDC"))
                                             .with_items(vec![
                                                 BillItem::new("item-201", "Design System Audit & Review", 1.0, 0.004251),
                                                 BillItem::new("item-202", "Custom Theme Token Preset", 2.0, 0.000125),

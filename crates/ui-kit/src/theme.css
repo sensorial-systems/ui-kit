@@ -2819,6 +2819,18 @@ body {
     white-space: nowrap;
 }
 
+/* The same amount read in a second currency. On its own line under the amount rather than beside
+   it: a bill written to nine places is already as wide as a narrow dialog can take, and this is
+   the half of the pair that may be dropped without losing the bill. Neutral in every row,
+   including the ones the amount itself is coloured in — it is a reading, not another charge. */
+.uikit-bill-conversion {
+    display: block;
+    margin-top: 2px;
+    color: var(--uikit-muted) !important;
+    font-size: 10px;
+    font-weight: 500;
+}
+
 /* Total row inside items container - 100% aligned with grid */
 .uikit-bill-total-row {
     background: rgba(0, 0, 0, 0.06);

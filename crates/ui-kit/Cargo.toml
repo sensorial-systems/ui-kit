@@ -13,6 +13,11 @@ serde_json = "1.0"
 gloo-timers = { version = "0.3", features = ["futures"] }
 tokio = { version = "1", features = ["time"] }
 
+[dev-dependencies]
+# Renders a component to markup, so a test can assert what a browser is actually handed rather
+# than only what the types allow.
+dioxus-ssr = "0.7"
+
 [features]
 default = ["web"]
 web = ["dioxus/web"]
