@@ -12,9 +12,9 @@ pub use containers::{
     TimelineColumn, TimelineMilestone, TimelineProject, TimelineRange, TimelineTask,
 };
 pub use graph::{
-    ArrowHead, Edge, EdgeDefs, EdgeType, FlowGraph, GraphEdgeData, GraphNodeData,
-    HierarchyGraphEditor, HierarchyGraphModel, HierarchyGraphViewer, HierarchyNode, NetworkGraph,
-    Node, NodeShape,
+    ArrowHead, Edge, EdgeDefs, EdgeType, FlowGraph, GraphEdgeData, GraphNavigation,
+    GraphNavigationNode, GraphNodeData, HierarchyGraphEditor, HierarchyGraphModel,
+    HierarchyGraphViewer, HierarchyNode, NetworkGraph, Node, NodeShape,
 };
 pub use info::{
     Badge, BadgeSize, BadgeVariant, BarSegment, ChartOrientation, DonutChart, Gauge, Heading,

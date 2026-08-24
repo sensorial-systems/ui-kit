@@ -1,7 +1,9 @@
 use crate::components::graph::edge::{ArrowHead, Edge, EdgeDefs, EdgeType, GraphEdgeData};
-use crate::components::graph::navigation::{GraphNavigator, NavigationNode};
+use crate::components::graph::navigation::{GraphNavigation, GraphNavigationNode};
 use crate::components::graph::node::{GraphNodeData, Node, NodeShape};
-use crate::components::input::{Button, ButtonSize, CircularButton, EditableText, EditableTextVariant};
+use crate::components::input::{
+    Button, ButtonSize, CircularButton, EditableText, EditableTextVariant,
+};
 use dioxus::prelude::*;
 use std::collections::{HashMap, HashSet};
 
@@ -224,9 +226,7 @@ fn shape_connection_normal(
     let dx = point.0 - center.0;
     let dy = point.1 - center.1;
     let (nx, ny) = match shape {
-        NodeShape::Circle | NodeShape::Pill => {
-            (dx / half_width.powi(2), dy / half_height.powi(2))
-        }
+        NodeShape::Circle | NodeShape::Pill => (dx / half_width.powi(2), dy / half_height.powi(2)),
         _ => {
             let x_ratio = dx.abs() / half_width;
             let y_ratio = dy.abs() / half_height;
@@ -402,8 +402,7 @@ pub fn HierarchyGraphViewer(
 ) -> Element {
     let mut collapsed_node_ids = use_signal(Vec::<String>::new);
     let mut hovered_node_id = use_signal(|| None::<String>);
-    let mut measured_dimensions =
-        use_signal(HashMap::<String, (String, NodeDimensions)>::new);
+    let mut measured_dimensions = use_signal(HashMap::<String, (String, NodeDimensions)>::new);
     let raw_edges = graph.edges.clone();
     let node_elements: HashMap<String, Element> = node_elements.into_iter().collect();
     let mut children: HashMap<String, Vec<String>> = HashMap::new();
@@ -586,11 +585,7 @@ pub fn HierarchyGraphViewer(
         );
     }
 
-    let max_depth = node_depths
-        .values()
-        .copied()
-        .max()
-        .unwrap_or(1);
+    let max_depth = node_depths.values().copied().max().unwrap_or(1);
     let mut depth_widths = vec![0.0_f64; max_depth + 1];
     for (node_id, depth) in &node_depths {
         if let Some(dimensions) = node_dimensions.get(node_id) {
@@ -618,10 +613,7 @@ pub fn HierarchyGraphViewer(
             .get(&node.id)
             .copied()
             .unwrap_or((0, center_y, 0.0));
-        node_positions.insert(
-            node.id.clone(),
-            (center_x + side * depth_offsets[depth], y),
-        );
+        node_positions.insert(node.id.clone(), (center_x + side * depth_offsets[depth], y));
     }
 
     let node_data: HashMap<&str, &GraphNodeData> = nodes
@@ -661,13 +653,10 @@ pub fn HierarchyGraphViewer(
                         node.background_color.as_deref()
                     };
                     let shape = hierarchy_node_shape(node.shape, depth, background);
-                    let dimensions = node_dimensions
-                        .get(&node.id)
-                        .copied()
-                        .unwrap_or_else(|| {
-                            let (width, height) = shape.dimensions();
-                            NodeDimensions { width, height }
-                        });
+                    let dimensions = node_dimensions.get(&node.id).copied().unwrap_or_else(|| {
+                        let (width, height) = shape.dimensions();
+                        NodeDimensions { width, height }
+                    });
                     shape_connection_point(shape, dimensions, to, target_toward)
                 })
                 .unwrap_or(to);
@@ -687,13 +676,10 @@ pub fn HierarchyGraphViewer(
                         node.background_color.as_deref()
                     };
                     let shape = hierarchy_node_shape(node.shape, depth, background);
-                    let dimensions = node_dimensions
-                        .get(&node.id)
-                        .copied()
-                        .unwrap_or_else(|| {
-                            let (width, height) = shape.dimensions();
-                            NodeDimensions { width, height }
-                        });
+                    let dimensions = node_dimensions.get(&node.id).copied().unwrap_or_else(|| {
+                        let (width, height) = shape.dimensions();
+                        NodeDimensions { width, height }
+                    });
                     shape_connection_normal(shape, dimensions, to, to_point)
                 })
                 .unwrap_or_else(|| {
@@ -753,13 +739,10 @@ pub fn HierarchyGraphViewer(
                     node.background_color.as_deref()
                 };
                 let shape = hierarchy_node_shape(node.shape, parent_depth, background);
-                let dimensions = node_dimensions
-                    .get(&node.id)
-                    .copied()
-                    .unwrap_or_else(|| {
-                        let (width, height) = shape.dimensions();
-                        NodeDimensions { width, height }
-                    });
+                let dimensions = node_dimensions.get(&node.id).copied().unwrap_or_else(|| {
+                    let (width, height) = shape.dimensions();
+                    NodeDimensions { width, height }
+                });
                 shape_connection_point(
                     shape,
                     dimensions,
@@ -783,10 +766,8 @@ pub fn HierarchyGraphViewer(
                                 node.background_color.as_deref()
                             };
                             let shape = hierarchy_node_shape(node.shape, depth, background);
-                            let dimensions = node_dimensions
-                                .get(&node.id)
-                                .copied()
-                                .unwrap_or_else(|| {
+                            let dimensions =
+                                node_dimensions.get(&node.id).copied().unwrap_or_else(|| {
                                     let (width, height) = shape.dimensions();
                                     NodeDimensions { width, height }
                                 });
@@ -942,14 +923,20 @@ pub fn HierarchyGraphViewer(
     });
 
     let rendered_collapse_buttons = nodes.iter().filter_map(|(node, _, _)| {
-        if !children.get(&node.id).is_some_and(|items| !items.is_empty()) {
+        if !children
+            .get(&node.id)
+            .is_some_and(|items| !items.is_empty())
+        {
             return None;
         }
         let (x, y) = node_positions.get(&node.id).copied().unwrap_or((0.0, 0.0));
-        let dimensions = node_dimensions.get(&node.id).copied().unwrap_or(NodeDimensions {
-            width: 0.0,
-            height: 0.0,
-        });
+        let dimensions = node_dimensions
+            .get(&node.id)
+            .copied()
+            .unwrap_or(NodeDimensions {
+                width: 0.0,
+                height: 0.0,
+            });
         let side = layout_positions
             .get(&node.id)
             .map(|(_, _, side)| *side)
@@ -1005,14 +992,11 @@ pub fn HierarchyGraphViewer(
             let (x, y) = node_positions.get(&node.id).copied().unwrap_or((0.0, 0.0));
             let depth = node_depths.get(&node.id).copied().unwrap_or(0);
             let shape = hierarchy_node_shape(node.shape, depth, Some(""));
-            let dimensions = node_dimensions
-                .get(&node.id)
-                .copied()
-                .unwrap_or_else(|| {
-                    let (width, height) = shape.dimensions();
-                    NodeDimensions { width, height }
-                });
-            NavigationNode {
+            let dimensions = node_dimensions.get(&node.id).copied().unwrap_or_else(|| {
+                let (width, height) = shape.dimensions();
+                NodeDimensions { width, height }
+            });
+            GraphNavigationNode {
                 x: x - dimensions.width / 2.0,
                 y: y - dimensions.height / 2.0,
                 width: dimensions.width,
@@ -1033,7 +1017,7 @@ pub fn HierarchyGraphViewer(
     }
 
     rsx! {
-        GraphNavigator {
+        GraphNavigation {
             canvas_width,
             canvas_height,
             nodes: navigation_nodes,
@@ -1272,9 +1256,9 @@ pub fn HierarchyGraphEditor(
 #[cfg(test)]
 mod tests {
     use super::{
-        add_child, brighter, delete_subtree, layout_branch, leaf_count, rectangular_connection,
-        rectangular_normal, rounded_t_paths, measurement_key, ArrowHead, EdgeType, GraphEdgeData,
-        GraphNodeData, HierarchyGraphModel, HierarchyNode, NodeShape,
+        add_child, brighter, delete_subtree, layout_branch, leaf_count, measurement_key,
+        rectangular_connection, rectangular_normal, rounded_t_paths, ArrowHead, EdgeType,
+        GraphEdgeData, GraphNodeData, HierarchyGraphModel, HierarchyNode, NodeShape,
     };
     use std::collections::{HashMap, HashSet};
 
@@ -1404,7 +1388,10 @@ mod tests {
 
         assert_eq!(child.data.shape, NodeShape::Box);
         assert_eq!(child.data.background_color, None);
-        assert_eq!(updated.edges.last().unwrap().edge_type, EdgeType::OrganicCurved);
+        assert_eq!(
+            updated.edges.last().unwrap().edge_type,
+            EdgeType::OrganicCurved
+        );
     }
 
     #[test]

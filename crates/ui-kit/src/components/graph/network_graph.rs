@@ -1,5 +1,5 @@
 use crate::components::graph::edge::{Edge, EdgeDefs, EdgeType, GraphEdgeData};
-use crate::components::graph::navigation::{GraphNavigator, NavigationNode};
+use crate::components::graph::navigation::{GraphNavigation, GraphNavigationNode};
 use crate::components::graph::node::{GraphNodeData, Node, NodeShape};
 use dioxus::prelude::*;
 use std::collections::HashMap;
@@ -8,6 +8,7 @@ use std::collections::HashMap;
 pub fn NetworkGraph(
     nodes: Vec<(GraphNodeData, Element)>,
     edges: Vec<GraphEdgeData>,
+    #[props(default = true)] navigation: bool,
     #[props(default)] active_node_id: Option<String>,
     #[props(default)] on_node_click: EventHandler<String>,
 ) -> Element {
@@ -146,7 +147,7 @@ pub fn NetworkGraph(
                 node.shape
             };
             let (width, height) = shape.dimensions();
-            NavigationNode {
+            GraphNavigationNode {
                 x: x - width / 2.0,
                 y: y - height / 2.0,
                 width,
@@ -156,22 +157,41 @@ pub fn NetworkGraph(
         })
         .collect();
 
-    rsx! {
-        GraphNavigator {
-            canvas_width,
-            canvas_height,
-            nodes: navigation_nodes,
-            canvas_class: "uikit-graph-container",
-            canvas_style: "position: relative; width: {canvas_width}px; height: {canvas_height}px;",
-            svg {
-                class: "uikit-graph-svg",
-                view_box: "0 0 {canvas_width} {canvas_height}",
-                EdgeDefs {}
-                {rendered_edges}
+    if navigation {
+        rsx! {
+            GraphNavigation {
+                canvas_width,
+                canvas_height,
+                nodes: navigation_nodes,
+                canvas_class: "uikit-graph-container",
+                canvas_style: "position: relative; width: {canvas_width}px; height: {canvas_height}px;",
+                svg {
+                    class: "uikit-graph-svg",
+                    view_box: "0 0 {canvas_width} {canvas_height}",
+                    EdgeDefs {}
+                    {rendered_edges}
+                }
+                div {
+                    class: "uikit-graph-nodes-container",
+                    {rendered_nodes}
+                }
             }
+        }
+    } else {
+        rsx! {
             div {
-                class: "uikit-graph-nodes-container",
-                {rendered_nodes}
+                class: "uikit-graph-container",
+                style: "position: relative; width: {canvas_width}px; height: {canvas_height}px;",
+                svg {
+                    class: "uikit-graph-svg",
+                    view_box: "0 0 {canvas_width} {canvas_height}",
+                    EdgeDefs {}
+                    {rendered_edges}
+                }
+                div {
+                    class: "uikit-graph-nodes-container",
+                    {rendered_nodes}
+                }
             }
         }
     }

@@ -11,7 +11,7 @@ const MINIMAP_HEIGHT: f64 = 150.0;
 const MINIMAP_INSET: f64 = 10.0;
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct NavigationNode {
+pub struct GraphNavigationNode {
     pub x: f64,
     pub y: f64,
     pub width: f64,
@@ -55,7 +55,7 @@ impl MiniMapProjection {
 }
 
 fn mini_map_projection(
-    nodes: &[NavigationNode],
+    nodes: &[GraphNavigationNode],
     viewport: (f64, f64, f64, f64),
 ) -> MiniMapProjection {
     let mut min_x = viewport.0;
@@ -89,7 +89,7 @@ fn mini_map_projection(
     }
 }
 
-fn fit_transform(nodes: &[NavigationNode], viewport: (f64, f64)) -> Option<(f64, f64, f64)> {
+fn fit_transform(nodes: &[GraphNavigationNode], viewport: (f64, f64)) -> Option<(f64, f64, f64)> {
     if nodes.is_empty() {
         return None;
     }
@@ -130,12 +130,15 @@ fn fit_transform(nodes: &[NavigationNode], viewport: (f64, f64)) -> Option<(f64,
 }
 
 #[component]
-pub(crate) fn GraphNavigator(
+pub fn GraphNavigation(
     canvas_width: f64,
     canvas_height: f64,
-    nodes: Vec<NavigationNode>,
+    nodes: Vec<GraphNavigationNode>,
     #[props(default = true)] framed: bool,
     #[props(default = false)] center_on_mount: bool,
+    #[props(default = true)] show_controls: bool,
+    #[props(default = true)] show_minimap: bool,
+    #[props(default = true)] show_background: bool,
     #[props(into)] canvas_class: String,
     #[props(into)] canvas_style: String,
     children: Element,
@@ -177,7 +180,12 @@ pub(crate) fn GraphNavigator(
 
     rsx! {
         div {
-            class: if framed { "uikit-graph-navigation uikit-graph-navigation-framed uikit-graph-grid" } else { "uikit-graph-navigation uikit-graph-grid" },
+            class: match (framed, show_background) {
+                (true, true) => "uikit-graph-navigation uikit-graph-navigation-framed uikit-graph-grid",
+                (true, false) => "uikit-graph-navigation uikit-graph-navigation-framed",
+                (false, true) => "uikit-graph-navigation uikit-graph-grid",
+                (false, false) => "uikit-graph-navigation",
+            },
             style: "height: {navigation_height}px; background-position: {current_pan_x}px {current_pan_y}px; background-size: {grid_size}px {grid_size}px;",
             tabindex: "0",
             onmounted: move |event| {
@@ -315,8 +323,9 @@ pub(crate) fn GraphNavigator(
                 }
             }
 
-            div {
-                class: "uikit-graph-navigation-controls",
+            if show_controls {
+                div {
+                    class: "uikit-graph-navigation-controls",
                 Button {
                     variant: ButtonVariant::Primary,
                     size: ButtonSize::Small,
@@ -342,11 +351,13 @@ pub(crate) fn GraphNavigator(
                         pan_y.set(0.0);
                     },
                     "Reset Zoom"
+                    }
                 }
             }
 
-            div {
-                class: if *minimap_dragging.read() { "uikit-graph-minimap uikit-graph-minimap-dragging" } else { "uikit-graph-minimap" },
+            if show_minimap {
+                div {
+                    class: if *minimap_dragging.read() { "uikit-graph-minimap uikit-graph-minimap-dragging" } else { "uikit-graph-minimap" },
                 onpointerdown: move |event: PointerEvent| {
                     event.prevent_default();
                     event.stop_propagation();
@@ -409,6 +420,7 @@ pub(crate) fn GraphNavigator(
                             }
                         }
                     }
+                    }
                 }
             }
         }
@@ -418,13 +430,13 @@ pub(crate) fn GraphNavigator(
 #[cfg(test)]
 mod tests {
     use super::{
-        fit_transform, mini_map_projection, NavigationNode, NodeShape, MINIMAP_HEIGHT,
+        fit_transform, mini_map_projection, GraphNavigationNode, NodeShape, MINIMAP_HEIGHT,
         MINIMAP_WIDTH,
     };
 
     #[test]
     fn fit_centers_content_with_the_reference_margin() {
-        let nodes = vec![NavigationNode {
+        let nodes = vec![GraphNavigationNode {
             x: 100.0,
             y: 100.0,
             width: 200.0,
@@ -441,14 +453,14 @@ mod tests {
 
     #[test]
     fn fit_never_enlarges_or_exceeds_the_reference_bounds() {
-        let small = vec![NavigationNode {
+        let small = vec![GraphNavigationNode {
             x: 0.0,
             y: 0.0,
             width: 10.0,
             height: 10.0,
             shape: NodeShape::Box,
         }];
-        let huge = vec![NavigationNode {
+        let huge = vec![GraphNavigationNode {
             x: 0.0,
             y: 0.0,
             width: 10_000.0,
@@ -472,7 +484,7 @@ mod tests {
 
     #[test]
     fn minimap_centers_a_fitted_viewport_without_unused_canvas_space() {
-        let nodes = vec![NavigationNode {
+        let nodes = vec![GraphNavigationNode {
             x: 300.0,
             y: 100.0,
             width: 200.0,
