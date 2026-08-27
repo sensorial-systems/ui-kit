@@ -1,4 +1,5 @@
 pub mod bill;
+pub mod browser;
 pub mod card;
 pub mod dynamic_form;
 pub mod modal;
@@ -10,6 +11,7 @@ pub use bill::{
     format_amount, format_currency, Bill, BillConversion, BillData, BillItem, BillStatus,
     CurrencyPosition,
 };
+pub use browser::{Browser, Tab, TabbedContainer};
 pub use card::Card;
 pub use dynamic_form::{
     Condition, DynamicFormModal, FormFlowEngine, Question, QuestionAnswer, QuestionOption,

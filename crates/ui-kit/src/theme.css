@@ -3113,6 +3113,9 @@ body {
     --muted: var(--uikit-muted);
     --strong: var(--uikit-fg);
     --focus: var(--uikit-primary);
+    --error: var(--uikit-error);
+    --warning: var(--uikit-warning);
+    --success: var(--uikit-success);
 }
 
 .pipeline-board {
@@ -3296,3 +3299,69 @@ body {
 .task-full-bar small { flex: 0 1 auto; font-size: .72rem; font-weight: 700; opacity: .9; }
 .resize-handle { width: 14px; align-self: stretch; flex: 0 0 auto; margin-right: -8px; border-radius: 0 8px 8px 0; cursor: ew-resize; opacity: .72; }
 
+/* Browser chrome and controlled tabs. Content, loading, and navigation remain caller-owned. */
+.uikit-browser {
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: transparent;
+}
+.uikit-browser-bar {
+    height: 54px;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface) 35%, transparent);
+}
+.uikit-browser-controls { display: flex; gap: 8px; margin-left: 20px; }
+.uikit-browser-controls i { width: 11px; height: 11px; border-radius: 50%; background: var(--error); }
+.uikit-browser-controls i:nth-child(2) { background: var(--warning); }
+.uikit-browser-controls i:nth-child(3) { background: var(--success); }
+.uikit-browser-address {
+    min-width: 0;
+    flex: 1;
+    margin: 0 16px 0 19px;
+    padding: 7px 16px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--surface) 55%, transparent);
+    color: var(--muted);
+    font: 12px ui-monospace, monospace;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    outline: none;
+}
+.uikit-browser-address:focus { border-color: var(--focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus) 18%, transparent); }
+.uikit-tabbed-container { min-height: 0; flex: 1; display: flex; flex-direction: column; }
+.uikit-tabbed-container-tabs { display: flex; flex: 0 0 auto; gap: 3px; padding: 7px 10px 0; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 24%, transparent); }
+.uikit-tab-item { min-width: 0; display: flex; align-items: center; border: 1px solid transparent; border-bottom: 0; border-radius: 7px 7px 0 0; color: var(--muted); transition: color .2s ease, background .2s ease; }
+.uikit-tab { min-width: 0; padding: 7px 8px 7px 12px; overflow: hidden; border: 0; background: transparent; color: inherit; font: 11px ui-monospace, monospace; cursor: pointer; text-overflow: ellipsis; white-space: nowrap; }
+.uikit-tab:hover, .uikit-tab:focus-visible { color: var(--text); }
+.uikit-tab-item.is-active {
+    border-color: color-mix(in srgb, var(--line) 75%, transparent);
+    background: color-mix(in srgb, var(--surface) 48%, transparent);
+    color: var(--focus);
+    backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 12px)) saturate(135%);
+    -webkit-backdrop-filter: blur(calc(var(--uikit-glass-strength, 1) * 12px)) saturate(135%);
+}
+.uikit-tab-close, .uikit-tab-new { flex: 0 0 auto; display: grid; place-items: center; border: 0; background: transparent; color: var(--muted); cursor: pointer; font: 16px/1 ui-monospace, monospace; }
+.uikit-tab-close { width: 24px; height: 24px; margin-right: 4px; border-radius: 5px; }
+.uikit-tab-close:hover, .uikit-tab-new:hover { background: color-mix(in srgb, var(--focus) 10%, transparent); color: var(--text); }
+.uikit-tab-new { width: 30px; min-height: 30px; margin-left: 2px; border-radius: 7px 7px 0 0; }
+.uikit-tabbed-container-panels { position: relative; min-height: 0; flex: 1; background: var(--surface); }
+.uikit-tab-panel { position: absolute; inset: 0; width: 100%; height: 100%; visibility: hidden; opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .35s ease, transform .35s ease, visibility .35s; }
+.uikit-tab-panel.is-active { visibility: visible; opacity: 1; transform: none; pointer-events: auto; }
+
+@media (max-width: 680px) {
+    .uikit-browser-bar { height: 42px; }
+    .uikit-browser-address { max-width: 64%; }
+    .uikit-tab { flex: 1; padding-inline: 5px; font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .uikit-tab-panel { transition: none; }
+}

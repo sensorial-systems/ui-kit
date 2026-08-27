@@ -131,6 +131,17 @@ fn App() -> Element {
     let mut select_val = use_signal(|| "rust".to_string());
     let mut modal_open = use_signal(|| false);
     let mut dynamic_form_open = use_signal(|| false);
+    let mut browser_tab = use_signal(|| 0usize);
+    let mut browser_interactions = use_signal(|| 0usize);
+    let mut browser_address = use_signal(|| "overview.local".to_string());
+    let mut browser_tabs = use_signal(|| {
+        vec![
+            (0u64, "overview.local".to_string()),
+            (1u64, "components.local".to_string()),
+            (2u64, "api.local".to_string()),
+        ]
+    });
+    let mut next_browser_tab = use_signal(|| 3u64);
     let mut otp_val = use_signal(|| "".to_string());
     let mut slider_val = use_signal(|| 50.0);
     let mut datetime_val = use_signal(|| "2026-07-16 18:00".to_string());
@@ -1024,6 +1035,101 @@ fn App() -> Element {
                                         on_select: move |selected_id: String| {
                                             println!("Selected vertical menu item: {}", selected_id);
                                         },
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Browser containers
+                    section {
+                        style: "display: flex; flex-direction: column; gap: 16px;",
+                        Heading { level: HeadingLevel::H2, bordered: true, "Browser Containers" }
+                        p {
+                            style: "color: var(--uikit-muted); font-size: 14px; margin: -8px 0 0;",
+                            "Presentation-only browser chrome and controlled tabs. The caller supplies addresses, panels, state, and behavior."
+                        }
+                        Card {
+                            div {
+                                style: "display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px;",
+                                Heading { level: HeadingLevel::H3, "Browser + TabbedContainer" }
+                                Badge { variant: BadgeVariant::Info, "{browser_interactions()} interactions" }
+                            }
+                            div {
+                                style: "height: 360px; overflow: hidden; border: 1px solid var(--uikit-border); border-radius: 12px;",
+                                Browser {
+                                    address: browser_address(),
+                                    aria_label: "Component browser example",
+                                    oninteract: move |_| browser_interactions += 1,
+                                    onaddresschange: move |address| browser_address.set(address),
+                                    onnavigate: move |address: String| {
+                                        browser_tabs.with_mut(|tabs| {
+                                            if let Some(tab) = tabs.get_mut(browser_tab()) {
+                                                tab.1 = address.clone();
+                                            }
+                                        });
+                                        browser_address.set(address);
+                                    },
+                                    TabbedContainer {
+                                        selected: browser_tab(),
+                                        aria_label: "Browser example pages",
+                                        onselect: move |index| {
+                                            browser_tab.set(index);
+                                            if let Some(tab) = browser_tabs.peek().get(index) {
+                                                browser_address.set(tab.1.clone());
+                                            }
+                                        },
+                                        onclose: move |index| {
+                                            let next = browser_tabs.with_mut(|tabs| {
+                                                if index < tabs.len() {
+                                                    tabs.remove(index);
+                                                }
+                                                if tabs.is_empty() {
+                                                    let id = next_browser_tab();
+                                                    next_browser_tab += 1;
+                                                    tabs.push((id, String::new()));
+                                                }
+                                                index.min(tabs.len() - 1)
+                                            });
+                                            browser_tab.set(next);
+                                            browser_address.set(browser_tabs.peek()[next].1.clone());
+                                        },
+                                        onnewtab: move |_| {
+                                            let id = next_browser_tab();
+                                            next_browser_tab += 1;
+                                            let index = browser_tabs.peek().len();
+                                            browser_tabs.push((id, String::new()));
+                                            browser_tab.set(index);
+                                            browser_address.set(String::new());
+                                        },
+                                        tabs: browser_tabs.read().iter().map(|(id, address)| {
+                                            let label = if address.is_empty() {
+                                                "New tab".to_string()
+                                            } else {
+                                                address.clone()
+                                            };
+                                            let page_address = address.clone();
+                                            Tab::new(id.to_string(), label, rsx! {
+                                                div {
+                                                    style: "height: 100%; display: grid; place-items: center; padding: 32px; background: var(--uikit-card-bg);",
+                                                    div {
+                                                        style: "max-width: 430px; text-align: center;",
+                                                        h2 {
+                                                            style: "margin: 0 0 12px; font-size: 32px;",
+                                                            if page_address.is_empty() { "Open a page" } else { "{page_address}" }
+                                                        }
+                                                        p {
+                                                            style: "margin: 0; color: var(--uikit-muted); line-height: 1.6;",
+                                                            if page_address.is_empty() {
+                                                                "Type an address above and press Enter."
+                                                            } else {
+                                                                "The application can load this address into any renderer it owns."
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            })
+                                        }).collect(),
                                     }
                                 }
                             }
