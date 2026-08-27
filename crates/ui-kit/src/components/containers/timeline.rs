@@ -249,7 +249,13 @@ fn TimelineMilestoneRow(
 }
 
 #[component]
-fn TimelineTaskRow(task: TimelineTask, color: String, onselecttask: Option<EventHandler<String>>, onstarttaskmove: Option<EventHandler<(String, f64)>>, onstarttaskresize: Option<EventHandler<(String, f64)>>) -> Element {
+fn TimelineTaskRow(
+    task: TimelineTask,
+    color: String,
+    onselecttask: Option<EventHandler<String>>,
+    onstarttaskmove: Option<EventHandler<(String, f64)>>,
+    onstarttaskresize: Option<EventHandler<(String, f64)>>,
+) -> Element {
     let selected_class = if task.selected { " selected" } else { "" };
     rsx! {
         div { class: "roadmap-row task-timeline-row{selected_class}", style: "--project-color: {color};",
@@ -281,7 +287,12 @@ fn TimelineTaskRow(task: TimelineTask, color: String, onselecttask: Option<Event
 }
 
 #[component]
-fn TimelineMiniTask(task: TimelineTask, onselecttask: Option<EventHandler<String>>, onstarttaskmove: Option<EventHandler<(String, f64)>>, onstarttaskresize: Option<EventHandler<(String, f64)>>) -> Element {
+fn TimelineMiniTask(
+    task: TimelineTask,
+    onselecttask: Option<EventHandler<String>>,
+    onstarttaskmove: Option<EventHandler<(String, f64)>>,
+    onstarttaskresize: Option<EventHandler<(String, f64)>>,
+) -> Element {
     let range = task.relative_range.unwrap_or(task.range);
     let selected_class = if task.selected { " selected" } else { "" };
     rsx! {

@@ -1,5 +1,5 @@
-use dioxus::prelude::*;
 use super::{FormField, LabelLayout};
+use dioxus::prelude::*;
 
 #[component]
 pub fn Select(
@@ -32,4 +32,3 @@ pub fn Select(
         }
     }
 }
-

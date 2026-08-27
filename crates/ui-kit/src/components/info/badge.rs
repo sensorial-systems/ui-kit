@@ -47,7 +47,11 @@ pub fn Badge(
 ) -> Element {
     let variant_class = variant.class_name();
     let size_class = size.class_name();
-    let borderless_class = if borderless { "uikit-badge-borderless" } else { "" };
+    let borderless_class = if borderless {
+        "uikit-badge-borderless"
+    } else {
+        ""
+    };
 
     rsx! {
         span {

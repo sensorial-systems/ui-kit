@@ -27,9 +27,17 @@ pub fn FormField(
 ) -> Element {
     let layout_class = layout.class_name();
     let has_error = error.is_some();
-    let error_class = if has_error { "uikit-input-error uikit-field-error" } else { "" };
+    let error_class = if has_error {
+        "uikit-input-error uikit-field-error"
+    } else {
+        ""
+    };
     let has_extra = error.is_some() || help_text.is_some();
-    let extra_class = if has_extra { "uikit-field-has-extra" } else { "" };
+    let extra_class = if has_extra {
+        "uikit-field-has-extra"
+    } else {
+        ""
+    };
 
     let label_style = if let Some(width) = alignment {
         format!("min-width: {}px;", width)
@@ -41,10 +49,10 @@ pub fn FormField(
         div {
             class: "uikit-field-container {layout_class} {error_class} {extra_class}",
             if let Some(ref label_text) = label {
-                label { 
-                    class: "uikit-input-label", 
+                label {
+                    class: "uikit-input-label",
                     style: "{label_style}",
-                    "{label_text}" 
+                    "{label_text}"
                 }
             }
             div {

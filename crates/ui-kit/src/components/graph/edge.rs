@@ -1,6 +1,5 @@
 use dioxus::prelude::*;
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum EdgeType {
     #[default]
@@ -45,11 +44,17 @@ pub fn Edge(
     #[props(into, default)] label: Option<String>,
     #[props(into, default)] color: Option<String>,
     /// Outward unit normal at the source surface. Used by `OrganicCurved`.
-    #[props(default)] from_normal: Option<(f64, f64)>,
+    #[props(default)]
+    from_normal: Option<(f64, f64)>,
     /// Outward unit normal at the target surface. Used by `OrganicCurved`.
-    #[props(default)] to_normal: Option<(f64, f64)>,
+    #[props(default)]
+    to_normal: Option<(f64, f64)>,
 ) -> Element {
-    let animated_class = if animated { "uikit-graph-edge-path-animated" } else { "" };
+    let animated_class = if animated {
+        "uikit-graph-edge-path-animated"
+    } else {
+        ""
+    };
 
     // Calculate path description
     let path_d = match edge_type {
@@ -66,32 +71,46 @@ pub fn Edge(
             let cy1 = from_y;
             let cx2 = to_x - control_offset;
             let cy2 = to_y;
-            format!("M {},{} C {},{} {},{} {},{}", from_x, from_y, cx1, cy1, cx2, cy2, to_x, to_y)
+            format!(
+                "M {},{} C {},{} {},{} {},{}",
+                from_x, from_y, cx1, cy1, cx2, cy2, to_x, to_y
+            )
         }
         EdgeType::Orthogonal => {
             let mid_x = from_x + (to_x - from_x) * 0.5;
-            format!("M {},{} L {},{} L {},{} L {},{}", from_x, from_y, mid_x, from_y, mid_x, to_y, to_x, to_y)
+            format!(
+                "M {},{} L {},{} L {},{} L {},{}",
+                from_x, from_y, mid_x, from_y, mid_x, to_y, to_x, to_y
+            )
         }
         EdgeType::CurvedOrthogonal => {
             let dx = to_x - from_x;
             let dy = to_y - from_y;
             let mid_x = from_x + dx * 0.5;
-            
+
             // Corner radius, constrained by available spacing to avoid overshoots
             let r = 12.0_f64.min(dx.abs() * 0.4).min(dy.abs() * 0.4);
             let r_x = r * dx.signum();
             let r_y = r * dy.signum();
-            
+
             format!(
                 "M {},{} L {},{} Q {},{} {},{} L {},{} Q {},{} {},{} L {},{}",
-                from_x, from_y,
-                mid_x - r_x, from_y,
-                mid_x, from_y,
-                mid_x, from_y + r_y,
-                mid_x, to_y - r_y,
-                mid_x, to_y,
-                mid_x + r_x, to_y,
-                to_x, to_y
+                from_x,
+                from_y,
+                mid_x - r_x,
+                from_y,
+                mid_x,
+                from_y,
+                mid_x,
+                from_y + r_y,
+                mid_x,
+                to_y - r_y,
+                mid_x,
+                to_y,
+                mid_x + r_x,
+                to_y,
+                to_x,
+                to_y
             )
         }
         EdgeType::OrganicCurved => {
@@ -112,7 +131,8 @@ pub fn Edge(
                 let radial = (dx / distance, dy / distance);
                 let source_normal = normalize(from_normal.unwrap_or(radial), radial);
                 let target_fallback = (-radial.0, -radial.1);
-                let target_normal = normalize(to_normal.unwrap_or(target_fallback), target_fallback);
+                let target_normal =
+                    normalize(to_normal.unwrap_or(target_fallback), target_fallback);
                 // Cap horizontal handles to the horizontal span. This keeps the
                 // curve monotonic in X, even for steep branches, so it cannot
                 // double back and cross a neighboring root branch.
@@ -136,16 +156,12 @@ pub fn Edge(
 
     // Determine markers
     let marker_start = match arrow {
-        ArrowHead::Start | ArrowHead::Both => {
-            "url(#uikit-marker-start-default)".to_string()
-        }
+        ArrowHead::Start | ArrowHead::Both => "url(#uikit-marker-start-default)".to_string(),
         _ => "none".to_string(),
     };
 
     let marker_end = match arrow {
-        ArrowHead::End | ArrowHead::Both => {
-            "url(#uikit-marker-end-default)".to_string()
-        }
+        ArrowHead::End | ArrowHead::Both => "url(#uikit-marker-end-default)".to_string(),
         _ => "none".to_string(),
     };
 

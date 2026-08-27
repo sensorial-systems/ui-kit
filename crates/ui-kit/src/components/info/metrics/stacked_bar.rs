@@ -94,14 +94,22 @@ pub fn StackedBarChart(
         .iter()
         .map(|g| {
             let total: f64 = g.segments.iter().map(|s| s.value.max(0.0)).sum();
-            let effective_total = if normalize_100 { total } else { max_group_total };
+            let effective_total = if normalize_100 {
+                total
+            } else {
+                max_group_total
+            };
 
             let segments = g
                 .segments
                 .iter()
                 .map(|seg| {
                     let pct = if normalize_100 {
-                        if total > 0.0 { (seg.value / total) * 100.0 } else { 0.0 }
+                        if total > 0.0 {
+                            (seg.value / total) * 100.0
+                        } else {
+                            0.0
+                        }
                     } else if max_group_total > 0.0 {
                         (seg.value / max_group_total) * 100.0
                     } else {
@@ -115,7 +123,11 @@ pub fn StackedBarChart(
                     };
 
                     let value_label = if normalize_100 {
-                        let p = if total > 0.0 { (seg.value / total) * 100.0 } else { 0.0 };
+                        let p = if total > 0.0 {
+                            (seg.value / total) * 100.0
+                        } else {
+                            0.0
+                        };
                         format!("{:.0}%", p)
                     } else {
                         format!("{}", seg.value)

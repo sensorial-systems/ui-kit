@@ -13,4 +13,3 @@ pub use progress_bar::ProgressBar;
 pub use sparkline::Sparkline;
 pub use stacked_bar::{BarSegment, ChartOrientation, StackedBarChart, StackedBarGroup};
 pub use unit::{Unit, UnitSize};
-

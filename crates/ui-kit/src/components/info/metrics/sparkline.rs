@@ -59,11 +59,11 @@ pub fn Sparkline(
             class: "uikit-sparkline-svg",
             view_box: "0 0 {width} {height}",
             preserve_aspect_ratio: "none",
-            
+
             line { x1: "0", y1: "{height * 0.25}", x2: "{width}", y2: "{height * 0.25}", class: "uikit-sparkline-grid" }
             line { x1: "0", y1: "{height * 0.5}", x2: "{width}", y2: "{height * 0.5}", class: "uikit-sparkline-grid" }
             line { x1: "0", y1: "{height * 0.75}", x2: "{width}", y2: "{height * 0.75}", class: "uikit-sparkline-grid" }
-            
+
             if fill {
                 defs {
                     linearGradient { id: "{gradient_id}", x1: "0%", y1: "0%", x2: "0%", y2: "100%",

@@ -85,9 +85,26 @@ pub fn NetworkGraph(
             }
         };
 
-        // Clip each end independently against its actual rendered shape.
-        let (fx_conn, fy_conn) = shape_for(&edge.from).connection_point((fx, fy), (tx, ty));
-        let (tx_conn, ty_conn) = shape_for(&edge.to).connection_point((tx, ty), (fx, fy));
+        let dimensions_for = |id: &str| {
+            nodes
+                .iter()
+                .find(|(node, _)| node.id == id)
+                .and_then(|(node, _)| match (node.width, node.height) {
+                    (Some(width), Some(height)) => Some((width, height)),
+                    _ => None,
+                })
+        };
+        // Clip each end independently against its actual rendered shape and size.
+        let (fx_conn, fy_conn) = shape_for(&edge.from).connection_point_with_dimensions(
+            (fx, fy),
+            (tx, ty),
+            dimensions_for(&edge.from),
+        );
+        let (tx_conn, ty_conn) = shape_for(&edge.to).connection_point_with_dimensions(
+            (tx, ty),
+            (fx, fy),
+            dimensions_for(&edge.to),
+        );
 
         rsx! {
             Edge {
@@ -128,6 +145,8 @@ pub fn NetworkGraph(
                 border: node.border.clone(),
                 background_color: node.background_color.clone(),
                 shape: shape,
+                width: node.width,
+                height: node.height,
                 selected: is_selected,
                 onclick: move |_| {
                     on_node_click.call(node_id.clone());
@@ -146,7 +165,9 @@ pub fn NetworkGraph(
             } else {
                 node.shape
             };
-            let (width, height) = shape.dimensions();
+            let (default_width, default_height) = shape.dimensions();
+            let width = node.width.unwrap_or(default_width);
+            let height = node.height.unwrap_or(default_height);
             GraphNavigationNode {
                 x: x - width / 2.0,
                 y: y - height / 2.0,

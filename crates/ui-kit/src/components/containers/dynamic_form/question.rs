@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
 use super::condition::Condition;
 use super::question_option::QuestionOption;
 use super::question_type::QuestionType;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Question {
@@ -26,7 +26,12 @@ pub struct Question {
 }
 
 impl Question {
-    pub fn new(id: impl Into<String>, section: impl Into<String>, title: impl Into<String>, q_type: QuestionType) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        section: impl Into<String>,
+        title: impl Into<String>,
+        q_type: QuestionType,
+    ) -> Self {
         Self {
             id: id.into(),
             section: section.into(),

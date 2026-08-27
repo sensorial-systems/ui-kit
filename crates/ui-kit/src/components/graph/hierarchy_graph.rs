@@ -1080,6 +1080,8 @@ fn add_child(graph: &HierarchyGraphModel, parent_id: &str) -> (HierarchyGraphMod
             color: branch_color.clone(),
             border: Some("none".to_string()),
             background_color: None,
+            width: None,
+            height: None,
             shape: if child_depth <= 2 {
                 NodeShape::Box
             } else {
@@ -1271,6 +1273,8 @@ mod tests {
                 color: None,
                 border: None,
                 background_color: None,
+                width: None,
+                height: None,
                 shape: NodeShape::Plain,
                 selected: false,
             },

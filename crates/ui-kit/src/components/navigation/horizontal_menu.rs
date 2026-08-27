@@ -77,13 +77,16 @@ pub fn Menu(
         *last_left_offset.read()
     };
 
-    let active_item_data = items.iter().find(|item| {
-        if let Some(ref id) = current_active_item_id {
-            &item.id == id
-        } else {
-            false
-        }
-    }).cloned();
+    let active_item_data = items
+        .iter()
+        .find(|item| {
+            if let Some(ref id) = current_active_item_id {
+                &item.id == id
+            } else {
+                false
+            }
+        })
+        .cloned();
 
     let mut last_active_item_data = use_signal(|| None::<MenuItem>);
     let mut last_active_sub_id = use_signal(|| None::<String>);
@@ -112,7 +115,9 @@ pub fn Menu(
         last_active_sub_id.read().clone()
     };
 
-    let has_children = active_item_data.as_ref().map_or(false, |item| !item.children.is_empty());
+    let has_children = active_item_data
+        .as_ref()
+        .map_or(false, |item| !item.children.is_empty());
 
     let mut close_menu = move || {
         active_item.set(None);
@@ -120,7 +125,11 @@ pub fn Menu(
     };
 
     // Compute height for vertical subitems and horizontal leaf items
-    let target_data = if is_open { active_item_data.as_ref() } else { render_item_data.as_ref() };
+    let target_data = if is_open {
+        active_item_data.as_ref()
+    } else {
+        render_item_data.as_ref()
+    };
     let num_subs = target_data.map_or(0, |item| item.children.len());
     let active_sub_data = target_data.and_then(|item| {
         if let Some(ref sub_id) = render_sub_id {
@@ -135,13 +144,21 @@ pub fn Menu(
 
     // Generous height calculation ensuring leaves + descriptions are fully visible without clipping
     let vert_height = if num_subs > 0 { num_subs * 44 } else { 0 };
-    let leaf_height = if num_leaves > 0 { 32 + num_leaves * 76 } else { 0 };
+    let leaf_height = if num_leaves > 0 {
+        32 + num_leaves * 76
+    } else {
+        0
+    };
     let dropdown_height = vert_height.max(leaf_height);
     let dropdown_width = if has_sub_active { 480 } else { 220 };
 
     let class_str = format!(
         "uikit-horizontal-menu-root {} {}",
-        if vertical { "uikit-horizontal-menu-root-vertical" } else { "" },
+        if vertical {
+            "uikit-horizontal-menu-root-vertical"
+        } else {
+            ""
+        },
         class.unwrap_or_default()
     );
 

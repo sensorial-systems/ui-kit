@@ -1,5 +1,5 @@
-use dioxus::prelude::*;
 use super::{FormField, LabelLayout};
+use dioxus::prelude::*;
 
 #[component]
 pub fn TextInput(
@@ -35,4 +35,3 @@ pub fn TextInput(
         }
     }
 }
-

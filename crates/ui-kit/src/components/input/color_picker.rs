@@ -50,11 +50,15 @@ fn parse_color(input: &str) -> RgbColor {
             };
             return RgbColor { r, g, b, a };
         } else if bytes.len() >= 6 {
-            let r = (parse_hex_component(bytes[0]).unwrap_or(0) << 4) | parse_hex_component(bytes[1]).unwrap_or(0);
-            let g = (parse_hex_component(bytes[2]).unwrap_or(0) << 4) | parse_hex_component(bytes[3]).unwrap_or(0);
-            let b = (parse_hex_component(bytes[4]).unwrap_or(0) << 4) | parse_hex_component(bytes[5]).unwrap_or(0);
+            let r = (parse_hex_component(bytes[0]).unwrap_or(0) << 4)
+                | parse_hex_component(bytes[1]).unwrap_or(0);
+            let g = (parse_hex_component(bytes[2]).unwrap_or(0) << 4)
+                | parse_hex_component(bytes[3]).unwrap_or(0);
+            let b = (parse_hex_component(bytes[4]).unwrap_or(0) << 4)
+                | parse_hex_component(bytes[5]).unwrap_or(0);
             let a = if bytes.len() >= 8 {
-                let alpha_byte = (parse_hex_component(bytes[6]).unwrap_or(15) << 4) | parse_hex_component(bytes[7]).unwrap_or(15);
+                let alpha_byte = (parse_hex_component(bytes[6]).unwrap_or(15) << 4)
+                    | parse_hex_component(bytes[7]).unwrap_or(15);
                 alpha_byte as f32 / 255.0
             } else {
                 1.0
@@ -63,7 +67,12 @@ fn parse_color(input: &str) -> RgbColor {
         }
     }
     // Default fallback to blue if unparseable
-    RgbColor { r: 59, g: 130, b: 246, a: 1.0 }
+    RgbColor {
+        r: 59,
+        g: 130,
+        b: 246,
+        a: 1.0,
+    }
 }
 
 fn rgb_to_hex(rgb: RgbColor) -> String {
@@ -151,8 +160,7 @@ fn hsl_to_rgb(hsl: HslColor) -> RgbColor {
 }
 
 const DEFAULT_PRESETS: &[&str] = &[
-    "#ef4444", "#f97316", "#f59e0b", "#10b981",
-    "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6",
+    "#ef4444", "#f97316", "#f59e0b", "#10b981", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6",
     "#ec4899", "#18181b", "#71717a", "#ffffff",
 ];
 
@@ -172,9 +180,8 @@ pub fn ColorPicker(
     let current_rgb = parse_color(&value);
     let current_hsl = rgb_to_hsl(current_rgb);
 
-    let presets = preset_colors.unwrap_or_else(|| {
-        DEFAULT_PRESETS.iter().map(|s| s.to_string()).collect()
-    });
+    let presets =
+        preset_colors.unwrap_or_else(|| DEFAULT_PRESETS.iter().map(|s| s.to_string()).collect());
 
     let current_hex = rgb_to_hex(current_rgb);
 

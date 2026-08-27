@@ -1,5 +1,5 @@
-use dioxus::prelude::*;
 use crate::components::info::{Spinner, SpinnerSize, SpinnerVariant};
+use dioxus::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ButtonVariant {
@@ -44,18 +44,24 @@ pub fn Button(
     #[props(default)] variant: ButtonVariant,
     #[props(default)] size: ButtonSize,
     /// Optional CSS color used as the button's background and border color.
-    #[props(into, default)] color: Option<String>,
+    #[props(into, default)]
+    color: Option<String>,
     #[props(default)] disabled: bool,
     #[props(default)] loading: bool,
     /// Optional timeout in milliseconds for the loading state.
-    #[props(default)] timeout_ms: Option<u64>,
+    #[props(default)]
+    timeout_ms: Option<u64>,
     onclick: Option<EventHandler<MouseEvent>>,
     ontimeout: Option<EventHandler<()>>,
     children: Element,
 ) -> Element {
     let variant_class = variant.class_name();
     let size_class = size.class_name();
-    let color_class = if color.is_some() { "uikit-btn-custom-color" } else { "" };
+    let color_class = if color.is_some() {
+        "uikit-btn-custom-color"
+    } else {
+        ""
+    };
     let custom_style = color
         .as_ref()
         .map(|color| format!("--uikit-btn-color: {color};"))
@@ -63,26 +69,29 @@ pub fn Button(
 
     let mut is_timed_out = use_signal(|| false);
 
-    use_effect(use_reactive((&loading, &timeout_ms), move |(loading, timeout_ms)| {
-        if loading {
-            is_timed_out.set(false);
-            if let Some(ms) = timeout_ms {
-                spawn(async move {
-                    #[cfg(target_arch = "wasm32")]
-                    gloo_timers::future::TimeoutFuture::new(ms as u32).await;
-                    #[cfg(not(target_arch = "wasm32"))]
-                    tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
-                    
-                    is_timed_out.set(true);
-                    if let Some(ref handler) = ontimeout {
-                        handler.call(());
-                    }
-                });
+    use_effect(use_reactive(
+        (&loading, &timeout_ms),
+        move |(loading, timeout_ms)| {
+            if loading {
+                is_timed_out.set(false);
+                if let Some(ms) = timeout_ms {
+                    spawn(async move {
+                        #[cfg(target_arch = "wasm32")]
+                        gloo_timers::future::TimeoutFuture::new(ms as u32).await;
+                        #[cfg(not(target_arch = "wasm32"))]
+                        tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
+
+                        is_timed_out.set(true);
+                        if let Some(ref handler) = ontimeout {
+                            handler.call(());
+                        }
+                    });
+                }
+            } else {
+                is_timed_out.set(false);
             }
-        } else {
-            is_timed_out.set(false);
-        }
-    }));
+        },
+    ));
 
     let effective_loading = loading && !*is_timed_out.read();
 

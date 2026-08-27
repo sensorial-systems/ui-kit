@@ -75,7 +75,11 @@ impl BillData {
             .map(|conversion| conversion.format(value))
     }
 
-    pub fn with_dates(mut self, issue_date: impl Into<String>, due_date: impl Into<String>) -> Self {
+    pub fn with_dates(
+        mut self,
+        issue_date: impl Into<String>,
+        due_date: impl Into<String>,
+    ) -> Self {
         self.issue_date = issue_date.into();
         self.due_date = due_date.into();
         self

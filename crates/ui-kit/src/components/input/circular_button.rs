@@ -1,17 +1,19 @@
-use dioxus::prelude::*;
 use crate::components::info::{Spinner, SpinnerSize, SpinnerVariant};
 use crate::components::input::{ButtonSize, ButtonVariant};
+use dioxus::prelude::*;
 
 #[component]
 pub fn CircularButton(
     #[props(default)] variant: ButtonVariant,
     #[props(default)] size: ButtonSize,
     /// Optional CSS color used as the button's background and border color.
-    #[props(into, default)] color: Option<String>,
+    #[props(into, default)]
+    color: Option<String>,
     #[props(default)] disabled: bool,
     #[props(default)] loading: bool,
     /// Optional timeout in milliseconds for the loading state.
-    #[props(default)] timeout_ms: Option<u64>,
+    #[props(default)]
+    timeout_ms: Option<u64>,
     onclick: Option<EventHandler<MouseEvent>>,
     ontimeout: Option<EventHandler<()>>,
     onmouseenter: Option<EventHandler<MouseEvent>>,
@@ -27,10 +29,16 @@ pub fn CircularButton(
         ButtonSize::Medium => "uikit-circular-btn-md",
         ButtonSize::Large => "uikit-circular-btn-lg",
     };
-    let color_class = if color.is_some() { "uikit-btn-custom-color" } else { "" };
+    let color_class = if color.is_some() {
+        "uikit-btn-custom-color"
+    } else {
+        ""
+    };
     let extra_class = class.unwrap_or_default();
-    let combined_class = format!("uikit-btn uikit-circular-btn {variant_class} {size_class} {color_class} {extra_class}");
-    
+    let combined_class = format!(
+        "uikit-btn uikit-circular-btn {variant_class} {size_class} {color_class} {extra_class}"
+    );
+
     let custom_style = color
         .as_ref()
         .map(|color| format!("--uikit-btn-color: {color};"))
@@ -40,26 +48,29 @@ pub fn CircularButton(
 
     let mut is_timed_out = use_signal(|| false);
 
-    use_effect(use_reactive((&loading, &timeout_ms), move |(loading, timeout_ms)| {
-        if loading {
-            is_timed_out.set(false);
-            if let Some(ms) = timeout_ms {
-                spawn(async move {
-                    #[cfg(target_arch = "wasm32")]
-                    gloo_timers::future::TimeoutFuture::new(ms as u32).await;
-                    #[cfg(not(target_arch = "wasm32"))]
-                    tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
-                    
-                    is_timed_out.set(true);
-                    if let Some(ref handler) = ontimeout {
-                        handler.call(());
-                    }
-                });
+    use_effect(use_reactive(
+        (&loading, &timeout_ms),
+        move |(loading, timeout_ms)| {
+            if loading {
+                is_timed_out.set(false);
+                if let Some(ms) = timeout_ms {
+                    spawn(async move {
+                        #[cfg(target_arch = "wasm32")]
+                        gloo_timers::future::TimeoutFuture::new(ms as u32).await;
+                        #[cfg(not(target_arch = "wasm32"))]
+                        tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
+
+                        is_timed_out.set(true);
+                        if let Some(ref handler) = ontimeout {
+                            handler.call(());
+                        }
+                    });
+                }
+            } else {
+                is_timed_out.set(false);
             }
-        } else {
-            is_timed_out.set(false);
-        }
-    }));
+        },
+    ));
 
     let effective_loading = loading && !*is_timed_out.read();
 

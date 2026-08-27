@@ -17,7 +17,11 @@ pub fn SelectableButton(
         }
     };
 
-    let selected_class = if selected { "uikit-selectable-button-selected" } else { "" };
+    let selected_class = if selected {
+        "uikit-selectable-button-selected"
+    } else {
+        ""
+    };
 
     rsx! {
         button {
@@ -37,5 +41,3 @@ pub fn SelectableButton(
         }
     }
 }
-
-

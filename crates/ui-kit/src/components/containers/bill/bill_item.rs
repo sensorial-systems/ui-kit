@@ -10,7 +10,12 @@ pub struct BillItem {
 }
 
 impl BillItem {
-    pub fn new(id: impl Into<String>, description: impl Into<String>, amount: f64, cost: f64) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        description: impl Into<String>,
+        amount: f64,
+        cost: f64,
+    ) -> Self {
         Self {
             id: id.into(),
             description: description.into(),

@@ -1,5 +1,5 @@
-use dioxus::prelude::*;
 use crate::components::info::{Spinner, SpinnerSize, SpinnerVariant};
+use dioxus::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TableAlign {
@@ -61,10 +61,22 @@ pub fn Table(
     empty_state: Option<Element>,
 ) -> Element {
     let striped_class = if striped { "uikit-table-striped" } else { "" };
-    let hoverable_class = if hoverable { "uikit-table-hoverable" } else { "" };
+    let hoverable_class = if hoverable {
+        "uikit-table-hoverable"
+    } else {
+        ""
+    };
     let compact_class = if compact { "uikit-table-compact" } else { "" };
-    let borderless_class = if borderless { "uikit-table-borderless" } else { "" };
-    let blur_class = if loading { "uikit-table-loading-blur" } else { "" };
+    let borderless_class = if borderless {
+        "uikit-table-borderless"
+    } else {
+        ""
+    };
+    let blur_class = if loading {
+        "uikit-table-loading-blur"
+    } else {
+        ""
+    };
 
     rsx! {
         div {
@@ -93,7 +105,7 @@ pub fn Table(
                                 };
                                 let align_class = col.align.class_name();
                                 let style = col.width.as_ref().map(|w| format!("width: {};", w)).unwrap_or_default();
-                                
+
                                 if col.sortable && onsort.is_some() {
                                     let next_dir = match sort_dir {
                                         SortDirection::None => SortDirection::Ascending,

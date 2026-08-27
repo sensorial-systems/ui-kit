@@ -108,17 +108,33 @@ pub fn FlowGraph(
             .unwrap_or((0.0, 0.0));
         let (tx, ty) = node_positions.get(&edge.to).copied().unwrap_or((0.0, 0.0));
 
-        // Offset connection points to the borders of the Box nodes (width = 150px)
-        let fx_conn = fx + 75.0;
-        let tx_conn = tx - 75.0;
+        let dimensions_for = |id: &str| {
+            nodes
+                .iter()
+                .find(|(node, _)| node.id == id)
+                .and_then(|(node, _)| match (node.width, node.height) {
+                    (Some(width), Some(height)) => Some((width, height)),
+                    _ => None,
+                })
+        };
+        let (fx_conn, fy_conn) = NodeShape::Box.connection_point_with_dimensions(
+            (fx, fy),
+            (tx, ty),
+            dimensions_for(&edge.from),
+        );
+        let (tx_conn, ty_conn) = NodeShape::Box.connection_point_with_dimensions(
+            (tx, ty),
+            (fx, fy),
+            dimensions_for(&edge.to),
+        );
 
         rsx! {
             Edge {
                 key: "{edge.from}-{edge.to}",
                 from_x: fx_conn,
-                from_y: fy,
+                from_y: fy_conn,
                 to_x: tx_conn,
-                to_y: ty,
+                to_y: ty_conn,
                 edge_type: EdgeType::Orthogonal,
                 arrow: edge.arrow,
                 animated: edge.animated,
@@ -144,6 +160,8 @@ pub fn FlowGraph(
                 border: node.border.clone(),
                 background_color: node.background_color.clone(),
                 shape: NodeShape::Box,
+                width: node.width,
+                height: node.height,
                 selected: is_selected,
                 onclick: move |_| {
                     on_node_click.call(node_id.clone());
@@ -157,7 +175,9 @@ pub fn FlowGraph(
         .iter()
         .map(|(node, _)| {
             let (x, y) = node_positions.get(&node.id).copied().unwrap_or((0.0, 0.0));
-            let (width, height) = NodeShape::Box.dimensions();
+            let (default_width, default_height) = NodeShape::Box.dimensions();
+            let width = node.width.unwrap_or(default_width);
+            let height = node.height.unwrap_or(default_height);
             GraphNavigationNode {
                 x: x - width / 2.0,
                 y: y - height / 2.0,

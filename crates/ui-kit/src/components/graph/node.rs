@@ -1,7 +1,6 @@
 use dioxus::prelude::*;
 use std::rc::Rc;
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum NodeShape {
     #[default]
@@ -43,7 +42,17 @@ impl NodeShape {
     /// node boundary instead of being moved by a fixed radius. The latter only
     /// works for circles and was the source of the visibly displaced anchors
     /// on pills, boxes, and plain nodes.
+    #[allow(dead_code)]
     pub(crate) fn connection_point(self, center: (f64, f64), toward: (f64, f64)) -> (f64, f64) {
+        self.connection_point_with_dimensions(center, toward, None)
+    }
+
+    pub(crate) fn connection_point_with_dimensions(
+        self,
+        center: (f64, f64),
+        toward: (f64, f64),
+        dimensions: Option<(f64, f64)>,
+    ) -> (f64, f64) {
         let dx = toward.0 - center.0;
         let dy = toward.1 - center.1;
 
@@ -51,7 +60,10 @@ impl NodeShape {
             return center;
         }
 
-        let (half_width, half_height, elliptical) = self.geometry();
+        let (default_half_width, default_half_height, elliptical) = self.geometry();
+        let (half_width, half_height) = dimensions
+            .map(|(width, height)| (width / 2.0, height / 2.0))
+            .unwrap_or((default_half_width, default_half_height));
 
         let scale = if elliptical {
             1.0 / ((dx / half_width).powi(2) + (dy / half_height).powi(2)).sqrt()
@@ -65,11 +77,7 @@ impl NodeShape {
     /// Return the outward unit normal of this shape at a connection point.
     /// Organic curves use this for surface-orthogonal tangents and arrows.
     #[allow(dead_code)]
-    pub(crate) fn connection_normal(
-        self,
-        center: (f64, f64),
-        point: (f64, f64),
-    ) -> (f64, f64) {
+    pub(crate) fn connection_normal(self, center: (f64, f64), point: (f64, f64)) -> (f64, f64) {
         let (half_width, half_height, elliptical) = self.geometry();
         let dx = point.0 - center.0;
         let dy = point.1 - center.1;
@@ -120,9 +128,32 @@ mod tests {
     }
 
     #[test]
+    fn clips_connections_to_custom_dimensions() {
+        assert_eq!(
+            NodeShape::Box.connection_point_with_dimensions(
+                (100.0, 100.0),
+                (300.0, 100.0),
+                Some((200.0, 80.0)),
+            ),
+            (200.0, 100.0)
+        );
+        assert_eq!(
+            NodeShape::Box.connection_point_with_dimensions(
+                (100.0, 100.0),
+                (100.0, 300.0),
+                Some((200.0, 80.0)),
+            ),
+            (100.0, 140.0)
+        );
+    }
+
+    #[test]
     fn connection_normals_are_orthogonal_to_surfaces() {
         let box_point = NodeShape::Box.connection_point((100.0, 100.0), (200.0, 150.0));
-        assert_eq!(NodeShape::Box.connection_normal((100.0, 100.0), box_point), (0.0, 1.0));
+        assert_eq!(
+            NodeShape::Box.connection_normal((100.0, 100.0), box_point),
+            (0.0, 1.0)
+        );
 
         let circle_point = NodeShape::Circle.connection_point((0.0, 0.0), (100.0, 100.0));
         let normal = NodeShape::Circle.connection_normal((0.0, 0.0), circle_point);
@@ -144,6 +175,9 @@ pub struct GraphNodeData {
     pub border: Option<String>,
     /// CSS background color. When omitted, the selected shape's default is used.
     pub background_color: Option<String>,
+    /// Optional rendered dimensions used by nodes, edge clipping, and navigation.
+    pub width: Option<f64>,
+    pub height: Option<f64>,
     pub shape: NodeShape,
     pub selected: bool,
 }

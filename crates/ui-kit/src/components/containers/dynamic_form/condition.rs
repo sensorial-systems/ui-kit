@@ -1,27 +1,15 @@
+use super::question_answer::QuestionAnswer;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use super::question_answer::QuestionAnswer;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "operator", rename_all = "snake_case")]
 pub enum Condition {
-    Equals {
-        question_id: String,
-        value: String,
-    },
-    Includes {
-        question_id: String,
-        value: String,
-    },
-    And {
-        conditions: Vec<Condition>,
-    },
-    Or {
-        conditions: Vec<Condition>,
-    },
-    Not {
-        condition: Box<Condition>,
-    },
+    Equals { question_id: String, value: String },
+    Includes { question_id: String, value: String },
+    And { conditions: Vec<Condition> },
+    Or { conditions: Vec<Condition> },
+    Not { condition: Box<Condition> },
 }
 
 impl Condition {

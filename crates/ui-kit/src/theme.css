@@ -241,6 +241,48 @@ body {
     cursor: not-allowed;
 }
 
+/* --- Aspect Ratio Selector --- */
+.uikit-aspect-ratio-selector {
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid var(--uikit-border);
+    border-radius: var(--uikit-radius-full);
+    background: color-mix(in srgb, var(--uikit-card-bg) 92%, transparent);
+    box-shadow: var(--uikit-shadow);
+}
+
+.uikit-aspect-ratio-option {
+    appearance: none;
+    border: 0;
+    border-radius: var(--uikit-radius-full);
+    padding: 8px 12px;
+    background: transparent;
+    color: var(--uikit-muted);
+    font: 700 12px/1 var(--uikit-font-sans);
+    cursor: pointer;
+    transition: var(--uikit-transition-fast);
+}
+
+.uikit-aspect-ratio-option:not(:disabled):hover {
+    color: var(--uikit-fg);
+}
+
+.uikit-aspect-ratio-option:focus-visible {
+    outline: 2px solid var(--uikit-primary);
+    outline-offset: 1px;
+}
+
+.uikit-aspect-ratio-option-active {
+    background: var(--uikit-primary);
+    color: var(--uikit-primary-fg);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--uikit-primary) 45%, transparent);
+}
+
+.uikit-aspect-ratio-option:disabled {
+    cursor: default;
+    opacity: .6;
+}
+
 /* Button Sizes */
 .uikit-btn-sm {
     padding: 6px 12px;

@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use super::question::Question;
 use super::question_answer::QuestionAnswer;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct FormFlowEngine {
@@ -12,7 +12,11 @@ pub struct FormFlowEngine {
 impl FormFlowEngine {
     pub fn new(questions: Vec<Question>) -> Self {
         let first_id = questions.first().map(|q| q.id.clone());
-        let history = if let Some(id) = first_id { vec![id] } else { vec![] };
+        let history = if let Some(id) = first_id {
+            vec![id]
+        } else {
+            vec![]
+        };
         Self {
             questions,
             answers: HashMap::new(),
@@ -58,7 +62,10 @@ impl FormFlowEngine {
         }
 
         // 3. Otherwise find next eligible question in array order that passes visible_when condition
-        let idx = self.questions.iter().position(|q| q.id == current_question.id)?;
+        let idx = self
+            .questions
+            .iter()
+            .position(|q| q.id == current_question.id)?;
         for q in self.questions.iter().skip(idx + 1) {
             if self.is_visible(q) {
                 return Some(q.id.clone());

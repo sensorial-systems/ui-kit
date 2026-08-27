@@ -41,7 +41,11 @@ fn describe_arc(
     let x2_out = cx + outer_r * end_rad.cos();
     let y2_out = cy + outer_r * end_rad.sin();
 
-    let large_arc = if (effective_end - start_angle).abs() > 180.0 { 1 } else { 0 };
+    let large_arc = if (effective_end - start_angle).abs() > 180.0 {
+        1
+    } else {
+        0
+    };
 
     if inner_r <= 0.0 {
         format!(
@@ -93,19 +97,31 @@ pub fn PieChart(
         let label_radius = radius * 0.65;
         let lx = cx + label_radius * mid_angle.cos();
         let ly = cy + label_radius * mid_angle.sin();
-        let pct = if total > 0.0 { (slice.value / total) * 100.0 } else { 0.0 };
+        let pct = if total > 0.0 {
+            (slice.value / total) * 100.0
+        } else {
+            0.0
+        };
 
         slices_geometry.push((slice, path, lx, ly, pct, sweep));
     }
 
-    let legend_items: Vec<_> = data.iter().map(|slice| {
-        let pct_str = if total > 0.0 {
-            format!("{:.1}%", (slice.value / total) * 100.0)
-        } else {
-            "0%".to_string()
-        };
-        (slice.label.clone(), slice.color.clone(), slice.value, pct_str)
-    }).collect();
+    let legend_items: Vec<_> = data
+        .iter()
+        .map(|slice| {
+            let pct_str = if total > 0.0 {
+                format!("{:.1}%", (slice.value / total) * 100.0)
+            } else {
+                "0%".to_string()
+            };
+            (
+                slice.label.clone(),
+                slice.color.clone(),
+                slice.value,
+                pct_str,
+            )
+        })
+        .collect();
 
     rsx! {
         div { class: "uikit-chart-container {class}",
@@ -202,21 +218,33 @@ pub fn DonutChart(
         let label_radius = (outer_radius + inner_radius) / 2.0;
         let lx = cx + label_radius * mid_angle.cos();
         let ly = cy + label_radius * mid_angle.sin();
-        let pct = if total > 0.0 { (slice.value / total) * 100.0 } else { 0.0 };
+        let pct = if total > 0.0 {
+            (slice.value / total) * 100.0
+        } else {
+            0.0
+        };
 
         slices_geometry.push((slice, path, lx, ly, pct, sweep));
     }
 
     let center_diameter = inner_radius * 1.85;
 
-    let legend_items: Vec<_> = data.iter().map(|slice| {
-        let pct_str = if total > 0.0 {
-            format!("{:.1}%", (slice.value / total) * 100.0)
-        } else {
-            "0%".to_string()
-        };
-        (slice.label.clone(), slice.color.clone(), slice.value, pct_str)
-    }).collect();
+    let legend_items: Vec<_> = data
+        .iter()
+        .map(|slice| {
+            let pct_str = if total > 0.0 {
+                format!("{:.1}%", (slice.value / total) * 100.0)
+            } else {
+                "0%".to_string()
+            };
+            (
+                slice.label.clone(),
+                slice.color.clone(),
+                slice.value,
+                pct_str,
+            )
+        })
+        .collect();
 
     rsx! {
         div { class: "uikit-chart-container {class}",

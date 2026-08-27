@@ -20,4 +20,6 @@ pub use dynamic_form::{
 pub use modal::Modal;
 pub use pipeline_board::{PipelineBoard, PipelineCard, PipelineColumn, PipelineDragPreview};
 pub use table::{SortDirection, Table, TableAlign, TableColumn, TableRow};
-pub use timeline::{Timeline, TimelineColumn, TimelineMilestone, TimelineProject, TimelineRange, TimelineTask};
+pub use timeline::{
+    Timeline, TimelineColumn, TimelineMilestone, TimelineProject, TimelineRange, TimelineTask,
+};

@@ -147,6 +147,7 @@ fn App() -> Element {
     let mut datetime_val = use_signal(|| "2026-07-16 18:00".to_string());
     let mut color_val = use_signal(|| "#3b82f6".to_string());
     let mut selectable_btn_val = use_signal(|| true);
+    let mut aspect_ratio = use_signal(AspectRatio::default);
     let mut inline_color_val = use_signal(|| "#10b981".to_string());
     let mut wysiwyg_val = use_signal(|| {
         "<p>Hello <b>World</b>! This is a <i>WYSIWYG</i> editor.</p><p>Double-click this text block to edit formatting.</p>".to_string()
@@ -158,15 +159,29 @@ fn App() -> Element {
 
     let bill_data_sig = use_signal(|| {
         let items = vec![
-            BillItem::new("item-101", "Cloud Server Cluster (Monthly - 8 Nodes)", 8.0, 125.0)
-                .with_category("Infrastructure"),
-            BillItem::new("item-102", "UI Kit Enterprise License & Support", 1.0, 500.0)
-                .with_category("Software License")
-                .with_discount(50.0),
-            BillItem::new("item-103", "Promotional Refund / Service Credit", 1.0, -150.0)
-                .with_category("Credits"),
-            BillItem::new("item-104", "Included Tier Support", 1.0, 0.0)
-                .with_category("Support"),
+            BillItem::new(
+                "item-101",
+                "Cloud Server Cluster (Monthly - 8 Nodes)",
+                8.0,
+                125.0,
+            )
+            .with_category("Infrastructure"),
+            BillItem::new(
+                "item-102",
+                "UI Kit Enterprise License & Support",
+                1.0,
+                500.0,
+            )
+            .with_category("Software License")
+            .with_discount(50.0),
+            BillItem::new(
+                "item-103",
+                "Promotional Refund / Service Credit",
+                1.0,
+                -150.0,
+            )
+            .with_category("Credits"),
+            BillItem::new("item-104", "Included Tier Support", 1.0, 0.0).with_category("Support"),
         ];
 
         BillData::new("INV-2026-8801")
@@ -196,7 +211,9 @@ fn App() -> Element {
                 requests_count.with_mut(|v| *v += delta);
 
                 // Update CPU usage (sine wave fluctuation between 40.0 and 90.0)
-                let new_cpu = (65.0 + 25.0 * ((tick as f64 * 0.3).sin())).round() / 10.0 + (tick % 5) as f64 - 2.0;
+                let new_cpu = (65.0 + 25.0 * ((tick as f64 * 0.3).sin())).round() / 10.0
+                    + (tick % 5) as f64
+                    - 2.0;
                 let clamped_cpu = new_cpu.clamp(10.0, 99.9);
                 cpu_usage.set((clamped_cpu * 10.0).round() / 10.0);
 
@@ -215,7 +232,6 @@ fn App() -> Element {
             }
         });
     });
-
 
     let mut flow_active = use_signal(|| Some("build".to_string()));
     let mut tree_editable = use_signal(|| false);
@@ -245,6 +261,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Box,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 div {
@@ -265,6 +283,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Box,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 div {
@@ -285,6 +305,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Box,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 div {
@@ -305,6 +327,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Box,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 div {
@@ -325,6 +349,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Box,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 div {
@@ -395,6 +421,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Box,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 span { class: "uikit-graph-node-title", style: "font-size: 20px; font-weight: 750; text-align: center;", "Core App" }
@@ -410,6 +438,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Box,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 span { class: "uikit-graph-node-title", "UI Layer" }
@@ -425,6 +455,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Box,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 span { class: "uikit-graph-node-title", "Database" }
@@ -440,6 +472,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Box,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 span { class: "uikit-graph-node-title", "GraphQL API" }
@@ -455,6 +489,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Box,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Views & Pages" }
@@ -470,6 +506,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Box,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Shared Parts" }
@@ -485,6 +523,8 @@ fn App() -> Element {
                 background_color: Some("transparent".to_string()),
                 shape: NodeShape::Plain,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Web Views" } },
         ),
@@ -498,6 +538,8 @@ fn App() -> Element {
                 background_color: Some("transparent".to_string()),
                 shape: NodeShape::Plain,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Mobile Views" } },
         ),
@@ -511,6 +553,8 @@ fn App() -> Element {
                 background_color: Some("transparent".to_string()),
                 shape: NodeShape::Plain,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Form Controls" } },
         ),
@@ -524,6 +568,8 @@ fn App() -> Element {
                 background_color: Some("transparent".to_string()),
                 shape: NodeShape::Plain,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! { span { class: "uikit-graph-node-title", style: "font-weight: 500; font-size: 13px;", "Navigation" } },
         ),
@@ -640,6 +686,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Circle,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 div {
@@ -659,6 +707,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Circle,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 div {
@@ -678,6 +728,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Circle,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 div {
@@ -697,6 +749,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Circle,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 div {
@@ -716,6 +770,8 @@ fn App() -> Element {
                 background_color: None,
                 shape: NodeShape::Circle,
                 selected: false,
+                width: None,
+                height: None,
             },
             rsx! {
                 div {
@@ -841,13 +897,50 @@ fn App() -> Element {
             ),
         ]
     });
-    let mut pipeline_cards = use_signal(|| vec![
-        PipelineCard { id: "research".into(), column_id: "backlog".into(), title: "Research customer needs".into(), group: "Discovery".into(), color: "#8b5cf6".into(), meta: "Research · Medium · Aug 11–12".into() },
-        PipelineCard { id: "brief".into(), column_id: "planned".into(), title: "Prepare implementation brief".into(), group: "Planning".into(), color: "#ec4899".into(), meta: "Planning · Medium · Aug 12–13".into() },
-        PipelineCard { id: "tokens".into(), column_id: "progress".into(), title: "Define semantic tokens".into(), group: "Design system".into(), color: "#3b82f6".into(), meta: "Design · High · Aug 12–15".into() },
-        PipelineCard { id: "docs".into(), column_id: "review".into(), title: "Review component docs".into(), group: "Documentation".into(), color: "#f59e0b".into(), meta: "Docs · Low · Aug 14–15".into() },
-        PipelineCard { id: "release".into(), column_id: "done".into(), title: "Publish alpha release".into(), group: "UI kit".into(), color: "#10b981".into(), meta: "Release · Medium · Aug 8–10".into() },
-    ]);
+    let mut pipeline_cards = use_signal(|| {
+        vec![
+            PipelineCard {
+                id: "research".into(),
+                column_id: "backlog".into(),
+                title: "Research customer needs".into(),
+                group: "Discovery".into(),
+                color: "#8b5cf6".into(),
+                meta: "Research · Medium · Aug 11–12".into(),
+            },
+            PipelineCard {
+                id: "brief".into(),
+                column_id: "planned".into(),
+                title: "Prepare implementation brief".into(),
+                group: "Planning".into(),
+                color: "#ec4899".into(),
+                meta: "Planning · Medium · Aug 12–13".into(),
+            },
+            PipelineCard {
+                id: "tokens".into(),
+                column_id: "progress".into(),
+                title: "Define semantic tokens".into(),
+                group: "Design system".into(),
+                color: "#3b82f6".into(),
+                meta: "Design · High · Aug 12–15".into(),
+            },
+            PipelineCard {
+                id: "docs".into(),
+                column_id: "review".into(),
+                title: "Review component docs".into(),
+                group: "Documentation".into(),
+                color: "#f59e0b".into(),
+                meta: "Docs · Low · Aug 14–15".into(),
+            },
+            PipelineCard {
+                id: "release".into(),
+                column_id: "done".into(),
+                title: "Publish alpha release".into(),
+                group: "UI kit".into(),
+                color: "#10b981".into(),
+                meta: "Release · Medium · Aug 8–10".into(),
+            },
+        ]
+    });
     let mut pipeline_selected = use_signal(Vec::<String>::new);
     let mut pipeline_dragging = use_signal(|| None::<String>);
     let mut pipeline_hovered = use_signal(|| None::<String>);
@@ -1236,6 +1329,27 @@ fn App() -> Element {
                                             disabled: true,
                                             selected: false,
                                             onselect: move |_| {},
+                                        }
+                                    }
+                                }
+                                div {
+                                    Heading { level: HeadingLevel::H4, muted: true, style: "margin-bottom: 12px;", "Aspect Ratio Selector" }
+                                    div {
+                                        style: "display: flex; gap: 16px; flex-wrap: wrap; align-items: center;",
+                                        AspectRatioSelector {
+                                            value: *aspect_ratio.read(),
+                                            onchange: move |ratio| aspect_ratio.set(ratio),
+                                        }
+                                        span {
+                                            style: "font-size: 13px; color: var(--uikit-muted);",
+                                            {
+                                                let (width, height) = aspect_ratio.read().dimensions();
+                                                format!("{} · {}×{}", aspect_ratio.read().label(), width, height)
+                                            }
+                                        }
+                                        AspectRatioSelector {
+                                            value: AspectRatio::Portrait9x16,
+                                            disabled: true,
                                         }
                                     }
                                 }

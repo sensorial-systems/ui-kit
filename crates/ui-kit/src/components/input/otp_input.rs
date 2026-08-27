@@ -1,6 +1,6 @@
-use dioxus::prelude::*;
-use dioxus::document::eval;
 use super::{FormField, LabelLayout};
+use dioxus::document::eval;
+use dioxus::prelude::*;
 
 #[component]
 pub fn OtpInput(
@@ -16,7 +16,8 @@ pub fn OtpInput(
 ) -> Element {
     // Set up a listener for pasting code
     let mut paste_eval = use_signal(|| {
-        eval(r#"
+        eval(
+            r#"
             document.addEventListener('paste', (e) => {
                 let active = document.activeElement;
                 if (active && active.classList.contains('uikit-otp-input-field')) {
@@ -26,7 +27,8 @@ pub fn OtpInput(
                     dioxus.send(digits);
                 }
             });
-        "#)
+        "#,
+        )
     });
 
     let onchange_clone = onchange.clone();
@@ -77,7 +79,7 @@ pub fn OtpInput(
                                 value: "{display_val}",
                                 disabled: disabled,
                                 style: "width: 45px; height: 45px; text-align: center; font-size: 1.25rem; font-weight: 600; padding: 0;",
-                                
+
                                 onfocus: move |_| {
                                     let _ = eval(&format!(
                                         r#"
@@ -154,13 +156,13 @@ pub fn OtpInput(
                                     while current_chars.len() < length {
                                         current_chars.push(' ');
                                     }
-                                    
+
                                     if let Some(c) = input_val.chars().next_back() {
                                         if c.is_ascii_digit() {
                                             current_chars[i] = c;
                                             let new_otp: String = current_chars.iter().filter(|&&c| c != ' ').collect();
                                             onchange.call(new_otp);
-                                            
+
                                             if i + 1 < length {
                                                 let _ = eval(&format!(
                                                     r#"

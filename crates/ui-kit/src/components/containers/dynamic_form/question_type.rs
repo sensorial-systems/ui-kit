@@ -18,7 +18,10 @@ pub enum QuestionType {
 
 impl QuestionType {
     pub fn is_choice(&self) -> bool {
-        matches!(self, QuestionType::SingleChoice | QuestionType::MultipleChoice)
+        matches!(
+            self,
+            QuestionType::SingleChoice | QuestionType::MultipleChoice
+        )
     }
 
     pub fn is_text_input(&self) -> bool {

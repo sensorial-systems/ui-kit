@@ -9,7 +9,11 @@ pub fn Card(
     children: Element,
 ) -> Element {
     let shadow_class = if shadowed { "uikit-card-shadowed" } else { "" };
-    let hover_class = if hoverable { "uikit-card-hoverable" } else { "" };
+    let hover_class = if hoverable {
+        "uikit-card-hoverable"
+    } else {
+        ""
+    };
 
     rsx! {
         div {

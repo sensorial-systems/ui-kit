@@ -12,7 +12,8 @@ pub fn DateTimePicker(
     let mut is_open = use_signal(|| false);
 
     // Initial state setup parsed from current value or defaulting to 2026-07-16 12:00
-    let (init_y, init_m, init_d, init_h, init_min) = parse_datetime(&value).unwrap_or((2026, 7, 16, 12, 0));
+    let (init_y, init_m, init_d, init_h, init_min) =
+        parse_datetime(&value).unwrap_or((2026, 7, 16, 12, 0));
     let mut view_year = use_signal(|| init_y);
     let mut view_month = use_signal(|| init_m);
     let mut selected_day = use_signal(|| Some(init_d));

@@ -1,6 +1,6 @@
-use dioxus::prelude::*;
-use dioxus::document::eval;
 use super::{FormField, LabelLayout};
+use dioxus::document::eval;
+use dioxus::prelude::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
@@ -63,10 +63,14 @@ pub fn EditableText(
     };
 
     let exec_cmd_val = move |cmd: &'static str, val: &'static str| {
-        let _ = eval(&format!("document.execCommand('{}', false, '{}');", cmd, val));
+        let _ = eval(&format!(
+            "document.execCommand('{}', false, '{}');",
+            cmd, val
+        ));
     };
 
-    let placeholder_str = placeholder.unwrap_or_else(|| "Double click to write rich text...".to_string());
+    let placeholder_str =
+        placeholder.unwrap_or_else(|| "Double click to write rich text...".to_string());
 
     rsx! {
         FormField {
@@ -424,7 +428,7 @@ pub fn EditableText(
                                         "#,
                                         unique_id
                                     ));
-                                    
+
                                     spawn(async move {
                                         if let Ok(html) = eval_handle.recv::<String>().await {
                                             let trimmed = html.trim();
@@ -475,7 +479,7 @@ pub fn EditableText(
                                         "#,
                                         unique_id
                                     ));
-                                    
+
                                     spawn(async move {
                                         if let Ok(html) = eval_handle.recv::<String>().await {
                                             let trimmed = html.trim();
