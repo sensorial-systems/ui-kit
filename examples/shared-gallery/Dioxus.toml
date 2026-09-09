@@ -1,0 +1,4 @@
+[application]
+name = "shared-gallery"
+[web.app]
+title = "Shared UI · Dioxus and immediate"

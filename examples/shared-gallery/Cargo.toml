@@ -1,0 +1,40 @@
+[package]
+name = "shared-gallery"
+version = "0.1.0"
+edition = "2021"
+publish = false
+[dependencies]
+ui-kit-core = { path = "../../crates/ui-kit-core" }
+ui-kit-dioxus = { path = "../../crates/ui-kit-dioxus" }
+ui-kit-immediate = { path = "../../crates/ui-kit-immediate" }
+dioxus = { version = "0.7.1", default-features = false, features = ["macro", "html", "signals", "hooks", "launch"] }
+[features]
+default = []
+web = ["dioxus/web"]
+gpu = ["dep:ui-kit-wgpu", "dep:wgpu", "dep:pollster", "dep:png", "dep:anyhow", "dep:dioxus-ssr"]
+[dependencies.ui-kit-wgpu]
+path = "../../crates/ui-kit-wgpu"
+optional = true
+[dependencies.wgpu]
+version = "30"
+default-features = false
+optional = true
+[dependencies.pollster]
+version = "0.4"
+optional = true
+[dependencies.png]
+version = "0.18"
+optional = true
+[dependencies.anyhow]
+version = "1"
+optional = true
+[dependencies.dioxus-ssr]
+version = "0.7"
+optional = true
+[[bin]]
+name = "shared-gallery"
+path = "src/main.rs"
+required-features = ["web"]
+[[example]]
+name = "texture"
+required-features = ["gpu"]

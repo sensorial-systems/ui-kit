@@ -18,53 +18,34 @@ pub fn NetworkGraph(
     let center_x = canvas_width / 2.0;
     let center_y = canvas_height / 2.0;
 
-    // 1. Calculate degrees of nodes to identify a "hub" node for layout
-    let mut degrees: HashMap<String, usize> = HashMap::new();
-    for edge in &edges {
-        *degrees.entry(edge.from.clone()).or_default() += 1;
-        *degrees.entry(edge.to.clone()).or_default() += 1;
-    }
-
-    // Find the node with highest degree
-    let mut hub_id: Option<String> = None;
-    let mut max_degree = 0;
-    for (id, deg) in &degrees {
-        if *deg > max_degree {
-            max_degree = *deg;
-            hub_id = Some(id.clone());
-        }
-    }
-
-    // Only use hub layout if the hub has significant connections relative to node count
-    let use_hub_layout = nodes.len() >= 4 && max_degree >= 3;
-
-    // 2. Position nodes (hub in center, rest in a circle; or all in a circle if no clear hub)
-    let mut node_positions: HashMap<String, (f64, f64)> = HashMap::new();
-
-    let mut outer_nodes = Vec::new();
-    for (node, _) in &nodes {
-        if node.x > 0.01 || node.y > 0.01 {
-            node_positions.insert(node.id.clone(), (node.x, node.y));
-            continue;
-        }
-
-        if use_hub_layout && Some(node.id.clone()) == hub_id {
-            node_positions.insert(node.id.clone(), (center_x, center_y));
-        } else {
-            outer_nodes.push(node.id.clone());
-        }
-    }
-
-    let n_outer = outer_nodes.len();
-    let radius = 135.0;
-
-    for (i, id) in outer_nodes.iter().enumerate() {
-        let angle = (i as f64 * 2.0 * std::f64::consts::PI) / n_outer as f64;
-        let x = center_x + radius * angle.cos();
-        let y = center_y + radius * angle.sin();
-        node_positions.insert(id.clone(), (x, y));
-    }
-
+    let layout_nodes = nodes
+        .iter()
+        .map(|(node, _)| ui_kit_core::graph::NetworkNode {
+            id: node.id.clone(),
+            position: if node.x > 0.01 || node.y > 0.01 {
+                Some(ui_kit_core::Point::new(node.x as f32, node.y as f32))
+            } else {
+                None
+            },
+        })
+        .collect::<Vec<_>>();
+    let connections = edges
+        .iter()
+        .map(|edge| (edge.from.clone(), edge.to.clone()))
+        .collect::<Vec<_>>();
+    let layout = ui_kit_core::graph::network_layout(
+        &layout_nodes,
+        &connections,
+        ui_kit_core::Point::new(center_x as f32, center_y as f32),
+        135.0,
+    );
+    let hub_id = layout.hub_id;
+    let use_hub_layout = hub_id.is_some();
+    let node_positions: HashMap<String, (f64, f64)> = layout
+        .positions
+        .into_iter()
+        .map(|(id, p)| (id, (p.x as f64, p.y as f64)))
+        .collect();
     // Render edges
     let rendered_edges = edges.iter().map(|edge| {
         let (fx, fy) = node_positions

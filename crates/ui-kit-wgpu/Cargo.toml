@@ -1,0 +1,13 @@
+[package]
+name = "ui-kit-wgpu"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+ui-kit-core = { path = "../ui-kit-core" }
+ui-kit-immediate = { path = "../ui-kit-immediate" }
+wgpu = { version = "30", default-features = false, features = ["std", "wgsl", "vulkan", "metal", "webgpu"] }
+glyphon = "0.12"
+anyhow = "1"
+bytemuck = "1"
+[dev-dependencies]
+pollster = "0.4"

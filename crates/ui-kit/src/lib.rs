@@ -22,3 +22,8 @@ pub use components::{
 };
 pub use theme::AppTheme;
 pub use theme_provider::ThemeProvider;
+
+/// Backend-independent descriptions alongside the existing Dioxus components.
+pub use ui_kit_core as shared;
+/// Render a shared description through native Dioxus elements.
+pub use ui_kit_dioxus::{RichTextView, SharedView};

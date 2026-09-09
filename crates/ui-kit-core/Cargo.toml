@@ -1,0 +1,8 @@
+[package]
+name = "ui-kit-core"
+version = "0.1.0"
+edition = "2021"
+description = "Backend-independent UI descriptions and semantic actions"
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+unicode-segmentation = "1"

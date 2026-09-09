@@ -1,0 +1,9 @@
+[package]
+name = "ui-kit-dioxus"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+ui-kit-core = { path = "../ui-kit-core" }
+dioxus = { version = "0.7.1", default-features = false, features = ["macro", "html", "signals", "hooks"] }
+[dev-dependencies]
+dioxus-ssr = "0.7"
