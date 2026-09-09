@@ -2,10 +2,8 @@
 pub mod composition;
 pub mod immediate;
 pub mod spatial;
-pub mod window;
 pub use immediate::{DrawCommand, Input, Response, RichTextPaint, Ui};
 use ui_kit_core::{layout, Event, Kind, Rect, Theme, Value, View};
-pub use window::{window_chrome, WindowResponse, WindowStyle};
 
 #[derive(Default)]
 pub struct ImmediateHost {

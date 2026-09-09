@@ -1,14 +1,12 @@
 //! Painting the shared window frame in immediate mode.
 //!
 //! The measurements, the hit test and the button IDs all come from
-//! [`ui_kit_core::WindowChrome`], so an immediate host and a Dioxus host draw
+//! [`crate::WindowChrome`], so an immediate host and a Dioxus host draw
 //! the same window and emit the same actions. What is added here is only the
 //! painting and the frame-to-frame press bookkeeping an immediate host needs.
-use crate::immediate::Ui;
-use ui_kit_core::{
-    Material, Point, Rect, Style, TextAlign, Theme, WindowAction, WindowChrome, WindowControl,
-    WindowRegion,
-};
+use crate::{WindowAction, WindowChrome, WindowControl, WindowRegion};
+use ui_kit_core::{Material, Point, Rect, Style, TextAlign, Theme};
+use ui_kit_immediate::Ui;
 
 /// The colours a frame is painted with. Derived from a [`Theme`] by default;
 /// override individual fields for an application with its own title bar look.
@@ -73,7 +71,7 @@ pub struct WindowResponse {
     /// The pointer went down on the bar: the host should start a system move.
     pub drag: bool,
     /// The pointer went down on an edge: the host should start a system resize.
-    pub resize: Option<ui_kit_core::ResizeEdge>,
+    pub resize: Option<crate::ResizeEdge>,
     /// Where the application should draw. Below the title bar.
     pub client: Rect,
 }
@@ -189,7 +187,7 @@ pub fn window_chrome(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::immediate::Input;
+    use ui_kit_immediate::Input;
     fn bounds() -> Rect {
         Rect {
             x: 0.0,
@@ -232,7 +230,7 @@ mod tests {
         assert!(!press(&mut ui, &chrome, Point::new(200.0, 18.0), true).drag);
         let mut ui = Ui::default();
         let resize = press(&mut ui, &chrome, Point::new(799.0, 599.0), true);
-        assert_eq!(resize.resize, Some(ui_kit_core::ResizeEdge::SouthEast));
+        assert_eq!(resize.resize, Some(crate::ResizeEdge::SouthEast));
         assert!(!resize.drag);
     }
     #[test]
@@ -261,7 +259,7 @@ mod tests {
         let point = Point::new(rect.x + 4.0, 1.0);
         let mut ui = Ui::default();
         let down = press(&mut ui, &chrome, point, true);
-        assert_eq!(down.resize, Some(ui_kit_core::ResizeEdge::North));
+        assert_eq!(down.resize, Some(crate::ResizeEdge::North));
         assert_eq!(press(&mut ui, &chrome, point, false).action, None);
     }
     #[test]

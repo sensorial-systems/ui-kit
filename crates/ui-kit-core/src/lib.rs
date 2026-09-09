@@ -1,5 +1,3 @@
-pub mod window;
-pub use window::{ResizeEdge, WindowAction, WindowChrome, WindowControl, WindowRegion};
 // Shared semantic UI. No Dioxus, GPU, executor, or application-owned state.
 pub mod graph;
 pub mod rich_text;

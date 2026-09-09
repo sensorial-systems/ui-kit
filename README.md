@@ -9,6 +9,7 @@ existing Dioxus component library.
 | `ui-kit-dioxus` | Native HTML controls and Dioxus event adapter |
 | `ui-kit-immediate` | Pointer/focus state, semantic actions, clipped drawing commands |
 | `ui-kit-wgpu` | Shared device/queue, texture targets, materials and rendering extensions |
+| `ui-kit-window` | Custom window chrome, optional immediate/Dioxus rendering, and reusable winit integration |
 | `ui-kit` | Existing Dioxus components, plus `shared` and `SharedView` exports |
 
 The new core and hosts have no dependency on Prism. The Prism implementation is
@@ -159,6 +160,10 @@ adapter uses the corresponding CSS rules; glyph metrics can differ by platform.
 ## Run and verify
 
 Standalone immediate-mode gallery (native winit window, wgpu rendering):
+
+It uses `ui-kit-window` for the custom title bar and native window interactions.
+See the [winit composition guide](crates/ui-kit-window/README.md) to reuse the
+same setup in another application.
 
 ```powershell
 cd D:\dev\sensorial\systems\ui-kit

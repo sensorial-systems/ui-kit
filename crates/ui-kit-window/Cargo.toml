@@ -1,0 +1,18 @@
+[package]
+name = "ui-kit-window"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+immediate = ["dep:ui-kit-immediate"]
+dioxus = ["dep:dioxus", "dep:ui-kit-dioxus"]
+winit = ["dep:winit"]
+
+[dependencies]
+ui-kit-core = { path = "../ui-kit-core" }
+serde = { version = "1", features = ["derive"] }
+ui-kit-immediate = { path = "../ui-kit-immediate", optional = true }
+ui-kit-dioxus = { path = "../ui-kit-dioxus", optional = true }
+dioxus = { version = "0.7.1", default-features = false, features = ["macro", "html", "signals", "hooks"], optional = true }
+winit = { version = "0.30", optional = true }

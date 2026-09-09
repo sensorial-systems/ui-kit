@@ -9,6 +9,7 @@ use ui_kit_core::Point;
 use ui_kit_immediate::immediate::TextNavigation;
 use ui_kit_immediate::{composition::UiRenderer, Input};
 use ui_kit_wgpu::{GpuContext, TextureTarget, WgpuFrame, WgpuRenderer};
+use ui_kit_window::{WindowStyle, WinitWindow};
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
@@ -26,6 +27,7 @@ struct App {
     renderer: Option<WgpuRenderer<GeometryRenderer>>,
     target: Option<ui_kit_wgpu::Texture2d>,
     gallery: Gallery,
+    chrome: WinitWindow,
     input: Input,
     modifiers: ModifiersState,
     ime: bool,
@@ -43,6 +45,7 @@ impl Default for App {
             renderer: None,
             target: None,
             gallery: Gallery::default(),
+            chrome: WinitWindow::new("UI Kit Component Gallery — Immediate / wgpu"),
             input: Input::default(),
             modifiers: ModifiersState::default(),
             ime: false,
@@ -54,13 +57,9 @@ impl Default for App {
 }
 impl App {
     fn initialize(&mut self, event_loop: &ActiveEventLoop) -> Result<()> {
-        let window = Arc::new(
-            event_loop.create_window(
-                Window::default_attributes()
-                    .with_title("UI Kit Component Gallery — Immediate / wgpu")
-                    .with_inner_size(LogicalSize::new(1200.0, 850.0)),
-            )?,
-        );
+        let window = Arc::new(event_loop.create_window(self.chrome.attributes(
+            Window::default_attributes().with_inner_size(LogicalSize::new(1200.0, 850.0)),
+        ))?);
         window.set_ime_allowed(true);
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
         let surface = instance.create_surface(window.clone())?;
@@ -136,11 +135,30 @@ impl App {
             wgpu::CurrentSurfaceTexture::Validation => anyhow::bail!("surface validation error"),
         };
         let scale = window.scale_factor() as f32;
-        let mut commands = self.gallery.frame(
+        let mut style = WindowStyle::default();
+        let background = self.gallery.background();
+        style.frame.fill = [
+            background.r as f32,
+            background.g as f32,
+            background.b as f32,
+            background.a as f32,
+        ];
+        style.bar.fill = style.frame.fill;
+        style.title.foreground = if self.gallery.dark {
+            [0.96, 0.96, 0.96, 1.0]
+        } else {
+            [0.04, 0.04, 0.04, 1.0]
+        };
+        style.control.foreground = style.title.foreground;
+        style.close.foreground = style.title.foreground;
+        let mut commands = self.chrome.frame(
+            window,
             self.input.clone(),
-            size.width as f32 / scale,
-            size.height as f32 / scale,
-            self.start.elapsed().as_secs_f32(),
+            &style,
+            |input, width, height| {
+                self.gallery
+                    .frame(input, width, height, self.start.elapsed().as_secs_f32())
+            },
         );
         self.input.text.clear();
         self.input.backspace = false;
@@ -193,6 +211,22 @@ impl ApplicationHandler for App {
         }
     }
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
+        if let Some(window) = &self.window {
+            match self.chrome.event(window, &event) {
+                Ok(response) => {
+                    if response.close_requested {
+                        event_loop.exit();
+                    }
+                    if response.consumed {
+                        return;
+                    }
+                }
+                Err(error) => {
+                    eprintln!("Window operation unavailable: {error}");
+                    return;
+                }
+            }
+        }
         let scale = self.window.as_ref().map_or(1.0, |w| w.scale_factor()) as f32;
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),

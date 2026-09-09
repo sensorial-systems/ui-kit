@@ -618,6 +618,21 @@ impl Gallery {
             commands.extend_from_slice(oui.end());
             self.overlay_ui = oui;
         }
+        // Custom geometry uses command-local coordinates so window composition
+        // can translate it using the same rectangle as standard UI commands.
+        for command in &mut commands {
+            if let Material::Custom { name, parameters } = &mut command.style.material {
+                let stride = match name.as_str() {
+                    "gallery.triangles" => 2,
+                    "gallery.colored-triangles" => 6,
+                    _ => continue,
+                };
+                for vertex in parameters.chunks_exact_mut(stride) {
+                    vertex[0] -= command.rect.x;
+                    vertex[1] -= command.rect.y;
+                }
+            }
+        }
         commands
     }
     fn section(&mut self, p: &mut Painter, y: &mut f32, x: f32, w: f32, title: &str) {
@@ -868,11 +883,7 @@ impl Gallery {
                     );
                 }
                 _ => {
-                    if p.dropdown(
-                        "language",
-                        r(x + 140.0, cy, 360.0, 38.0),
-                        &self.language,
-                    ) {
+                    if p.dropdown("language", r(x + 140.0, cy, 360.0, 38.0), &self.language) {
                         self.menu(
                             "language",
                             vec!["Rust", "TypeScript", "Python", "Go"],
@@ -2342,7 +2353,14 @@ impl Painter<'_> {
         // Position the indicator from the control bounds, independently of text width.
         let right = rect.x + rect.width - 14.0;
         let cy = rect.y + rect.height * 0.5;
-        self.line(right - 8.0, cy - 2.0, right - 4.0, cy + 2.0, self.palette.fg, 1.3);
+        self.line(
+            right - 8.0,
+            cy - 2.0,
+            right - 4.0,
+            cy + 2.0,
+            self.palette.fg,
+            1.3,
+        );
         self.line(right - 4.0, cy + 2.0, right, cy - 2.0, self.palette.fg, 1.3);
         clicked
     }

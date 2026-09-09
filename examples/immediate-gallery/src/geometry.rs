@@ -93,8 +93,8 @@ impl CommandRenderer for GeometryRenderer {
             .chunks_exact(if colored { 6 } else { 2 })
             .map(|xy| {
                 [
-                    xy[0],
-                    xy[1],
+                    xy[0] + command.rect.x,
+                    xy[1] + command.rect.y,
                     if colored {
                         xy[2]
                     } else {

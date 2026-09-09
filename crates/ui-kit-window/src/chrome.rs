@@ -6,8 +6,8 @@
 //! specific to a renderer, so it lives here, next to the rest of the shared
 //! model: the immediate host paints it, Dioxus renders it as DOM, and a native
 //! window asks [`WindowChrome::hit`] what the pointer is on.
-use crate::{button, row, text, Point, Rect, View};
 use serde::{Deserialize, Serialize};
+use ui_kit_core::{button, row, text, Point, Rect, View};
 
 /// A title bar button.
 ///

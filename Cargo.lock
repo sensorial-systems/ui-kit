@@ -2931,6 +2931,7 @@ dependencies = [
  "ui-kit-core",
  "ui-kit-immediate",
  "ui-kit-wgpu",
+ "ui-kit-window",
  "wgpu",
  "winit",
 ]
@@ -6567,6 +6568,18 @@ dependencies = [
  "ui-kit-core",
  "ui-kit-immediate",
  "wgpu",
+]
+
+[[package]]
+name = "ui-kit-window"
+version = "0.1.0"
+dependencies = [
+ "dioxus",
+ "serde",
+ "ui-kit-core",
+ "ui-kit-dioxus",
+ "ui-kit-immediate",
+ "winit",
 ]
 
 [[package]]

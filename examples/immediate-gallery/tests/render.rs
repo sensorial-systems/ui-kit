@@ -44,9 +44,7 @@ fn text_is_visually_centered_and_vectors_have_partial_pixel_coverage() -> Result
     ui.style.fill = [1.0; 4];
     ui.style.material = Material::Custom {
         name: "gallery.triangles".into(),
-        parameters: vec![
-            10., 180., 210., 220., 210., 222., 10., 180., 210., 222., 10., 182.,
-        ],
+        parameters: vec![1., 1., 201., 41., 201., 43., 1., 1., 201., 43., 1., 3.],
     };
     ui.panel(Rect {
         x: 9.,
