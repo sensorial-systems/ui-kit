@@ -1,4 +1,4 @@
-//! Immediate UI in logical panel pixels. Hosts own rendering, input and application data.
+﻿//! Immediate UI in logical panel pixels. Hosts own rendering, input and application data.
 use crate::spatial::Vec3;
 use serde::{Deserialize, Serialize};
 pub use ui_kit_core::{Material, Point as Vec2, Rect, Style};
@@ -300,6 +300,17 @@ impl Ui {
             false,
         );
     }
+    pub fn number_picker<T: Copy + PartialOrd + std::ops::Add<Output = T> + std::ops::Sub<Output = T> + std::fmt::Display>(
+        &mut self,
+        id: &str,
+        rect: Rect,
+        value: &mut T,
+        min: T,
+        max: T,
+        step: T,
+    ) -> Response {
+        crate::number_picker::NumberPicker::new(min, max, step).show(self, id, rect, value)
+    }
 }
 
 /// A planar world-space UI. `right` and `down` span the full panel in world units.
@@ -345,3 +356,4 @@ impl WorldPanel {
         }
     }
 }
+

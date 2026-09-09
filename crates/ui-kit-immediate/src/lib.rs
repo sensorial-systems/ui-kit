@@ -1,8 +1,10 @@
-//! Immediate host: interaction state and rendering commands, independent of wgpu.
+﻿//! Immediate host: interaction state and rendering commands, independent of wgpu.
 pub mod composition;
 pub mod immediate;
+pub mod number_picker;
 pub mod spatial;
 pub use immediate::{DrawCommand, Input, Response, RichTextPaint, Ui};
+pub use number_picker::NumberPicker;
 use ui_kit_core::{layout, Event, Kind, Rect, Theme, Value, View};
 
 #[derive(Default)]
@@ -44,7 +46,7 @@ impl ImmediateHost {
                     Kind::Button { label, loading } => (
                         "button",
                         if *loading {
-                            format!("Working… {label}")
+                            format!("Workingâ€¦ {label}")
                         } else {
                             label.clone()
                         },
@@ -134,3 +136,4 @@ impl ImmediateHost {
         })
     }
 }
+
