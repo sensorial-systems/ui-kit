@@ -35,8 +35,8 @@ let commands = frame.frame(&window, input, &WindowStyle::default(),
     |client_input, width, height| app.frame(client_input, width, height));
 ```
 
-`attributes` removes OS decorations while preserving caller options such as
-size and visibility. `event` handles pointer coordinates at the current DPI,
+`attributes` removes OS decorations and requests transparency while preserving
+caller options such as size and visibility. `event` handles pointer coordinates at the current DPI,
 resize cursors, system dragging/resizing, minimize, maximize/restore, and close
 button requests. Close remains a request so the application can ask about
 unsaved work. Unsupported system move/resize operations return winit's error.

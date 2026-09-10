@@ -34,6 +34,7 @@ impl WinitWindow {
             .with_title(&self.chrome.title)
             .with_decorations(false)
             .with_resizable(self.chrome.resizable)
+            .with_transparent(self.chrome.transparent)
     }
 
     pub fn bounds(&self, window: &Window) -> Rect {
@@ -241,6 +242,7 @@ mod tests {
         assert!(!attributes.visible);
         assert_eq!(attributes.title, "Example");
         assert!(attributes.inner_size.is_some());
+        assert!(attributes.transparent);
     }
 
     #[cfg(feature = "immediate")]

@@ -132,6 +132,7 @@ pub struct WindowChrome {
     pub radius: f32,
     pub maximized: bool,
     pub resizable: bool,
+    pub transparent: bool,
     /// Buttons, laid out left to right at the trailing end of the bar.
     pub controls: Vec<WindowControl>,
 }
@@ -145,6 +146,7 @@ impl Default for WindowChrome {
             radius: 10.0,
             maximized: false,
             resizable: true,
+            transparent: true,
             controls: WindowControl::ALL.into(),
         }
     }
@@ -162,6 +164,10 @@ impl WindowChrome {
     }
     pub fn resizable(mut self, value: bool) -> Self {
         self.resizable = value;
+        self
+    }
+    pub fn transparent(mut self, value: bool) -> Self {
+        self.transparent = value;
         self
     }
     pub fn controls(mut self, value: impl IntoIterator<Item = WindowControl>) -> Self {
