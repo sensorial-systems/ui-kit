@@ -1,6 +1,7 @@
 ﻿//! Immediate UI in logical panel pixels. Hosts own rendering, input and application data.
 use crate::spatial::Vec3;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 pub use ui_kit_core::{Material, Point as Vec2, Rect, Style};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -81,6 +82,8 @@ pub struct Ui {
     capture: Option<String>,
     focus: Option<String>,
     selected_text: Option<String>,
+    open_combobox: Option<String>,
+    number_text: HashMap<String, String>,
     previous_ids: Vec<String>,
     ids: Vec<String>,
     pub commands: Vec<DrawCommand>,
@@ -289,6 +292,58 @@ impl Ui {
             focused,
         );
         r
+    }
+    /// A compact select control. The caller owns the selected value; the UI
+    /// keeps only which popup is open between frames.
+    pub fn combobox<T: Copy + PartialEq + std::fmt::Display>(
+        &mut self,
+        id: &str,
+        rect: Rect,
+        value: &mut T,
+        options: &[T],
+    ) -> Response {
+        let label = format!("{}  ▾", value);
+        let trigger = self.button(id, rect, &label);
+        if trigger.clicked {
+            self.open_combobox = (self.open_combobox.as_deref() != Some(id)).then(|| id.into());
+        }
+        let mut response = trigger;
+        if self.open_combobox.as_deref() == Some(id) {
+            for (index, option) in options.iter().enumerate() {
+                let option_rect = Rect {
+                    x: rect.x,
+                    y: rect.y + rect.height * (index as f32 + 1.0),
+                    width: rect.width,
+                    height: rect.height,
+                };
+                let option_id = format!("{id}.option.{index}");
+                let option_response = self.button(&option_id, option_rect, &option.to_string());
+                response.hovered |= option_response.hovered;
+                response.active |= option_response.active;
+                if option_response.clicked {
+                    response.changed = *value != *option;
+                    *value = *option;
+                    self.open_combobox = None;
+                }
+            }
+        }
+        response
+    }
+    /// An integer field whose edit buffer survives frames, unlike a formatted
+    /// label. It deliberately accepts values outside a nearby slider's range.
+    pub fn number_input_u32(&mut self, id: &str, rect: Rect, value: &mut u32) -> Response {
+        if !self.focused(id) {
+            self.number_text.insert(id.into(), value.to_string());
+        }
+        let mut text = self.number_text.remove(id).unwrap_or_else(|| value.to_string());
+        let response = self.text_input(id, rect, &mut text);
+        if response.changed {
+            if let Ok(parsed) = text.parse::<u32>() {
+                *value = parsed;
+            }
+        }
+        self.number_text.insert(id.into(), text);
+        response
     }
     pub fn progress(&mut self, rect: Rect, value: f32) {
         self.paint(

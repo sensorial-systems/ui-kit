@@ -2,9 +2,13 @@
 pub mod composition;
 pub mod immediate;
 pub mod number_picker;
+pub mod scroll_container;
 pub mod spatial;
+pub mod splitter;
 pub use immediate::{DrawCommand, Input, Response, RichTextPaint, Ui};
 pub use number_picker::NumberPicker;
+pub use scroll_container::ScrollContainer;
+pub use splitter::Splitter;
 use ui_kit_core::{layout, Event, Kind, Rect, Theme, Value, View};
 
 #[derive(Default)]

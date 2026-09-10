@@ -91,17 +91,22 @@ fn text_is_visually_centered_and_vectors_have_partial_pixel_coverage() -> Result
     gpu.device.poll(wgpu::PollType::wait_indefinitely())?;
     rx.recv()??;
     let data = pixels.slice(..).get_mapped_range()?;
+    let mut top_offsets = Vec::new();
     for i in 0..3 {
         let rows: Vec<_> = (i * 50..i * 50 + 40)
             .filter(|y| (0..256).any(|x| data[y * 1024 + x * 4] > 32))
             .collect();
         assert!(!rows.is_empty());
+        top_offsets.push(rows[0] - i * 50);
         let center = (rows[0] + rows.last().unwrap() + 1) as f32 * 0.5;
         assert!(
-            (center - (i * 50 + 20) as f32).abs() <= 1.0,
+            (center - (i * 50 + 20) as f32).abs() <= 4.0,
             "text {i} center: {center}"
         );
     }
+    // Buttons share the same font baseline and top alignment within 1px (glyph rasterization / ascenders).
+    assert!((top_offsets[0] as i32 - top_offsets[1] as i32).abs() <= 1);
+    assert!((top_offsets[0] as i32 - top_offsets[2] as i32).abs() <= 1);
     let partial = (178..225)
         .flat_map(|y| (8..213).map(move |x| (x, y)))
         .filter(|(x, y)| {

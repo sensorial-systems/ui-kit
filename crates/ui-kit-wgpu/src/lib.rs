@@ -460,8 +460,14 @@ impl<C: CommandRenderer> WgpuRenderer<C> {
             &mut self.text.font_system,
             glyphon::Metrics::new(command.style.font_size, command.style.font_size * 1.25),
         );
+        let is_centered = command.style.text_align == ui_kit_core::TextAlign::Center;
+        let buffer_width = if is_centered {
+            r.width.max(1.0)
+        } else {
+            (r.width - 2.0 * command.style.text_padding).max(1.0)
+        };
         buffer.set_size(
-            Some((r.width - 2.0 * command.style.text_padding).max(1.0)),
+            Some(buffer_width),
             Some(r.height.max(1.0)),
         );
         if let Some(rich) = &command.rich_text {
@@ -475,12 +481,13 @@ impl<C: CommandRenderer> WgpuRenderer<C> {
             );
         }
         if command.rich_text.is_none() {
+            let align = match command.style.text_align {
+                ui_kit_core::TextAlign::Left => glyphon::cosmic_text::Align::Left,
+                ui_kit_core::TextAlign::Center => glyphon::cosmic_text::Align::Center,
+                ui_kit_core::TextAlign::Right => glyphon::cosmic_text::Align::Right,
+            };
             for line in &mut buffer.lines {
-                line.set_align(Some(match command.style.text_align {
-                    ui_kit_core::TextAlign::Left => glyphon::cosmic_text::Align::Left,
-                    ui_kit_core::TextAlign::Center => glyphon::cosmic_text::Align::Center,
-                    ui_kit_core::TextAlign::Right => glyphon::cosmic_text::Align::Right,
-                }));
+                line.set_align(Some(align));
             }
         }
         buffer.shape_until_scroll(&mut self.text.font_system, false);
@@ -491,31 +498,19 @@ impl<C: CommandRenderer> WgpuRenderer<C> {
         let top = if command.rich_text.is_some() {
             r.y
         } else {
-            // Center the visible glyphs rather than the font's asymmetric line box.
-            // Rich documents retain their baseline grid and top alignment.
-            let mut ink_top = f32::INFINITY;
-            let mut ink_bottom = f32::NEG_INFINITY;
-            for run in buffer.layout_runs() {
-                for glyph in run.glyphs {
-                    let physical = glyph.physical((0.0, 0.0), 1.0);
-                    if let Some(image) = self
-                        .text
-                        .swash_cache
-                        .get_image(&mut self.text.font_system, physical.cache_key)
-                    {
-                        if image.placement.height > 0 {
-                            let y =
-                                run.line_y.round() + physical.y as f32 - image.placement.top as f32;
-                            ink_top = ink_top.min(y);
-                            ink_bottom = ink_bottom.max(y + image.placement.height as f32);
-                        }
-                    }
+            let mut runs = buffer.layout_runs();
+            if let Some(first) = runs.next() {
+                if runs.next().is_none() {
+                    // Single-line controls (buttons, inputs, labels): center the primary
+                    // visual mass (cap-height to baseline) inside the control height, so
+                    // distance from top to capital letters equals distance from baseline to bottom.
+                    let cap_height = (command.style.font_size * 0.714).round();
+                    (r.y + (r.height + cap_height) * 0.5 - first.line_y).round()
+                } else {
+                    (r.y + (r.height - text_height).max(0.0) * 0.5).round()
                 }
-            }
-            if ink_top.is_finite() {
-                (r.y + (r.height - (ink_bottom - ink_top)) * 0.5 - ink_top).round()
             } else {
-                r.y + (r.height - text_height).max(0.0) * 0.5
+                r.y
             }
         };
         if let Some(rich) = &command.rich_text {
@@ -599,6 +594,8 @@ impl<C: CommandRenderer> WgpuRenderer<C> {
                 left: r.x
                     + if command.kind == "checkbox" {
                         44.0
+                    } else if is_centered {
+                        0.0
                     } else {
                         command.style.text_padding
                     },
@@ -844,3 +841,4 @@ fn target_color(mut color: [f32; 4], format: wgpu::TextureFormat) -> [f32; 4] {
     }
     color
 }
+
