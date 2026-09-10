@@ -41,17 +41,17 @@ impl Shadow {
     pub fn card(dark: bool) -> Self {
         if dark {
             Self {
-                offset: Vec2::new(0.0, 8.0),
+                offset: Vec2::new(0.0, 3.0),
                 radius: 20.0,
-                blur: 24.0,
-                color: [0.0, 0.0, 0.0, 0.40],
+                blur: 8.0,
+                color: [0.0, 0.0, 0.0, 0.22],
             }
         } else {
             Self {
-                offset: Vec2::new(0.0, 8.0),
+                offset: Vec2::new(0.0, 3.0),
                 radius: 20.0,
-                blur: 24.0,
-                color: [0.06, 0.09, 0.18, 0.08],
+                blur: 8.0,
+                color: [0.06, 0.09, 0.18, 0.05],
             }
         }
     }

@@ -53,8 +53,16 @@ impl Combobox {
             ui.set_active_popup(Some(popup_rect));
             ui.set_in_overlay(true);
 
-            // Soft shadow behind the entire dropdown menu
-            ui.shadow_box(popup_rect, 6.0, 10.0, [0.0, 0.0, 0.0, 0.5]);
+            // Subtle shadow behind the entire dropdown menu
+            ui.shadow_box(
+                Rect {
+                    y: popup_rect.y + 2.0,
+                    ..popup_rect
+                },
+                6.0,
+                8.0,
+                [0.0, 0.0, 0.0, 0.25],
+            );
 
             // Solid opaque panel background
             let mut panel_style = ui.style.clone();

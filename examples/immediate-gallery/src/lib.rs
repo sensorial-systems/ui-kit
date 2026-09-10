@@ -2042,15 +2042,15 @@ impl Gallery {
                 );
                 p.shadow(
                     Rect {
-                        y: rect.y + 6.0,
+                        y: rect.y + 3.0,
                         ..rect
                     },
                     10.0,
-                    20.0,
+                    8.0,
                     if p.palette.dark {
-                        [0.0, 0.0, 0.0, 0.50]
+                        [0.0, 0.0, 0.0, 0.25]
                     } else {
-                        [0.06, 0.09, 0.18, 0.12]
+                        [0.06, 0.09, 0.18, 0.06]
                     },
                 );
                 p.box_(rect, p.palette.card, p.palette.border, 10.0);
@@ -2108,15 +2108,15 @@ impl Gallery {
                 );
                 p.shadow(
                     Rect {
-                        y: rect.y + 6.0,
+                        y: rect.y + 3.0,
                         ..rect
                     },
                     12.0,
-                    24.0,
+                    8.0,
                     if p.palette.dark {
-                        [0.0, 0.0, 0.0, 0.50]
+                        [0.0, 0.0, 0.0, 0.25]
                     } else {
-                        [0.06, 0.09, 0.18, 0.12]
+                        [0.06, 0.09, 0.18, 0.06]
                     },
                 );
                 p.box_(rect, p.palette.card, p.palette.border, 12.0);
@@ -2290,17 +2290,17 @@ impl Painter<'_> {
     }
     fn card(&mut self, rect: Rect) {
         let shadow_color = if self.palette.dark {
-            [0.0, 0.0, 0.0, 0.40]
+            [0.0, 0.0, 0.0, 0.22]
         } else {
-            [0.06, 0.09, 0.18, 0.08]
+            [0.06, 0.09, 0.18, 0.05]
         };
         self.shadow(
             Rect {
-                y: rect.y + 8.0,
+                y: rect.y + 3.0,
                 ..rect
             },
             20.0,
-            24.0,
+            8.0,
             shadow_color,
         );
         self.ui.style = Style {
