@@ -79,6 +79,7 @@ pub trait CommandRenderer {
         command: &DrawCommand,
     ) -> Result<bool>;
 }
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct NoCustom;
 impl CommandRenderer for NoCustom {
     fn render(&mut self, _: &GpuContext, _: &mut WgpuFrame<'_>, _: &DrawCommand) -> Result<bool> {

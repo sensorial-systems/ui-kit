@@ -2928,6 +2928,7 @@ dependencies = [
  "bytemuck",
  "png 0.18.1",
  "pollster",
+ "ui-kit-app",
  "ui-kit-core",
  "ui-kit-immediate",
  "ui-kit-wgpu",
@@ -6530,6 +6531,20 @@ dependencies = [
  "tokio",
  "ui-kit-core",
  "ui-kit-dioxus",
+]
+
+[[package]]
+name = "ui-kit-app"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "pollster",
+ "ui-kit-core",
+ "ui-kit-immediate",
+ "ui-kit-wgpu",
+ "ui-kit-window",
+ "wgpu",
+ "winit",
 ]
 
 [[package]]

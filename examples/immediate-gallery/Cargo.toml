@@ -14,3 +14,4 @@ anyhow = "1"
 png = "0.18"
 bytemuck = "1"
 ui-kit-window = { path = "../../crates/ui-kit-window", features = ["winit", "immediate"] }
+ui-kit-app = { path = "../../crates/ui-kit-app" }

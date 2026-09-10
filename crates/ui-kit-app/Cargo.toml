@@ -1,0 +1,14 @@
+[package]
+name = "ui-kit-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ui-kit-core = { path = "../ui-kit-core" }
+ui-kit-immediate = { path = "../ui-kit-immediate" }
+ui-kit-wgpu = { path = "../ui-kit-wgpu" }
+ui-kit-window = { path = "../ui-kit-window", features = ["winit", "immediate"] }
+winit = "0.30"
+wgpu = { version = "30", default-features = false }
+pollster = "0.4"
+anyhow = "1"
