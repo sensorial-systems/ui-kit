@@ -89,15 +89,7 @@ impl App {
             "surface does not support presentation copies"
         );
         config.usage |= wgpu::TextureUsages::COPY_DST;
-        let alpha_mode = [
-            wgpu::CompositeAlphaMode::PreMultiplied,
-            wgpu::CompositeAlphaMode::PostMultiplied,
-            wgpu::CompositeAlphaMode::Inherit,
-        ]
-        .into_iter()
-        .find(|mode| caps.alpha_modes.contains(mode))
-        .unwrap_or(caps.alpha_modes[0]);
-        config.alpha_mode = alpha_mode;
+        config.alpha_mode = ui_kit_wgpu::transparent_alpha_mode(&caps);
         surface.configure(&gpu.device, &config);
         self.renderer = Some(WgpuRenderer::with_custom(
             &gpu,
@@ -192,11 +184,7 @@ impl App {
         let target = self.target.as_ref().unwrap();
         let mut encoder = gpu.device.create_command_encoder(&Default::default());
         renderer.render(
-            &mut WgpuFrame {
-                encoder: &mut encoder,
-                target: TextureTarget::from_texture2d(&target)?,
-                clear: Some(wgpu::Color::TRANSPARENT),
-            },
+            &mut WgpuFrame::transparent(&mut encoder, TextureTarget::from_texture2d(&target)?),
             &commands,
         )?;
         encoder.copy_texture_to_texture(

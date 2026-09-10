@@ -46,6 +46,28 @@ pub struct WgpuFrame<'a> {
     /// None preserves existing scene pixels. Some clears once before UI painting.
     pub clear: Option<wgpu::Color>,
 }
+impl<'a> WgpuFrame<'a> {
+    /// Create a frame that clears with transparency so rounded window corners show the desktop.
+    pub fn transparent(encoder: &'a mut wgpu::CommandEncoder, target: TextureTarget<'a>) -> Self {
+        Self {
+            encoder,
+            target,
+            clear: Some(wgpu::Color::TRANSPARENT),
+        }
+    }
+}
+
+/// Select the preferred transparent composite alpha mode from surface capabilities.
+pub fn transparent_alpha_mode(capabilities: &wgpu::SurfaceCapabilities) -> wgpu::CompositeAlphaMode {
+    [
+        wgpu::CompositeAlphaMode::PreMultiplied,
+        wgpu::CompositeAlphaMode::PostMultiplied,
+        wgpu::CompositeAlphaMode::Inherit,
+    ]
+    .into_iter()
+    .find(|mode| capabilities.alpha_modes.contains(mode))
+    .unwrap_or(capabilities.alpha_modes[0])
+}
 
 /// Override individual commands without replacing input logic or the default renderer.
 /// Return true when handled; false delegates to the next renderer.
@@ -922,4 +944,42 @@ fn target_color(mut color: [f32; 4], format: wgpu::TextureFormat) -> [f32; 4] {
         }
     }
     color
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transparent_alpha_mode_prefers_premultiplied() {
+        let caps = wgpu::SurfaceCapabilities {
+            formats: vec![wgpu::TextureFormat::Bgra8Unorm],
+            present_modes: vec![wgpu::PresentMode::Fifo],
+            alpha_modes: vec![
+                wgpu::CompositeAlphaMode::Opaque,
+                wgpu::CompositeAlphaMode::PreMultiplied,
+            ],
+            usages: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format_capabilities: Default::default(),
+        };
+        assert_eq!(
+            transparent_alpha_mode(&caps),
+            wgpu::CompositeAlphaMode::PreMultiplied
+        );
+    }
+
+    #[test]
+    fn transparent_alpha_mode_falls_back_when_no_alpha_mode() {
+        let caps = wgpu::SurfaceCapabilities {
+            formats: vec![wgpu::TextureFormat::Bgra8Unorm],
+            present_modes: vec![wgpu::PresentMode::Fifo],
+            alpha_modes: vec![wgpu::CompositeAlphaMode::Opaque],
+            usages: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format_capabilities: Default::default(),
+        };
+        assert_eq!(
+            transparent_alpha_mode(&caps),
+            wgpu::CompositeAlphaMode::Opaque
+        );
+    }
 }
