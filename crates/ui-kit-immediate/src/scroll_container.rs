@@ -67,9 +67,14 @@ impl ScrollContainer {
                 height: bounds.height,
             };
 
-            let thumb_height = ((bounds.height / content_height) * bounds.height).clamp(24.0, bounds.height);
+            let thumb_height =
+                ((bounds.height / content_height) * bounds.height).clamp(24.0, bounds.height);
             let travel = bounds.height - thumb_height;
-            let fraction = if max_scroll > 0.0 { *scroll / max_scroll } else { 0.0 };
+            let fraction = if max_scroll > 0.0 {
+                *scroll / max_scroll
+            } else {
+                0.0
+            };
             let thumb_y = bounds.y + fraction * travel;
             let thumb_rect = Rect {
                 x: track_x,
@@ -140,13 +145,15 @@ mod tests {
         let mut scroll = 0.0;
         let content_height = 500.0; // max_scroll = 400.0
 
-        let (viewport, resp) = container.show(&mut ui, "scroll", bounds, &mut scroll, content_height);
+        let (viewport, resp) =
+            container.show(&mut ui, "scroll", bounds, &mut scroll, content_height);
         assert_eq!(viewport.width, 200.0 - 8.0 - 3.0);
         assert!(!resp.active);
 
         // Toggle disabled scrollbar
         let disabled_container = ScrollContainer::new().with_scrollbar(false);
-        let (vp2, _) = disabled_container.show(&mut ui, "scroll2", bounds, &mut scroll, content_height);
+        let (vp2, _) =
+            disabled_container.show(&mut ui, "scroll2", bounds, &mut scroll, content_height);
         assert_eq!(vp2.width, 200.0);
 
         // Drag scrollbar
@@ -156,7 +163,8 @@ mod tests {
             down: true,
             ..Default::default()
         });
-        let (_, drag_resp) = container.show(&mut ui, "scroll_drag", bounds, &mut scroll, content_height);
+        let (_, drag_resp) =
+            container.show(&mut ui, "scroll_drag", bounds, &mut scroll, content_height);
         ui.end();
 
         assert!(drag_resp.active);

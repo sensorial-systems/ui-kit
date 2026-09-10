@@ -25,7 +25,10 @@ fn gaussian(pixel:vec2<i32>,axis:vec2<i32>)->vec4<f32>{
 struct Vertex { @builtin(position) position: vec4<f32>, @location(0) local: vec2<f32> }
 @vertex fn vs(@builtin(vertex_index) index: u32) -> Vertex {
     let corners = array<vec2<f32>, 6>(vec2(0.,0.), vec2(1.,0.), vec2(0.,1.), vec2(0.,1.), vec2(1.,0.), vec2(1.,1.));
-    let local = corners[index] * params.rect.zw;
+    let is_shadow = params.effect.w > 1.5;
+    let blur = params.viewport_radius_blur.w;
+    let padding = select(0.0, blur, is_shadow);
+    let local = corners[index] * (params.rect.zw + vec2<f32>(padding * 2.0, padding * 2.0)) - vec2<f32>(padding, padding);
     let pixel = params.rect.xy + local;
     var result: Vertex;
     result.position = vec4(pixel.x / params.viewport_radius_blur.x * 2. - 1., 1. - pixel.y / params.viewport_radius_blur.y * 2., 0., 1.);
@@ -33,11 +36,16 @@ struct Vertex { @builtin(position) position: vec4<f32>, @location(0) local: vec2
     return result;
 }
 @fragment fn fs(vertex: Vertex) -> @location(0) vec4<f32> {
-    if params.effect.w>0.5{return gaussian(vec2<i32>(vertex.position.xy),vec2(1,0));}
+    if params.effect.w > 0.5 && params.effect.w < 1.5 { return gaussian(vec2<i32>(vertex.position.xy), vec2(1, 0)); }
     let half_size = params.rect.zw * .5;
     let radius = clamp(params.viewport_radius_blur.z, 0., min(half_size.x, half_size.y));
     let q = abs(vertex.local-half_size) - half_size + radius;
     let distance = length(max(q, vec2(0.))) + min(max(q.x,q.y),0.) - radius;
+    if params.effect.w > 1.5 {
+        let blur = max(params.viewport_radius_blur.w, 1.0);
+        let alpha = 1.0 - smoothstep(0.0, blur, max(0.0, distance));
+        return vec4(params.fill.rgb, params.fill.a * alpha);
+    }
     let aa = max(fwidth(distance), .5);
     let coverage = 1. - smoothstep(-aa, 0., distance);
     let border = smoothstep(-params.effect.y-aa, -params.effect.y+aa, distance);

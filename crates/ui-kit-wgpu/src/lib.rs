@@ -447,6 +447,75 @@ impl<C: CommandRenderer> WgpuRenderer<C> {
         pass.draw(0..6, 0..1);
         Ok(())
     }
+    fn shadow(&self, frame: &mut WgpuFrame<'_>, command: &DrawCommand) -> Result<()> {
+        let rect = command.rect;
+        let blur = command.value.max(0.0);
+        if rect.width <= 0.0 || rect.height <= 0.0 || blur <= 0.0 {
+            return Ok(());
+        }
+        let (width, height) = frame.target.size();
+        let shadow_rect = Rect {
+            x: rect.x - blur,
+            y: rect.y - blur,
+            width: rect.width + 2.0 * blur,
+            height: rect.height + 2.0 * blur,
+        };
+        let Some(clip) = scissor(
+            Some(shadow_rect.intersect(command.clip.unwrap_or(shadow_rect))),
+            frame.target.size(),
+        ) else {
+            return Ok(());
+        };
+        let snapshot_view = self
+            .dummy_backdrop
+            .create_view(&wgpu::TextureViewDescriptor {
+                format: Some(self.format),
+                ..Default::default()
+            });
+        let params = [
+            [rect.x, rect.y, rect.width, rect.height],
+            target_color(command.style.fill, self.format),
+            [0.0; 4],
+            [width as f32, height as f32, command.style.radius, blur],
+            [0.0, 0.0, 0.0, 2.0],
+            [0.0; 4],
+        ];
+        let buffer = self
+            .context
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("UI shadow parameters"),
+                contents: bytemuck::cast_slice(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+        let bindings = self
+            .context
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("UI shadow"),
+                layout: &self.layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(&snapshot_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wgpu::BindingResource::TextureView(&snapshot_view),
+                    },
+                ],
+            });
+        let mut pass = begin_pass(frame.encoder, frame.target.view, wgpu::LoadOp::Load);
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, &bindings, &[]);
+        pass.set_scissor_rect(clip.0, clip.1, clip.2, clip.3);
+        pass.draw(0..6, 0..1);
+        Ok(())
+    }
     fn text(&mut self, frame: &mut WgpuFrame<'_>, command: &DrawCommand) -> Result<()> {
         if command.text.is_empty() && command.rich_text.is_none() {
             return Ok(());
@@ -466,10 +535,7 @@ impl<C: CommandRenderer> WgpuRenderer<C> {
         } else {
             (r.width - 2.0 * command.style.text_padding).max(1.0)
         };
-        buffer.set_size(
-            Some(buffer_width),
-            Some(r.height.max(1.0)),
-        );
+        buffer.set_size(Some(buffer_width), Some(r.height.max(1.0)));
         if let Some(rich) = &command.rich_text {
             rich_text::fill(&mut buffer, &rich.document, command.style.font_size);
         } else {
@@ -652,9 +718,19 @@ impl<C: CommandRenderer> UiRenderer<WgpuFrame<'_>> for WgpuRenderer<C> {
             ))
         }
         for command in commands {
-            let visible = command
-                .rect
-                .intersect(command.clip.unwrap_or(command.rect))
+            let blur = if command.kind == "shadow" {
+                command.value.max(0.0)
+            } else {
+                0.0
+            };
+            let bounds = Rect {
+                x: command.rect.x - blur,
+                y: command.rect.y - blur,
+                width: command.rect.width + 2.0 * blur,
+                height: command.rect.height + 2.0 * blur,
+            };
+            let visible = bounds
+                .intersect(command.clip.unwrap_or(bounds))
                 .intersect(Rect {
                     x: 0.0,
                     y: 0.0,
@@ -679,12 +755,17 @@ impl<C: CommandRenderer> UiRenderer<WgpuFrame<'_>> for WgpuRenderer<C> {
                     "checkbox",
                     "text_input",
                     "slider",
-                    "progress"
+                    "progress",
+                    "shadow"
                 ]
                 .contains(&command.kind.as_str()),
                 "unhandled UI command: {}",
                 command.kind
             );
+            if command.kind == "shadow" {
+                self.shadow(frame, command)?;
+                continue;
+            }
             let r = command.rect;
             if command.kind != "label" {
                 let mut fill = command.style.fill;
@@ -731,14 +812,15 @@ impl<C: CommandRenderer> UiRenderer<WgpuFrame<'_>> for WgpuRenderer<C> {
                 )?;
             }
             if command.kind == "slider" || command.kind == "progress" {
+                let track_height = 6.0f32.min(r.height);
                 self.shape(
                     frame,
                     command,
                     Rect {
                         x: r.x,
-                        y: r.y + r.height - 6.0,
+                        y: r.y + (r.height - track_height) * 0.5,
                         width: r.width * command.value.clamp(0.0, 1.0),
-                        height: 6.0,
+                        height: track_height,
                     },
                     accent,
                     accent,
@@ -841,4 +923,3 @@ fn target_color(mut color: [f32; 4], format: wgpu::TextureFormat) -> [f32; 4] {
     }
     color
 }
-

@@ -1,4 +1,4 @@
-﻿//! Number picker widget for immediate mode UI.
+//! Number picker widget for immediate mode UI.
 
 use crate::immediate::{Response, Ui};
 use ui_kit_core::Rect;
@@ -13,7 +13,11 @@ pub struct NumberPicker<T> {
 
 impl<T> NumberPicker<T>
 where
-    T: Copy + PartialOrd + std::ops::Add<Output = T> + std::ops::Sub<Output = T> + std::fmt::Display,
+    T: Copy
+        + PartialOrd
+        + std::ops::Add<Output = T>
+        + std::ops::Sub<Output = T>
+        + std::fmt::Display,
 {
     pub fn new(min: T, max: T, step: T) -> Self {
         Self { min, max, step }
@@ -74,7 +78,6 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -86,15 +89,28 @@ mod tests {
         let picker = NumberPicker::new(0, 5, 1);
         let mut ui = Ui::default();
         let mut val = 4;
-        let rect = Rect { x: 10.0, y: 10.0, width: 100.0, height: 30.0 };
+        let rect = Rect {
+            x: 10.0,
+            y: 10.0,
+            width: 100.0,
+            height: 30.0,
+        };
 
         // Click increment (+)
         let inc_center = Point::new(rect.x + rect.width - 10.0, rect.y + 15.0);
-        ui.begin(Input { pointer: Some(inc_center), down: true, ..Default::default() });
+        ui.begin(Input {
+            pointer: Some(inc_center),
+            down: true,
+            ..Default::default()
+        });
         let _ = picker.show(&mut ui, "test", rect, &mut val);
         ui.end();
 
-        ui.begin(Input { pointer: Some(inc_center), down: false, ..Default::default() });
+        ui.begin(Input {
+            pointer: Some(inc_center),
+            down: false,
+            ..Default::default()
+        });
         let resp = picker.show(&mut ui, "test", rect, &mut val);
         ui.end();
 
@@ -102,11 +118,19 @@ mod tests {
         assert_eq!(val, 5);
 
         // Click again: clamped at max 5
-        ui.begin(Input { pointer: Some(inc_center), down: true, ..Default::default() });
+        ui.begin(Input {
+            pointer: Some(inc_center),
+            down: true,
+            ..Default::default()
+        });
         let _ = picker.show(&mut ui, "test", rect, &mut val);
         ui.end();
 
-        ui.begin(Input { pointer: Some(inc_center), down: false, ..Default::default() });
+        ui.begin(Input {
+            pointer: Some(inc_center),
+            down: false,
+            ..Default::default()
+        });
         let resp = picker.show(&mut ui, "test", rect, &mut val);
         ui.end();
 
@@ -119,15 +143,28 @@ mod tests {
         let picker = NumberPicker::new(0, 5, 1);
         let mut ui = Ui::default();
         let mut val = 1;
-        let rect = Rect { x: 10.0, y: 10.0, width: 100.0, height: 30.0 };
+        let rect = Rect {
+            x: 10.0,
+            y: 10.0,
+            width: 100.0,
+            height: 30.0,
+        };
 
         // Click decrement (-)
         let dec_center = Point::new(rect.x + 10.0, rect.y + 15.0);
-        ui.begin(Input { pointer: Some(dec_center), down: true, ..Default::default() });
+        ui.begin(Input {
+            pointer: Some(dec_center),
+            down: true,
+            ..Default::default()
+        });
         let _ = picker.show(&mut ui, "test", rect, &mut val);
         ui.end();
 
-        ui.begin(Input { pointer: Some(dec_center), down: false, ..Default::default() });
+        ui.begin(Input {
+            pointer: Some(dec_center),
+            down: false,
+            ..Default::default()
+        });
         let resp = picker.show(&mut ui, "test", rect, &mut val);
         ui.end();
 
@@ -135,11 +172,19 @@ mod tests {
         assert_eq!(val, 0);
 
         // Click again: clamped at min 0
-        ui.begin(Input { pointer: Some(dec_center), down: true, ..Default::default() });
+        ui.begin(Input {
+            pointer: Some(dec_center),
+            down: true,
+            ..Default::default()
+        });
         let _ = picker.show(&mut ui, "test", rect, &mut val);
         ui.end();
 
-        ui.begin(Input { pointer: Some(dec_center), down: false, ..Default::default() });
+        ui.begin(Input {
+            pointer: Some(dec_center),
+            down: false,
+            ..Default::default()
+        });
         let resp = picker.show(&mut ui, "test", rect, &mut val);
         ui.end();
 

@@ -374,3 +374,99 @@ fn a_style_colour_reads_back_the_same_on_a_plain_and_an_srgb_target() -> Result<
         Ok(())
     })
 }
+
+#[test]
+fn distance_field_shadow_falls_off_smoothly_with_smoothstep() -> Result<()> {
+    pollster::block_on(async {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+        let adapter = instance.request_adapter(&Default::default()).await?;
+        let (device, queue) = adapter.request_device(&Default::default()).await?;
+        let gpu = GpuContext::new(Arc::new(device), Arc::new(queue));
+        let mut renderer = WgpuRenderer::new(&gpu, wgpu::TextureFormat::Rgba8Unorm)?;
+        let texture = renderer.create_texture(64, 64)?;
+        let mut ui = Ui::default();
+        ui.begin(Input::default());
+        ui.shadow_box(
+            Rect {
+                x: 16.0,
+                y: 16.0,
+                width: 32.0,
+                height: 32.0,
+            },
+            4.0,
+            16.0,
+            [1.0, 1.0, 1.0, 1.0],
+        );
+        let mut encoder = gpu.device.create_command_encoder(&Default::default());
+        renderer.render(
+            &mut WgpuFrame {
+                encoder: &mut encoder,
+                target: TextureTarget::from_texture2d(&texture)?,
+                clear: Some(wgpu::Color::TRANSPARENT),
+            },
+            ui.end(),
+        )?;
+        let pixels = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            size: 64 * 256,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        encoder.copy_texture_to_buffer(
+            texture.texture.as_ref().unwrap().as_image_copy(),
+            wgpu::TexelCopyBufferInfo {
+                buffer: &pixels,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(256),
+                    rows_per_image: Some(64),
+                },
+            },
+            wgpu::Extent3d {
+                width: 64,
+                height: 64,
+                depth_or_array_layers: 1,
+            },
+        );
+        gpu.queue.submit([encoder.finish()]);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        pixels.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+            let _ = sender.send(r);
+        });
+        gpu.device.poll(wgpu::PollType::wait_indefinitely())?;
+        receiver.recv()??;
+        let mapped = pixels.slice(..).get_mapped_range()?;
+        let sample_alpha = |x: usize, y: usize| -> u8 { mapped[y * 256 + x * 4 + 3] };
+
+        // Inside the rectangle: full opacity
+        let inside = sample_alpha(32, 32);
+        assert!(inside >= 250, "inside alpha should be ~255, got {inside}");
+
+        // Halfway through the blur (x = 48 + 8 = 56, y = 32):
+        let mid_blur = sample_alpha(56, 32);
+        assert!(
+            mid_blur > 50 && mid_blur < 200,
+            "mid blur alpha should be smooth ~128, got {mid_blur}"
+        );
+
+        // Near / beyond the blur radius:
+        let edge_blur = sample_alpha(63, 32);
+        assert!(
+            edge_blur <= 10,
+            "beyond blur should be near zero, got {edge_blur}"
+        );
+
+        // Monotonic smooth falloff from edge to outer limit
+        let mut prev = sample_alpha(48, 32);
+        for x in 49..64 {
+            let curr = sample_alpha(x, 32);
+            assert!(
+                curr as i32 <= prev as i32 + 2,
+                "shadow falloff must be monotonic: at x={x}, curr={curr} > prev={prev}"
+            );
+            prev = curr;
+        }
+
+        Ok(())
+    })
+}

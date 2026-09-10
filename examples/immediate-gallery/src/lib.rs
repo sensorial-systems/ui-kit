@@ -2040,6 +2040,19 @@ impl Gallery {
                     anchor.width,
                     choices.len() as f32 * 38.0 + 12.0,
                 );
+                p.shadow(
+                    Rect {
+                        y: rect.y + 6.0,
+                        ..rect
+                    },
+                    10.0,
+                    20.0,
+                    if p.palette.dark {
+                        [0.0, 0.0, 0.0, 0.50]
+                    } else {
+                        [0.06, 0.09, 0.18, 0.12]
+                    },
+                );
                 p.box_(rect, p.palette.card, p.palette.border, 10.0);
                 if p.input.down && p.input.pointer.is_some_and(|pt| !rect.contains(pt)) {
                     self.overlay = None;
@@ -2092,6 +2105,19 @@ impl Gallery {
                     anchor.y.min(height - anchor.height - 12.0).max(12.0),
                     anchor.width,
                     anchor.height,
+                );
+                p.shadow(
+                    Rect {
+                        y: rect.y + 6.0,
+                        ..rect
+                    },
+                    12.0,
+                    24.0,
+                    if p.palette.dark {
+                        [0.0, 0.0, 0.0, 0.50]
+                    } else {
+                        [0.06, 0.09, 0.18, 0.12]
+                    },
                 );
                 p.box_(rect, p.palette.card, p.palette.border, 12.0);
                 if p.input.down && p.input.pointer.is_some_and(|pt| !rect.contains(pt)) {
@@ -2249,6 +2275,9 @@ impl Painter<'_> {
     fn subheading(&mut self, x: f32, y: f32, w: f32, text: &str) {
         self.label(x, y, w, 20.0, text, 14.0, 500, self.palette.muted);
     }
+    fn shadow(&mut self, rect: Rect, radius: f32, blur: f32, color: Color) {
+        self.ui.shadow_box(self.screen(rect), radius, blur, color);
+    }
     fn box_(&mut self, rect: Rect, fill: Color, stroke: Color, radius: f32) {
         self.ui.style = Style {
             fill,
@@ -2260,17 +2289,20 @@ impl Painter<'_> {
         self.ui.panel(self.screen(rect));
     }
     fn card(&mut self, rect: Rect) {
-        if !self.palette.dark {
-            self.box_(
-                Rect {
-                    y: rect.y + 5.0,
-                    ..rect
-                },
-                [0.05, 0.08, 0.12, 0.035],
-                [0.0; 4],
-                20.0,
-            );
-        }
+        let shadow_color = if self.palette.dark {
+            [0.0, 0.0, 0.0, 0.40]
+        } else {
+            [0.06, 0.09, 0.18, 0.08]
+        };
+        self.shadow(
+            Rect {
+                y: rect.y + 8.0,
+                ..rect
+            },
+            20.0,
+            24.0,
+            shadow_color,
+        );
         self.ui.style = Style {
             fill: if self.palette.dark {
                 [0.10, 0.10, 0.12, 0.75]

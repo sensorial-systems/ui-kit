@@ -1,4 +1,4 @@
-﻿//! Immediate UI in logical panel pixels. Hosts own rendering, input and application data.
+//! Immediate UI in logical panel pixels. Hosts own rendering, input and application data.
 use crate::spatial::Vec3;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -87,6 +87,9 @@ pub struct Ui {
     previous_ids: Vec<String>,
     ids: Vec<String>,
     pub commands: Vec<DrawCommand>,
+    overlay_commands: Vec<DrawCommand>,
+    in_overlay: bool,
+    active_popup: Option<Rect>,
     pub style: Style,
     pub clip: Option<Rect>,
 }
@@ -109,8 +112,35 @@ impl Ui {
     pub fn pressed(&self) -> bool {
         self.input.down && !self.previous_down
     }
+    pub fn previous_down(&self) -> bool {
+        self.previous_down
+    }
+    pub fn is_combobox_open(&self, id: &str) -> bool {
+        self.open_combobox.as_deref() == Some(id)
+    }
+    pub fn open_combobox_id(&mut self, id: &str) {
+        self.open_combobox = Some(id.into());
+    }
+    pub fn close_combobox(&mut self) {
+        self.open_combobox = None;
+    }
+    pub fn set_in_overlay(&mut self, in_overlay: bool) {
+        self.in_overlay = in_overlay;
+    }
+    pub fn in_overlay(&self) -> bool {
+        self.in_overlay
+    }
+    pub fn set_active_popup(&mut self, rect: Option<Rect>) {
+        self.active_popup = rect;
+    }
+    pub fn active_popup(&self) -> Option<Rect> {
+        self.active_popup
+    }
     pub fn begin(&mut self, input: Input) {
         self.commands.clear();
+        self.overlay_commands.clear();
+        self.active_popup = None;
+        self.in_overlay = false;
         self.ids.clear();
         if input.tab || (input.down && !self.previous_down) {
             self.selected_text = None;
@@ -140,18 +170,31 @@ impl Ui {
         if self.focus.as_ref().is_some_and(|id| !self.ids.contains(id)) {
             self.focus = None;
         }
+        if self
+            .open_combobox
+            .as_ref()
+            .is_some_and(|id| !self.ids.contains(id))
+        {
+            self.open_combobox = None;
+        }
         self.previous_down = self.input.down;
         self.previous_ids.clone_from(&self.ids);
+        self.commands.append(&mut self.overlay_commands);
         &self.commands
     }
     /// Reuse capture/focus logic without emitting any drawing commands.
     pub fn interact(&mut self, id: &str, rect: Rect) -> Response {
         assert!(!self.ids.iter().any(|v| v == id), "duplicate UI ID: {id}");
         self.ids.push(id.into());
-        let hovered = self
-            .input
-            .pointer
-            .is_some_and(|p| rect.contains(p) && self.clip.is_none_or(|clip| clip.contains(p)));
+        let occluded = !self.in_overlay
+            && self
+                .active_popup
+                .is_some_and(|pop| self.input.pointer.is_some_and(|p| pop.contains(p)));
+        let hovered = !occluded
+            && self
+                .input
+                .pointer
+                .is_some_and(|p| rect.contains(p) && self.clip.is_none_or(|clip| clip.contains(p)));
         if hovered && self.input.down && !self.previous_down && self.capture.is_none() {
             self.capture = Some(id.into());
             self.focus = Some(id.into());
@@ -175,10 +218,10 @@ impl Ui {
         response: Response,
         focused: bool,
     ) {
-        self.commands.push(DrawCommand {
+        let cmd = DrawCommand {
             rich_text: None,
             rect,
-            clip: self.clip,
+            clip: if self.in_overlay { None } else { self.clip },
             style: self.style.clone(),
             kind: kind.into(),
             text: text.into(),
@@ -186,10 +229,29 @@ impl Ui {
             hovered: response.hovered,
             active: response.active,
             focused,
-        });
+        };
+        if self.in_overlay {
+            self.overlay_commands.push(cmd);
+        } else {
+            self.commands.push(cmd);
+        }
     }
     pub fn panel(&mut self, rect: Rect) {
         self.paint("panel", "", rect, 0.0, Response::default(), false);
+    }
+    /// Emit a soft back shadow command drawn using signed distance fields and smoothstep.
+    pub fn shadow(&mut self, rect: Rect, blur: f32) {
+        self.paint("shadow", "", rect, blur, Response::default(), false);
+    }
+    /// Emit a soft back shadow with specific corner radius, blur radius, and color.
+    pub fn shadow_box(&mut self, rect: Rect, radius: f32, blur: f32, color: [f32; 4]) {
+        let prev_fill = self.style.fill;
+        let prev_radius = self.style.radius;
+        self.style.fill = color;
+        self.style.radius = radius;
+        self.shadow(rect, blur);
+        self.style.fill = prev_fill;
+        self.style.radius = prev_radius;
     }
     pub fn label(&mut self, rect: Rect, text: &str) {
         self.paint("label", text, rect, 0.0, Response::default(), false);
@@ -203,7 +265,14 @@ impl Ui {
             Response::default(),
             paint.cursor.is_some(),
         );
-        self.commands.last_mut().unwrap().rich_text = Some(paint);
+        let target = if self.in_overlay {
+            self.overlay_commands.last_mut()
+        } else {
+            self.commands.last_mut()
+        };
+        if let Some(cmd) = target {
+            cmd.rich_text = Some(paint);
+        }
     }
     pub fn button(&mut self, id: &str, rect: Rect, text: &str) -> Response {
         let r = self.interact(id, rect);
@@ -302,32 +371,7 @@ impl Ui {
         value: &mut T,
         options: &[T],
     ) -> Response {
-        let label = format!("{}  ▾", value);
-        let trigger = self.button(id, rect, &label);
-        if trigger.clicked {
-            self.open_combobox = (self.open_combobox.as_deref() != Some(id)).then(|| id.into());
-        }
-        let mut response = trigger;
-        if self.open_combobox.as_deref() == Some(id) {
-            for (index, option) in options.iter().enumerate() {
-                let option_rect = Rect {
-                    x: rect.x,
-                    y: rect.y + rect.height * (index as f32 + 1.0),
-                    width: rect.width,
-                    height: rect.height,
-                };
-                let option_id = format!("{id}.option.{index}");
-                let option_response = self.button(&option_id, option_rect, &option.to_string());
-                response.hovered |= option_response.hovered;
-                response.active |= option_response.active;
-                if option_response.clicked {
-                    response.changed = *value != *option;
-                    *value = *option;
-                    self.open_combobox = None;
-                }
-            }
-        }
-        response
+        crate::combobox::Combobox.show(self, id, rect, value, options)
     }
     /// An integer field whose edit buffer survives frames, unlike a formatted
     /// label. It deliberately accepts values outside a nearby slider's range.
@@ -335,7 +379,10 @@ impl Ui {
         if !self.focused(id) {
             self.number_text.insert(id.into(), value.to_string());
         }
-        let mut text = self.number_text.remove(id).unwrap_or_else(|| value.to_string());
+        let mut text = self
+            .number_text
+            .remove(id)
+            .unwrap_or_else(|| value.to_string());
         let response = self.text_input(id, rect, &mut text);
         if response.changed {
             if let Ok(parsed) = text.parse::<u32>() {
@@ -355,7 +402,13 @@ impl Ui {
             false,
         );
     }
-    pub fn number_picker<T: Copy + PartialOrd + std::ops::Add<Output = T> + std::ops::Sub<Output = T> + std::fmt::Display>(
+    pub fn number_picker<
+        T: Copy
+            + PartialOrd
+            + std::ops::Add<Output = T>
+            + std::ops::Sub<Output = T>
+            + std::fmt::Display,
+    >(
         &mut self,
         id: &str,
         rect: Rect,
@@ -411,4 +464,3 @@ impl WorldPanel {
         }
     }
 }
-
