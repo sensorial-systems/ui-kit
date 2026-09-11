@@ -270,12 +270,7 @@ impl Ui {
     /// where its panel will go before it draws what the panel covers says so
     /// here, and the widgets underneath are covered from that point on.
     pub fn reserve(&mut self, layer: Layer, rect: Rect) {
-        if self
-            .input
-            .pointer
-            .is_some_and(|point| rect.contains(point))
-            && layer > self.blocking
-        {
+        if self.input.pointer.is_some_and(|point| rect.contains(point)) && layer > self.blocking {
             self.blocking = layer;
         }
         self.areas.push(Area {
@@ -644,7 +639,10 @@ mod layer_tests {
         assert!(card.hovered, "the card is in front and should be hovered");
         assert!(card.active, "the card should have taken the press");
         assert!(!slider.hovered, "the slider is behind the card");
-        assert!(!slider.active, "the slider must not take a press through it");
+        assert!(
+            !slider.active,
+            "the slider must not take a press through it"
+        );
     }
 
     #[test]
@@ -689,7 +687,9 @@ mod layer_tests {
     fn a_higher_layer_is_painted_over_a_lower_one_whatever_order_it_was_emitted() {
         let mut ui = Ui::default();
         ui.begin(Input::default());
-        ui.with_layer(Layer::PANEL, |ui| ui.label(rect(0.0, 0.0, 1.0, 1.0), "card"));
+        ui.with_layer(Layer::PANEL, |ui| {
+            ui.label(rect(0.0, 0.0, 1.0, 1.0), "card")
+        });
         ui.label(rect(0.0, 0.0, 1.0, 1.0), "screen");
         let commands = ui.end();
         let order: Vec<&str> = commands.iter().map(|c| c.text.as_str()).collect();

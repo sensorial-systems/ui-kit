@@ -3,11 +3,9 @@ pub mod graph;
 pub mod rich_text;
 pub mod xy_graph;
 pub use rich_text::{FormatAction, RichText, RichTextEditor, TextFormat, TextRun};
-pub use xy_graph::{
-    XyAxis, XyHandle, XyPlot, XyPoint, XyRange, XySeries, XyShadedRegion, XyTick,
-};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, sync::Arc};
+pub use xy_graph::{XyAxis, XyHandle, XyPlot, XyPoint, XyRange, XySeries, XyShadedRegion, XyTick};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Point {

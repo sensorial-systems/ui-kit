@@ -58,7 +58,9 @@ impl<'a> WgpuFrame<'a> {
 }
 
 /// Select the preferred transparent composite alpha mode from surface capabilities.
-pub fn transparent_alpha_mode(capabilities: &wgpu::SurfaceCapabilities) -> wgpu::CompositeAlphaMode {
+pub fn transparent_alpha_mode(
+    capabilities: &wgpu::SurfaceCapabilities,
+) -> wgpu::CompositeAlphaMode {
     [
         wgpu::CompositeAlphaMode::PreMultiplied,
         wgpu::CompositeAlphaMode::PostMultiplied,

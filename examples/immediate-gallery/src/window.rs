@@ -42,12 +42,7 @@ pub fn run() -> Result<()> {
     let bg = gallery.background();
     let config = AppConfig::new("UI Kit Component Gallery — Immediate / wgpu")
         .with_size(1200.0, 850.0)
-        .with_background([
-            bg.r as f32,
-            bg.g as f32,
-            bg.b as f32,
-            bg.a as f32,
-        ]);
+        .with_background([bg.r as f32, bg.g as f32, bg.b as f32, bg.a as f32]);
 
     ui_kit_app::run_with_custom(GalleryApp { gallery }, config, |gpu, format| {
         GeometryRenderer::new(gpu, format)

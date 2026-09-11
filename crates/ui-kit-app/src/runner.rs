@@ -111,7 +111,8 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         {
             surface_config.format = format;
         }
-        surface_config.usage = wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_DST;
+        surface_config.usage =
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_DST;
 
         let caps = surface.get_capabilities(&adapter);
         if self.config.transparent {

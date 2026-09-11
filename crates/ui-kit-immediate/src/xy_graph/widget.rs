@@ -1,8 +1,8 @@
-﻿//! XY Graph widget implementation for immediate UI.
+//! XY Graph widget implementation for immediate UI.
 
 use super::response::XyGraphResponse;
-use ui_kit_core::{Color, Point, Rect, Style, XyPlot, XyPoint};
 use crate::immediate::Ui;
+use ui_kit_core::{Color, Point, Rect, Style, XyPlot, XyPoint};
 
 /// Immediate mode XY graph widget.
 #[derive(Clone, Debug, PartialEq)]
@@ -108,7 +108,13 @@ impl XyGraphWidget {
                         width: (rw - 8.0).max(30.0),
                         height: 12.0,
                     };
-                    self.draw_text(ui, label_rect, label, 9.5, [region.color[0], region.color[1], region.color[2], 0.85]);
+                    self.draw_text(
+                        ui,
+                        label_rect,
+                        label,
+                        9.5,
+                        [region.color[0], region.color[1], region.color[2], 0.85],
+                    );
                 }
             }
         }
@@ -116,7 +122,9 @@ impl XyGraphWidget {
         // 5. Grid lines & Axis ticks
         // X-axis ticks
         for tick in &plot.x_axis.ticks {
-            let sx = plot.data_to_screen(XyPoint::new(tick.value, 0.0), plot_rect).x;
+            let sx = plot
+                .data_to_screen(XyPoint::new(tick.value, 0.0), plot_rect)
+                .x;
             if sx >= plot_rect.x && sx <= plot_rect.x + plot_rect.width {
                 if plot.x_axis.show_grid {
                     let line_rect = Rect {
@@ -141,7 +149,9 @@ impl XyGraphWidget {
 
         // Y-axis ticks
         for tick in &plot.y_axis.ticks {
-            let sy = plot.data_to_screen(XyPoint::new(0.0, tick.value), plot_rect).y;
+            let sy = plot
+                .data_to_screen(XyPoint::new(0.0, tick.value), plot_rect)
+                .y;
             if sy >= plot_rect.y && sy <= plot_rect.y + plot_rect.height {
                 if plot.y_axis.show_grid {
                     let line_rect = Rect {
@@ -189,7 +199,9 @@ impl XyGraphWidget {
                     let p1 = screen_points[i + 1];
                     let col_x = p0.x.min(p1.x);
                     let col_w = (p1.x - p0.x).abs().max(1.0);
-                    let top_y = p0.y.min(p1.y).clamp(plot_rect.y, plot_rect.y + plot_rect.height);
+                    let top_y =
+                        p0.y.min(p1.y)
+                            .clamp(plot_rect.y, plot_rect.y + plot_rect.height);
                     let col_h = (base_y - top_y).max(0.0);
 
                     if col_h > 0.0 {
@@ -286,7 +298,13 @@ impl XyGraphWidget {
                 width: node_radius * 2.0,
                 height: node_radius * 2.0,
             };
-            self.draw_box(ui, node_rect, handle_color, [1.0, 1.0, 1.0, 0.9], node_radius);
+            self.draw_box(
+                ui,
+                node_rect,
+                handle_color,
+                [1.0, 1.0, 1.0, 0.9],
+                node_radius,
+            );
 
             // Draw center white dot
             let center_radius = 2.0;
@@ -296,18 +314,33 @@ impl XyGraphWidget {
                 width: center_radius * 2.0,
                 height: center_radius * 2.0,
             };
-            self.draw_box(ui, center_rect, [1.0, 1.0, 1.0, 1.0], [0.0; 4], center_radius);
+            self.draw_box(
+                ui,
+                center_rect,
+                [1.0, 1.0, 1.0, 1.0],
+                [0.0; 4],
+                center_radius,
+            );
 
             // Floating value label / badge
             if let Some(lbl) = &handle_label {
                 let badge_w = (lbl.len() as f32 * 6.5 + 10.0).max(40.0);
                 let badge_rect = Rect {
-                    x: (active_h_pos.x - badge_w * 0.5).clamp(outer_rect.x + 2.0, outer_rect.x + outer_rect.width - badge_w - 2.0),
+                    x: (active_h_pos.x - badge_w * 0.5).clamp(
+                        outer_rect.x + 2.0,
+                        outer_rect.x + outer_rect.width - badge_w - 2.0,
+                    ),
                     y: active_h_pos.y - handle_radius - 17.0,
                     width: badge_w,
                     height: 14.0,
                 };
-                self.draw_box(ui, badge_rect, [0.05, 0.06, 0.08, 0.85], [0.3, 0.35, 0.42, 0.6], 3.0);
+                self.draw_box(
+                    ui,
+                    badge_rect,
+                    [0.05, 0.06, 0.08, 0.85],
+                    [0.3, 0.35, 0.42, 0.6],
+                    3.0,
+                );
                 self.draw_text(ui, badge_rect, lbl, 9.0, [0.95, 0.95, 0.95, 1.0]);
             }
         }
@@ -315,14 +348,7 @@ impl XyGraphWidget {
         response
     }
 
-    fn draw_box(
-        &self,
-        ui: &mut Ui,
-        rect: Rect,
-        fill: Color,
-        stroke: Color,
-        radius: f32,
-    ) {
+    fn draw_box(&self, ui: &mut Ui, rect: Rect, fill: Color, stroke: Color, radius: f32) {
         let orig = ui.style.clone();
         ui.style = Style {
             fill,
@@ -335,14 +361,7 @@ impl XyGraphWidget {
         ui.style = orig;
     }
 
-    fn draw_text(
-        &self,
-        ui: &mut Ui,
-        rect: Rect,
-        text: &str,
-        size: f32,
-        color: Color,
-    ) {
+    fn draw_text(&self, ui: &mut Ui, rect: Rect, text: &str, size: f32, color: Color) {
         let orig = ui.style.clone();
         ui.style = Style {
             foreground: color,
