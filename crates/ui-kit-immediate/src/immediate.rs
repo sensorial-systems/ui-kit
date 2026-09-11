@@ -8,6 +8,10 @@ pub use ui_kit_core::{Material, Point as Vec2, Rect, Style};
 pub struct DrawCommand {
     #[serde(default)]
     pub rich_text: Option<RichTextPaint>,
+    /// Which layer this was drawn into. Commands are stacked by it, so a
+    /// higher layer covers a lower one whatever order they were emitted in.
+    #[serde(default)]
+    pub layer: Layer,
     pub rect: Rect,
     pub clip: Option<Rect>,
     pub style: Style,
@@ -65,6 +69,42 @@ pub struct Input {
     #[serde(default)]
     pub save: bool,
 }
+/// Where a thing sits in the stack: higher is nearer the viewer, and what is
+/// nearer takes the pointer from what is behind it. `z-index`, in the sense a
+/// web page means it.
+///
+/// Paint order cannot answer this on its own. A settings card is painted after
+/// the transport it covers, so it is drawn on top -- and the transport, having
+/// been asked first, has already claimed the press. Naming a layer separates
+/// "what is in front" from "who was asked first", and lets the two disagree
+/// without the answer being wrong.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct Layer(pub i32);
+
+impl Layer {
+    /// The screen itself.
+    pub const BASE: Self = Self(0);
+    /// A card or panel laid over the screen.
+    pub const PANEL: Self = Self(100);
+    /// A menu or popup, over everything.
+    pub const OVERLAY: Self = Self(200);
+}
+
+/// An interactive rectangle, remembered so that the next frame knows what was
+/// in front of what.
+#[derive(Clone, Copy, Debug)]
+struct Area {
+    layer: Layer,
+    rect: Rect,
+    clip: Option<Rect>,
+}
+
+impl Area {
+    fn covers(&self, point: Vec2) -> bool {
+        self.rect.contains(point) && self.clip.is_none_or(|clip| clip.contains(point))
+    }
+}
+
 #[derive(Default, Clone, Copy, Debug)]
 pub struct Response {
     pub hovered: bool,
@@ -90,6 +130,11 @@ pub struct Ui {
     overlay_commands: Vec<DrawCommand>,
     in_overlay: bool,
     active_popup: Option<Rect>,
+    layer: Layer,
+    areas: Vec<Area>,
+    previous_areas: Vec<Area>,
+    /// The highest layer under the pointer. Anything below it is covered.
+    blocking: Layer,
     pub style: Style,
     pub clip: Option<Rect>,
 }
@@ -142,6 +187,23 @@ impl Ui {
         self.active_popup = None;
         self.in_overlay = false;
         self.ids.clear();
+        // What the pointer is over is decided against where things were last
+        // frame, because a widget has to be told whether it is covered before
+        // the thing covering it has been drawn. One frame of lag in the layout,
+        // which is invisible; `reserve` is there for the case where it is not.
+        self.layer = Layer::BASE;
+        self.areas.clear();
+        self.blocking = input
+            .pointer
+            .map(|point| {
+                self.previous_areas
+                    .iter()
+                    .filter(|area| area.covers(point))
+                    .map(|area| area.layer)
+                    .max()
+                    .unwrap_or(Layer::BASE)
+            })
+            .unwrap_or(Layer::BASE);
         if input.tab || (input.down && !self.previous_down) {
             self.selected_text = None;
         }
@@ -179,17 +241,73 @@ impl Ui {
         }
         self.previous_down = self.input.down;
         self.previous_ids.clone_from(&self.ids);
+        self.previous_areas.clone_from(&self.areas);
         self.commands.append(&mut self.overlay_commands);
+        // A stable sort, so within a layer the caller's paint order stands and
+        // a screen that never names a layer is untouched.
+        self.commands.sort_by_key(|command| command.layer);
         &self.commands
+    }
+
+    /// Draw and interact inside `layer` for the duration of `body`.
+    pub fn with_layer<R>(&mut self, layer: Layer, body: impl FnOnce(&mut Self) -> R) -> R {
+        let previous = std::mem::replace(&mut self.layer, layer);
+        let result = body(self);
+        self.layer = previous;
+        result
+    }
+
+    /// The layer being drawn into.
+    pub fn layer(&self) -> Layer {
+        self.layer
+    }
+
+    /// Declare that `rect` will be covered by `layer` later this frame.
+    ///
+    /// Only needed when something appears for the first time and has to take
+    /// the pointer immediately, before it has been drawn once: on that frame
+    /// there is nothing behind it in the record to find. A caller that knows
+    /// where its panel will go before it draws what the panel covers says so
+    /// here, and the widgets underneath are covered from that point on.
+    pub fn reserve(&mut self, layer: Layer, rect: Rect) {
+        if self
+            .input
+            .pointer
+            .is_some_and(|point| rect.contains(point))
+            && layer > self.blocking
+        {
+            self.blocking = layer;
+        }
+        self.areas.push(Area {
+            layer,
+            rect,
+            clip: None,
+        });
+    }
+
+    /// Whether something nearer the viewer than the current layer is under the
+    /// pointer.
+    ///
+    /// Code that reads the pointer without claiming an ID -- a drag that turns
+    /// a 3-D camera, a window frame deciding whether a press is a resize --
+    /// asks this rather than keeping its own list of rectangles to stay out of.
+    pub fn pointer_blocked(&self) -> bool {
+        self.layer < self.blocking
     }
     /// Reuse capture/focus logic without emitting any drawing commands.
     pub fn interact(&mut self, id: &str, rect: Rect) -> Response {
         assert!(!self.ids.iter().any(|v| v == id), "duplicate UI ID: {id}");
         self.ids.push(id.into());
-        let occluded = !self.in_overlay
-            && self
-                .active_popup
-                .is_some_and(|pop| self.input.pointer.is_some_and(|p| pop.contains(p)));
+        self.areas.push(Area {
+            layer: self.layer,
+            rect,
+            clip: self.clip,
+        });
+        let occluded = self.pointer_blocked()
+            || (!self.in_overlay
+                && self
+                    .active_popup
+                    .is_some_and(|pop| self.input.pointer.is_some_and(|p| pop.contains(p))));
         let hovered = !occluded
             && self
                 .input
@@ -220,6 +338,7 @@ impl Ui {
     ) {
         let cmd = DrawCommand {
             rich_text: None,
+            layer: self.layer,
             rect,
             clip: if self.in_overlay { None } else { self.clip },
             style: self.style.clone(),
@@ -472,5 +591,127 @@ impl WorldPanel {
         } else {
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod layer_tests {
+    use super::*;
+
+    fn press_at(x: f32, y: f32) -> Input {
+        Input {
+            pointer: Some(Vec2 { x, y }),
+            down: true,
+            ..Default::default()
+        }
+    }
+
+    fn hover_at(x: f32, y: f32) -> Input {
+        Input {
+            pointer: Some(Vec2 { x, y }),
+            down: false,
+            ..Default::default()
+        }
+    }
+
+    fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect {
+        Rect {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
+    /// A slider along the bottom of the screen, and a card laid over one end of
+    /// it. The slider is emitted first, because it is drawn first.
+    fn frame(ui: &mut Ui, input: Input) -> (Response, Response) {
+        ui.begin(input);
+        let slider = ui.interact("transport.seek", rect(0.0, 90.0, 200.0, 20.0));
+        let card = ui.with_layer(Layer::PANEL, |ui| {
+            ui.interact("panel.button", rect(40.0, 80.0, 60.0, 40.0))
+        });
+        ui.end();
+        (slider, card)
+    }
+
+    #[test]
+    fn a_press_over_a_panel_reaches_the_panel_and_not_what_is_under_it() {
+        let mut ui = Ui::default();
+        // The first frame has nothing remembered, so it records the rectangles.
+        frame(&mut ui, hover_at(60.0, 95.0));
+        let (slider, card) = frame(&mut ui, press_at(60.0, 95.0));
+        assert!(card.hovered, "the card is in front and should be hovered");
+        assert!(card.active, "the card should have taken the press");
+        assert!(!slider.hovered, "the slider is behind the card");
+        assert!(!slider.active, "the slider must not take a press through it");
+    }
+
+    #[test]
+    fn a_press_beside_the_panel_still_reaches_what_is_under_it() {
+        let mut ui = Ui::default();
+        frame(&mut ui, hover_at(160.0, 95.0));
+        let (slider, card) = frame(&mut ui, press_at(160.0, 95.0));
+        assert!(slider.hovered && slider.active);
+        assert!(!card.hovered && !card.active);
+    }
+
+    #[test]
+    fn a_panel_that_has_never_been_drawn_covers_from_the_frame_it_says_so() {
+        let mut ui = Ui::default();
+        ui.begin(press_at(60.0, 95.0));
+        // The caller knows where the card will go before it draws the slider.
+        ui.reserve(Layer::PANEL, rect(40.0, 80.0, 60.0, 40.0));
+        let slider = ui.interact("transport.seek", rect(0.0, 90.0, 200.0, 20.0));
+        ui.end();
+        assert!(!slider.hovered, "reserved ground is covered at once");
+        assert!(!slider.active);
+    }
+
+    #[test]
+    fn code_that_reads_the_pointer_itself_can_ask_what_is_in_front() {
+        let mut ui = Ui::default();
+        frame(&mut ui, hover_at(60.0, 95.0));
+        ui.begin(hover_at(60.0, 95.0));
+        assert!(ui.pointer_blocked(), "the base layer is covered here");
+        ui.with_layer(Layer::PANEL, |ui| {
+            assert!(!ui.pointer_blocked(), "nothing is in front of the panel");
+        });
+        ui.end();
+
+        frame(&mut ui, hover_at(160.0, 95.0));
+        ui.begin(hover_at(160.0, 95.0));
+        assert!(!ui.pointer_blocked(), "nothing covers the pointer here");
+        ui.end();
+    }
+
+    #[test]
+    fn a_higher_layer_is_painted_over_a_lower_one_whatever_order_it_was_emitted() {
+        let mut ui = Ui::default();
+        ui.begin(Input::default());
+        ui.with_layer(Layer::PANEL, |ui| ui.label(rect(0.0, 0.0, 1.0, 1.0), "card"));
+        ui.label(rect(0.0, 0.0, 1.0, 1.0), "screen");
+        let commands = ui.end();
+        let order: Vec<&str> = commands.iter().map(|c| c.text.as_str()).collect();
+        assert_eq!(order, ["screen", "card"]);
+    }
+
+    #[test]
+    fn a_drag_that_began_on_a_slider_is_not_stolen_by_a_panel_opening_over_it() {
+        let mut ui = Ui::default();
+        // Press on the bare slider, away from where the card will be.
+        ui.begin(hover_at(160.0, 95.0));
+        ui.interact("transport.seek", rect(0.0, 90.0, 200.0, 20.0));
+        ui.end();
+        ui.begin(press_at(160.0, 95.0));
+        let held = ui.interact("transport.seek", rect(0.0, 90.0, 200.0, 20.0));
+        ui.end();
+        assert!(held.active);
+        // Now drag left, under the card.
+        let (slider, _) = frame(&mut ui, press_at(60.0, 95.0));
+        assert!(
+            slider.active,
+            "a drag already under way keeps the pointer until it is let go"
+        );
     }
 }

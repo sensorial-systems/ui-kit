@@ -9,13 +9,13 @@ pub mod spatial;
 pub mod splitter;
 pub mod xy_graph;
 pub use combobox::Combobox;
-pub use xy_graph::{XyGraphResponse, XyGraphWidget};
-pub use immediate::{DrawCommand, Input, Response, RichTextPaint, Ui};
+pub use immediate::{DrawCommand, Input, Layer, Response, RichTextPaint, Ui};
 pub use number_picker::NumberPicker;
 pub use scroll_container::ScrollContainer;
 pub use shadow::Shadow;
 pub use splitter::Splitter;
 use ui_kit_core::{layout, Event, Kind, Rect, Theme, Value, View};
+pub use xy_graph::{XyGraphResponse, XyGraphWidget};
 
 #[derive(Default)]
 pub struct ImmediateHost {

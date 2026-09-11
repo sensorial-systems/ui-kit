@@ -1,6 +1,6 @@
 use ui_kit_app::{scale_commands, App, AppConfig, ClosureApp, FrameContext};
 use ui_kit_core::{Rect, Style};
-use ui_kit_immediate::{DrawCommand, Input};
+use ui_kit_immediate::{DrawCommand, Input, Layer};
 
 struct TestApp {
     frames: usize,
@@ -12,6 +12,7 @@ impl App for TestApp {
         assert_eq!(ctx.width, 800.0);
         assert_eq!(ctx.height, 600.0);
         vec![DrawCommand {
+            layer: Layer::BASE,
             rect: Rect {
                 x: 10.0,
                 y: 10.0,
@@ -69,6 +70,7 @@ fn app_config_builder_customizes_properties() {
 #[test]
 fn scale_commands_scales_geometry_and_styles() {
     let mut commands = vec![DrawCommand {
+        layer: Layer::BASE,
         rect: Rect {
             x: 10.0,
             y: 20.0,
