@@ -1,7 +1,11 @@
 // Shared semantic UI. No Dioxus, GPU, executor, or application-owned state.
 pub mod graph;
 pub mod rich_text;
+pub mod xy_graph;
 pub use rich_text::{FormatAction, RichText, RichTextEditor, TextFormat, TextRun};
+pub use xy_graph::{
+    XyAxis, XyHandle, XyPlot, XyPoint, XyRange, XySeries, XyShadedRegion, XyTick,
+};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, sync::Arc};
 

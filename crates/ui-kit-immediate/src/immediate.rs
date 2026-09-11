@@ -419,6 +419,16 @@ impl Ui {
     ) -> Response {
         crate::number_picker::NumberPicker::new(min, max, step).show(self, id, rect, value)
     }
+
+    /// A flexible XY graph visualizer for curves, functions, and interactive handles.
+    pub fn xy_graph(
+        &mut self,
+        id: &str,
+        rect: Rect,
+        plot: &mut ui_kit_core::XyPlot,
+    ) -> crate::xy_graph::XyGraphResponse {
+        crate::xy_graph::XyGraphWidget::new().show(self, id, rect, plot)
+    }
 }
 
 /// A planar world-space UI. `right` and `down` span the full panel in world units.
