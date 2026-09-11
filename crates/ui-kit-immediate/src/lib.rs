@@ -1,13 +1,31 @@
 //! Immediate host: interaction state and rendering commands, independent of wgpu.
-pub mod combobox;
-pub mod composition;
-pub mod immediate;
-pub mod number_picker;
-pub mod scroll_container;
-pub mod shadow;
-pub mod spatial;
-pub mod splitter;
-pub mod xy_graph;
+pub mod combobox {
+    pub use prism_ui::immediate::Combobox;
+}
+pub mod composition {
+    pub use prism_ui::composition::*;
+}
+pub mod immediate {
+    pub use prism_ui::immediate::*;
+}
+pub mod number_picker {
+    pub use prism_ui::immediate::NumberPicker;
+}
+pub mod scroll_container {
+    pub use prism_ui::immediate::ScrollContainer;
+}
+pub mod shadow {
+    pub use prism_ui::immediate::Shadow;
+}
+pub mod spatial {
+    pub use prism_ui::immediate::{Vec3, WorldPanel};
+}
+pub mod splitter {
+    pub use prism_ui::immediate::Splitter;
+}
+pub mod xy_graph {
+    pub use prism_ui::xy_graph::*;
+}
 pub use combobox::Combobox;
 pub use immediate::{DrawCommand, Input, Layer, Response, RichTextPaint, Ui};
 pub use number_picker::NumberPicker;
@@ -56,7 +74,7 @@ impl ImmediateHost {
                     Kind::Button { label, loading } => (
                         "button",
                         if *loading {
-                            format!("Workingâ€¦ {label}")
+                            format!("Working\u{2026} {label}")
                         } else {
                             label.clone()
                         },

@@ -1,106 +1,16 @@
 // Shared semantic UI. No Dioxus, GPU, executor, or application-owned state.
 pub mod graph;
-pub mod rich_text;
-pub mod xy_graph;
-pub use rich_text::{FormatAction, RichText, RichTextEditor, TextFormat, TextRun};
-use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, sync::Arc};
-pub use xy_graph::{XyAxis, XyHandle, XyPlot, XyPoint, XyRange, XySeries, XyShadedRegion, XyTick};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct Point {
-    pub x: f32,
-    pub y: f32,
-}
-impl Point {
-    pub fn new(x: f32, y: f32) -> Self {
-        Self { x, y }
-    }
-}
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct Rect {
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
-}
-impl Rect {
-    pub fn contains(self, p: Point) -> bool {
-        p.x >= self.x && p.y >= self.y && p.x < self.x + self.width && p.y < self.y + self.height
-    }
-    pub fn intersect(self, b: Self) -> Self {
-        let x = self.x.max(b.x);
-        let y = self.y.max(b.y);
-        Self {
-            x,
-            y,
-            width: ((self.x + self.width).min(b.x + b.width) - x).max(0.0),
-            height: ((self.y + self.height).min(b.y + b.height) - y).max(0.0),
-        }
-    }
-}
-pub type Color = [f32; 4];
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub enum TextAlign {
-    #[default]
-    Left,
-    Center,
-    Right,
-}
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum Material {
-    Solid,
-    Glass { blur: f32 },
-    Custom { name: String, parameters: Vec<f32> },
-}
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Style {
-    pub fill: Color,
-    /// Optional end color for a diagonal (135 degree) background gradient.
-    #[serde(default)]
-    pub gradient_end: Option<Color>,
-    pub stroke: Color,
-    pub foreground: Color,
-    pub accent: Color,
-    pub radius: f32,
-    pub material: Material,
-    pub font_size: f32,
-    #[serde(default = "default_weight")]
-    pub font_weight: u16,
-    #[serde(default)]
-    pub text_align: TextAlign,
-    #[serde(default = "default_padding")]
-    pub text_padding: f32,
-    #[serde(default = "default_stroke")]
-    pub stroke_width: f32,
-}
-fn default_weight() -> u16 {
-    400
-}
-fn default_padding() -> f32 {
-    16.0
-}
-fn default_stroke() -> f32 {
-    1.0
-}
-impl Default for Style {
-    fn default() -> Self {
-        Self {
-            fill: [0.12, 0.16, 0.25, 0.9],
-            gradient_end: None,
-            stroke: [0.6, 0.75, 1.0, 0.3],
-            foreground: [0.93, 0.96, 1.0, 1.0],
-            accent: [0.47, 0.87, 0.82, 1.0],
-            radius: 12.0,
-            material: Material::Solid,
-            font_size: 16.0,
-            font_weight: 400,
-            text_align: TextAlign::Left,
-            text_padding: 16.0,
-            stroke_width: 1.0,
-        }
-    }
-}
+pub use prism_ui::{
+    immediate::{Color, Material, Point, Rect, Style},
+    rich_text::{self, FormatAction, RichText, RichTextEditor, TextFormat, TextRun},
+    xy_graph::{
+        self, XyAxis, XyHandle, XyPlot, XyPoint, XyRange, XySeries, XyShadedRegion, XyTick,
+    },
+    TextAlign,
+};
+use std::{collections::HashSet, sync::Arc};
+
 /// Tokens shared by both adapters. Nodes may override a complete style.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Theme {

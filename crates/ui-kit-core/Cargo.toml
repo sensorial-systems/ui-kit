@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 description = "Backend-independent UI descriptions and semantic actions"
 [dependencies]
+prism-ui = { path = "../../../../studio/prism/products/prism/libraries/ui" }
 serde = { version = "1", features = ["derive"] }
 unicode-segmentation = "1"

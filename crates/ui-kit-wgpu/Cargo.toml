@@ -5,6 +5,7 @@ edition = "2021"
 [dependencies]
 ui-kit-core = { path = "../ui-kit-core" }
 ui-kit-immediate = { path = "../ui-kit-immediate" }
+prism-ui-render = { path = "../../../../studio/prism/products/prism/libraries/ui-render" }
 wgpu = { version = "30", default-features = false, features = ["std", "wgsl", "vulkan", "metal", "webgpu"] }
 glyphon = "0.12"
 anyhow = "1"

@@ -299,7 +299,7 @@ fn a_style_colour_reads_back_the_same_on_a_plain_and_an_srgb_target() -> Result<
         // A mid grey, where a stray encode is impossible to miss.
         let colour = [0.216, 0.216, 0.216, 1.0];
 
-        let mut read = |format| -> Result<[u8; 4]> {
+        let read = |format| -> Result<[u8; 4]> {
             let mut renderer = WgpuRenderer::new(&gpu, format)?;
             let texture = renderer.create_texture(8, 8)?;
             let mut ui = Ui::default();
