@@ -112,7 +112,7 @@ impl CommandRenderer for Recorder {
         _: &mut WgpuFrame<'_>,
         command: &DrawCommand,
     ) -> Result<bool> {
-        self.seen.push(command.kind.clone());
+        self.seen.push(command.kind.to_string());
         Ok(self.handle && command.kind == "custom")
     }
 }

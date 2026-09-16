@@ -1,4 +1,5 @@
 use ui_kit_core::{Material, Rect};
+use ui_kit_immediate::vector::{COLORED_TRIANGLES, TRIANGLES};
 use ui_kit_immediate::DrawCommand;
 
 /// Scale immediate mode draw commands from logical points to physical screen pixels.
@@ -27,12 +28,12 @@ pub fn scale_commands(commands: &mut [DrawCommand], scale: f32) {
             cmd.value *= scale;
         }
         if let Material::Custom { name, parameters } = &mut cmd.style.material {
-            if name == "gallery.colored-triangles" {
+            if name == COLORED_TRIANGLES {
                 for vertex in parameters.chunks_exact_mut(6) {
                     vertex[0] *= scale;
                     vertex[1] *= scale;
                 }
-            } else if name == "gallery.triangles" {
+            } else if name == TRIANGLES {
                 for v in parameters {
                     *v *= scale;
                 }

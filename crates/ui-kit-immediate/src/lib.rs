@@ -1,4 +1,8 @@
 //! Immediate host: interaction state and rendering commands, independent of wgpu.
+pub mod components;
+pub mod icon;
+pub mod svg;
+pub mod vector;
 pub mod combobox {
     pub use prism_ui::immediate::Combobox;
 }
@@ -7,6 +11,17 @@ pub mod composition {
 }
 pub mod immediate {
     pub use prism_ui::immediate::*;
+}
+/// Automatic layout: say how big things are, and where they go follows.
+///
+/// [`Flex`](layout::Flex) solves a run of fixed and filling items in one pass,
+/// [`Strip`](layout::Strip) takes items off either end of a bar and leaves the
+/// middle to what remains, [`Stack`](layout::Stack) lays rows down a growing
+/// column, and [`Grid`](layout::Grid) wraps equal cells into rows. `Rect`
+/// carries the alignment, inset and split operations they are built on.
+pub mod layout {
+    pub use prism_ui::immediate::{Axis, Flex, Grid, Insets, Justify, Size, Stack, Strip};
+    pub use prism_ui::{HorizontalAlignment, VerticalAlignment};
 }
 pub mod number_picker {
     pub use prism_ui::immediate::NumberPicker;
@@ -32,15 +47,33 @@ pub mod stack {
 pub mod xy_graph {
     pub use prism_ui::xy_graph::*;
 }
+// Everything else the immediate layer has: widgets, theming, input and
+// output types, accessibility and the test harness.
 pub use combobox::Combobox;
-pub use immediate::{DrawCommand, Input, Layer, Response, RichTextPaint, Ui};
+pub use immediate::{DrawCommand, Input, Layer, Response, RichTextPaint, TextMeasure, Ui};
+pub use layout::{
+    Axis, Flex, Grid, HorizontalAlignment, Insets, Justify, Size, Strip, VerticalAlignment,
+};
 pub use number_picker::NumberPicker;
+pub use prism_ui::immediate::*;
 pub use scroll_card::{ScrollCard, ScrollCardResponse};
 pub use scroll_container::ScrollContainer;
 pub use shadow::Shadow;
 pub use splitter::Splitter;
 pub use stack::Stack;
-use ui_kit_core::{layout, Event, Kind, Rect, Theme, Value, View};
+use ui_kit_core::{layout, Event, Kind, Theme as ViewTheme, Value, View};
+
+/// An option of a [`Kind::Select`], as the combobox shows it.
+#[derive(Clone, Copy, PartialEq)]
+struct Choice<'a> {
+    index: usize,
+    label: &'a str,
+}
+impl std::fmt::Display for Choice<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.label)
+    }
+}
 pub use xy_graph::{XyGraphResponse, XyGraphWidget};
 
 #[derive(Default)]
@@ -55,7 +88,7 @@ impl ImmediateHost {
     pub fn frame<A>(
         &mut self,
         view: &View<A>,
-        theme: &Theme,
+        theme: &ViewTheme,
         input: Input,
         bounds: Rect,
     ) -> Result<Frame<A>, String> {
@@ -97,6 +130,14 @@ impl ImmediateHost {
                         range,
                     } => ("slider", label.clone(), range.fraction(*value)),
                     Kind::TextInput { value, .. } => ("text_input", value.clone(), 0.0),
+                    Kind::Toggle { label, on } => ("checkbox", label.clone(), u8::from(*on) as f32),
+                    Kind::Select {
+                        options, selected, ..
+                    } => (
+                        "button",
+                        options.get(*selected).cloned().unwrap_or_default(),
+                        0.0,
+                    ),
                     _ => unreachable!(),
                 };
                 self.ui.style.fill[3] *= 0.5;
@@ -107,6 +148,39 @@ impl ImmediateHost {
             } else {
                 match &node.kind {
                     Kind::Column | Kind::Row => None,
+                    Kind::Separator => {
+                        self.ui.separator(r);
+                        None
+                    }
+                    Kind::Progress { label, value } => {
+                        let (caption, bar) = r.split_left((r.width * 0.35).min(160.0), 12.0);
+                        self.ui.label(caption, label);
+                        self.ui.progress(bar.center_vertically(8.0), *value as f32);
+                        None
+                    }
+                    Kind::Toggle { label, on } => {
+                        let mut value = *on;
+                        Toggle::show(&mut self.ui, id, r, label, &mut value)
+                            .changed
+                            .then_some(Value::Toggle(value))
+                    }
+                    Kind::Select {
+                        options, selected, ..
+                    } => {
+                        let choices: Vec<Choice> = options
+                            .iter()
+                            .enumerate()
+                            .map(|(index, label)| Choice { index, label })
+                            .collect();
+                        let mut value = choices.get(*selected).copied().unwrap_or(Choice {
+                            index: 0,
+                            label: "",
+                        });
+                        self.ui
+                            .combobox(id, r, &mut value, &choices)
+                            .changed
+                            .then_some(Value::Select(value.index))
+                    }
                     Kind::Panel => {
                         self.ui.panel(r);
                         None

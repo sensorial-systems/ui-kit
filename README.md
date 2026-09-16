@@ -113,9 +113,55 @@ reflected by rebuilding the next view.
 
 `spatial::WorldPanel` maps a controller ray to panel pixels. Use the resulting
 point as `Input.pointer`; the rendering layer does not own a headset session.
-The immediate text field currently supports committed insertion at the end and
-backspace. Selection, clipboard, IME integration and accessibility bridges require
-host integration; it is not yet a full native text editor.
+
+The immediate text field keeps a caret and a selection: the pointer places and
+drags them, a double click selects all, arrows/Home/End move them (Shift extends),
+and typing, Backspace, Delete, paste, copy and cut act at them. Text an input
+method is composing (`Input.preedit`) is shown at the caret until it commits.
+
+### Input and output
+
+`Input` also carries the wheel (`scroll`), the secondary button, the keys pressed
+(`keys`, with `modifiers`), `time` for double clicks, delays and animation, the
+`viewport` popups keep inside, clipboard requests (`copy`, `cut`, `paste`) and
+`access_actions` from screen readers. After `Ui::end`, `Ui::output()` says what
+the frame asks of the host: the `cursor`, text for the `clipboard`, whether it
+`wants_keyboard`, the `ime_area`, and `repaint_after` while something animates.
+
+With winit, `ui_kit_window::InputCollector` (feature `winit` + `immediate`) does
+both directions: feed it every `WindowEvent`, `take` the input each frame, and
+`apply` the output to the window. Feature `clipboard` connects the system
+clipboard; feature `accesskit` adds `AccessibilityBridge`, which publishes
+`Ui::accessibility()` to screen readers and turns their requests into input.
+
+### Ids, styles and state
+
+`ui.scope("left", |ui| ..)` prefixes every id used inside, so a component can be
+drawn twice. A duplicate id stops debug builds and is listed by
+`Ui::duplicate_ids` in release. `ui.with_style`, `ui.scoped` and `ui.with_clip`
+restore what they change. `Ui::theme` holds the named styles widgets use --
+`Theme::button(Variant)`, rows, popups, tooltips, fields -- built from a
+`Palette` with `Theme::from_palette`. `ui.animate(id, target, seconds)` eases a
+value; `ui.remember`/`ui.remembered` keep a size across frames, and
+`ui.painted_since(ui.mark())` measures what was just drawn.
+
+### Widgets
+
+Beyond buttons, checkboxes, sliders, fields, comboboxes and number pickers:
+`Toggle`, `RadioGroup`, `SegmentedControl`, `Tabs`, `TreeView`, `Table` (sortable,
+only visible rows drawn), `Menu::button`, `Menu::context` (right click),
+`MenuBar`, `ui.popup` (nested, flips and slides to stay on screen), `ui.tooltip`,
+`ui.modal`, `ui.toast`/`ui.show_toasts`, `ui.image` (contain, cover or fill; the
+renderer draws textures registered with `register_image`), `ScrollArea` (both
+axes), `VirtualList`, drag and drop (`drag_source`, `drop_target`) and keyboard
+shortcuts (`ui.shortcut`). Built-in widgets describe themselves for
+accessibility.
+
+### Testing
+
+`Harness` drives a view by control id: `click("save", view)`,
+`type_text`, `key`, `scroll`, `drag`, `right_click`, `double_click`, and reads
+back `rect(id)`, `find_text` and the accessibility nodes.
 
 ## Appearance and custom rendering
 
@@ -141,14 +187,21 @@ premultiplied blending when compositing them. All resources must share the devic
 Implement `UiRenderer<Target>` to replace the command backend, or compose partial
 wgpu overrides with `WgpuRenderer::with_custom(&gpu, format, (effect_a, effect_b))`.
 Each `CommandRenderer` receives context, frame and command; return `true` when
-handled or `false` to delegate. Honor the command clip and record into the provided
+handled or `false` to delegate. Override `CommandRenderer::wants` to name the
+commands a renderer handles: the rest are then drawn in batches -- one pass for a
+run's shapes and one for its text -- instead of a pass apiece.
+
+`Style::overflow` chooses whether text wraps, clips or ends in an ellipsis. Install
+`renderer.text_measure()` on a `Ui` with `set_shared_text_measure` so
+`Ui::text_width`, `fit_text` and `elide` use the fonts the renderer draws with;
+`load_font` adds a font to both. Honor the command clip and record into the provided
 encoder. Unknown kinds/materials are errors; the Dioxus host displays an alert for
 unsupported custom materials. Native GPU shaders are not translated into CSS.
 
 ## Current coverage and layout
 
-The shared model includes Text, Button, Checkbox, Slider, TextInput, Panel, Row
-and Column. Legacy tables, graphs, calendars and other existing components remain
+The shared model includes Text, Button, Checkbox, Slider, TextInput, Toggle,
+Select, Progress, Separator, Panel, Row and Column, rendered by both hosts. Legacy tables, graphs, calendars and other existing components remain
 on the original Dioxus API for incremental migration.
 
 The supported layout subset is fixed or fill widths, fixed or intrinsic heights,
@@ -156,6 +209,76 @@ rows/columns, padding and gaps. Rows divide remaining width equally between fill
 children. Overflow clips. Wrapping, scrolling, grids, responsive breakpoints,
 reverse Tab, and overlapping interactive widgets are not implemented yet. The DOM
 adapter uses the corresponding CSS rules; glyph metrics can differ by platform.
+
+### Immediate layout
+
+Immediate widgets take a `Rect`, but nothing should compute one by adding offsets.
+`ui_kit_immediate::layout` says how big things are and works out where they go;
+the shared `layout` above is solved by the same `Flex`.
+
+```rust
+use ui_kit_immediate::{Flex, Insets, Size, Strip, Stack, Grid};
+
+// A bar: fixed controls at both ends, the seek bar in whatever is left.
+let mut bar = Strip::row(bounds.inset_by(Insets::symmetric(8.0, 0.0)), 4.0);
+let play = bar.leading(32.0);
+let volume = bar.trailing(84.0);
+let open = bar.trailing_if_room(68.0, 120.0); // gives way on a narrow bar
+let seek = bar.rest();
+
+// A run solved in one pass: fixed items, gaps, then fills by weight.
+let [dec, value, inc] = Flex::row(0.0).split(field, [Size::Fixed(28.0), Size::FILL, Size::Fixed(28.0)]);
+
+// Rows down a scrolling card, and tiles wrapped into as many columns as fit.
+let mut rows = Stack::new(content, 6.0);
+let heading = rows.row(20.0);
+let tiles = Grid::fit(area, 120.0, 8.0);
+let third = tiles.cell(2);
+```
+
+`Rect` adds `align`, `centered`, `center_vertically`, `inset_by`, `split_top`,
+`split_bottom` and `overlaps`. `Ui::text_width` / `Ui::fit_text` size a control
+to its label; install a shaping measure with `Ui::set_text_measure`, otherwise
+the width is estimated from the character count.
+
+### Components
+
+`ui_kit_immediate::components` has the immediate counterparts of the Dioxus
+components, drawn in the colours of `ui.theme.palette` (`components::theme::theme(dark)`
+builds the kit's light and dark looks). Stateless ones are builders with a
+`show` method; stateful ones take a state value the application owns:
+
+```rust
+use ui_kit_immediate::components::{Button, ButtonVariant, Dropdown, Menu, MenuItem, MenuState};
+use ui_kit_immediate::icon::Icon;
+
+ui.theme = components::theme::theme(dark);
+if Button::new("Save").icon(Icon::Check).show(&mut ui, "save", rect).clicked { /* ... */ }
+Dropdown::new(&["Rust", "Go"]).show(&mut ui, "language", field, &mut language);
+if let Some(id) = Menu::horizontal(&items).show(&mut ui, "nav", bar, &mut menu_state) { /* ... */ }
+```
+
+Inputs: `Button`, `TextInput`, `Select`, `Dropdown`, `Checkbox`, `Switch`,
+`Slider`, `OtpInput`, `DateTimePicker`, `ColorPicker`, `ColorField`,
+`EditableText`. Feedback: `Label`, `Badge`, `Notification`, `ProgressBar`,
+`Spinner`. Containers: `Card`, `Modal`, `Browser`, `Table`, `PipelineBoard`,
+`Timeline`, `Bill`, `MetricCard`, `FormFlow`. Navigation: `Menu` (horizontal or
+vertical; children cascade into submenus). Charts and graphs: `Sparkline`,
+`PieChart`, `StackedBarChart`, `FlowGraph`, `NetworkGraph`, `HierarchyGraph`,
+`GraphNode`, `GraphCamera`. Menus, dropdowns, pickers and dialogs draw over the
+page on their own layers and take the pointer from what is under them, so they
+can be shown from anywhere in a frame; set `Input::viewport` so they stay on screen.
+
+### Vectors, SVG and icons
+
+`ui_kit_immediate::vector` paints antialiased meshes (`fill_triangles`, `line`,
+`polyline`, `circle`). `svg::Svg::parse` reads an SVG once and tessellates its
+fills and strokes; `paint` and `paint_tinted` then place it at any size.
+`icon::Icon` is a set of line icons (chevrons, arrows, close, plus, check,
+calendar, loader, ...) drawn from SVG, so no control depends on a font having a
+glyph. Meshes are drawn by `ui_kit_wgpu::VectorRenderer`:
+`WgpuRenderer::with_custom(&gpu, format, VectorRenderer::new(&gpu, format))`.
+`EditableText` places its caret with `ui_kit_wgpu::ShapedRichText`.
 
 ## Run and verify
 
@@ -176,8 +299,10 @@ graphs. Mouse wheel and Page Up/Down scroll; Ctrl+Home/End jump to the ends;
 Escape closes overlays. Shift-click selects pipeline cards for group dragging.
 The application supplies the wgpu device/queue and renders into a reusable
 texture before presenting. `Gallery::frame` builds commands separately from
-the window host; `GeometryRenderer` composes vector drawing with the standard
-renderer through `CommandRenderer`.
+the window host from `ui_kit_immediate::components`; `VectorRenderer` composes
+vector drawing with the standard renderer through `CommandRenderer`. Snapshot a
+state with `cargo run -p immediate-gallery -- --snapshot out.png`, adding
+`--click LABEL`, `--drag FROM TO`, `--section NAME` or `--dark`.
 
 The existing Dioxus gallery is still its own DOM/CSS renderer:
 

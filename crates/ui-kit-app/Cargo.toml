@@ -7,7 +7,7 @@ edition = "2021"
 ui-kit-core = { path = "../ui-kit-core" }
 ui-kit-immediate = { path = "../ui-kit-immediate" }
 ui-kit-wgpu = { path = "../ui-kit-wgpu" }
-ui-kit-window = { path = "../ui-kit-window", features = ["winit", "immediate"] }
+ui-kit-window = { path = "../ui-kit-window", features = ["winit", "immediate", "clipboard"] }
 winit = "0.30"
 wgpu = { version = "30", default-features = false }
 pollster = "0.4"

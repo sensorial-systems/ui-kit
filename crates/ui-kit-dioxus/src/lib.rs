@@ -165,5 +165,30 @@ fn render_node<A: Clone + PartialEq + 'static>(
         } => {
             rsx! {input {id,style:format!("{css}padding:0 {padding}px;"),r#type:"text","aria-label":label,value,placeholder,disabled,oninput:move |e|emit(Value::Text(e.value()))}}
         }
+        Kind::Toggle { label, on } => {
+            rsx! {label {style:format!("{css}display:flex;align-items:center;gap:12px;padding:0 {padding}px;"),
+                input {id,r#type:"checkbox",role:"switch","aria-checked":on.to_string(),checked:on,disabled,onchange:move |e|emit(Value::Toggle(e.checked()))} span {"{label}"}
+            }}
+        }
+        Kind::Select {
+            label,
+            options,
+            selected,
+        } => {
+            rsx! {select {id,style:format!("{css}padding:0 {padding}px;"),"aria-label":label,disabled,
+                onchange:move |e| {if let Ok(index)=e.value().parse() {emit(Value::Select(index))}},
+                for (index, option) in options.into_iter().enumerate() {
+                    option {key:"{index}",value:"{index}",selected:index==selected,"{option}"}
+                }
+            }}
+        }
+        Kind::Progress { label, value } => {
+            rsx! {label {style:format!("{css}display:flex;align-items:center;gap:12px;padding:0 {padding}px;"),span {"{label}"}
+                progress {style:"flex:1;min-width:0;",max:1,value}
+            }}
+        }
+        Kind::Separator => {
+            rsx! {hr {style:format!("{css}border:none;border-top:1px solid {};margin:4px 0;height:0;",color(style.stroke))}}
+        }
     }
 }

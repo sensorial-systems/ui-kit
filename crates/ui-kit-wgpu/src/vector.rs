@@ -1,19 +1,25 @@
-//! Example of composing specialized vector painting with the standard UI renderer.
+//! Antialiased vector meshes: the `triangles` commands
+//! `ui_kit_immediate::vector`, `svg` and `icon` paint.
+//!
+//! Compose it with the standard renderer:
+//! `WgpuRenderer::with_custom(gpu, format, VectorRenderer::new(gpu, format))`.
+use crate::{CommandRenderer, GpuContext, WgpuFrame};
 use anyhow::Result;
 use ui_kit_core::{Material, Rect};
+use ui_kit_immediate::vector::{COLORED_TRIANGLES, TRIANGLES};
 use ui_kit_immediate::DrawCommand;
-use ui_kit_wgpu::{CommandRenderer, GpuContext, WgpuFrame};
 use wgpu::util::DeviceExt;
 
-pub struct GeometryRenderer {
+/// Draws vector meshes; hands every other command back to the standard renderer.
+pub struct VectorRenderer {
     pipeline: wgpu::RenderPipeline,
 }
-impl GeometryRenderer {
+impl VectorRenderer {
     pub fn new(gpu: &GpuContext, format: wgpu::TextureFormat) -> Self {
         let shader = gpu
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("gallery vector geometry"),
+                label: Some("ui-kit vector geometry"),
                 source: wgpu::ShaderSource::Wgsl(
                     r#"
 struct Vertex { @builtin(position) position:vec4<f32>, @location(0) color:vec4<f32> }
@@ -28,7 +34,7 @@ struct Vertex { @builtin(position) position:vec4<f32>, @location(0) color:vec4<f
         let pipeline = gpu
             .device
             .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("gallery vectors"),
+                label: Some("ui-kit vectors"),
                 layout: None,
                 vertex: wgpu::VertexState {
                     module: &shader,
@@ -59,7 +65,7 @@ struct Vertex { @builtin(position) position:vec4<f32>, @location(0) color:vec4<f
         Self { pipeline }
     }
 }
-impl CommandRenderer for GeometryRenderer {
+impl CommandRenderer for VectorRenderer {
     fn render(
         &mut self,
         gpu: &GpuContext,
@@ -69,8 +75,8 @@ impl CommandRenderer for GeometryRenderer {
         let Material::Custom { name, parameters } = &command.style.material else {
             return Ok(false);
         };
-        let colored = name == "gallery.colored-triangles";
-        if name != "gallery.triangles" && !colored {
+        let colored = name == COLORED_TRIANGLES;
+        if name != TRIANGLES && !colored {
             return Ok(false);
         }
         anyhow::ensure!(
@@ -137,14 +143,14 @@ impl CommandRenderer for GeometryRenderer {
         let buffer = gpu
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("gallery triangles"),
+                label: Some("ui-kit triangles"),
                 contents: bytemuck::cast_slice(&vertices),
                 usage: wgpu::BufferUsages::VERTEX,
             });
         let mut pass = frame
             .encoder
             .begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("gallery vectors"),
+                label: Some("ui-kit vectors"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: frame.target.view,
                     resolve_target: None,

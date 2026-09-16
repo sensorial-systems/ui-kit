@@ -1,12 +1,20 @@
 use crate::context::FrameContext;
-use ui_kit_immediate::DrawCommand;
+use ui_kit_immediate::{DrawCommand, Output};
 
 /// Interface for applications driven by the `ui-kit-app` runner.
 pub trait App {
     /// Render UI commands for the current frame.
     fn frame(&mut self, ctx: &FrameContext) -> Vec<DrawCommand>;
 
-    /// Optional hook called on mouse scroll wheel input.
+    /// What the last frame's [`Ui`](ui_kit_immediate::Ui) asked of the host:
+    /// its cursor, its input method area, text to copy. The runner applies
+    /// it to the window after each frame.
+    fn output(&self) -> Option<Output> {
+        None
+    }
+
+    /// Optional hook called on mouse scroll wheel input. The wheel also
+    /// reaches the frame's input, where scroll containers take it.
     fn on_scroll(&mut self, _delta: f32) {}
 
     /// Optional hook called when the window loses focus.

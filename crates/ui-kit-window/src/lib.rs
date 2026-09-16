@@ -13,3 +13,11 @@ pub use dioxus::WindowChromeView;
 mod native;
 #[cfg(feature = "winit")]
 pub use native::{ChromeEvent, WinitWindow};
+#[cfg(all(feature = "winit", feature = "immediate"))]
+mod input;
+#[cfg(all(feature = "winit", feature = "immediate"))]
+pub use input::{cursor, InputCollector};
+#[cfg(feature = "accesskit")]
+mod access;
+#[cfg(feature = "accesskit")]
+pub use access::{tree_update, AccessibilityBridge};

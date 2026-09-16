@@ -1,12 +1,11 @@
 use anyhow::Result;
-use immediate_gallery::geometry::GeometryRenderer;
 use immediate_gallery::Gallery;
 use std::sync::Arc;
 use ui_kit_app::{App, AppConfig, FrameContext};
 use ui_kit_core::Point;
 use ui_kit_immediate::composition::UiRenderer;
 use ui_kit_immediate::{DrawCommand, Input};
-use ui_kit_wgpu::{GpuContext, TextureTarget, WgpuFrame, WgpuRenderer};
+use ui_kit_wgpu::{GpuContext, TextureTarget, VectorRenderer, WgpuFrame, WgpuRenderer};
 
 struct GalleryApp {
     gallery: Gallery,
@@ -45,7 +44,7 @@ pub fn run() -> Result<()> {
         .with_background([bg.r as f32, bg.g as f32, bg.b as f32, bg.a as f32]);
 
     ui_kit_app::run_with_custom(GalleryApp { gallery }, config, |gpu, format| {
-        GeometryRenderer::new(gpu, format)
+        VectorRenderer::new(gpu, format)
     })
 }
 
@@ -57,9 +56,11 @@ fn snapshot(path: &str, args: &[String]) -> Result<()> {
     let mut renderer = WgpuRenderer::with_custom(
         &gpu,
         wgpu::TextureFormat::Rgba8Unorm,
-        GeometryRenderer::new(&gpu, wgpu::TextureFormat::Rgba8Unorm),
+        VectorRenderer::new(&gpu, wgpu::TextureFormat::Rgba8Unorm),
     )?;
     let mut gallery = Gallery::default();
+    let measure = renderer.text_measurer();
+    gallery.set_text_measure(move |text, style| measure.width(text, style));
     gallery.dark = args.iter().any(|a| a == "--dark");
     gallery.frame(Input::default(), 1200.0, 850.0, 0.0);
     if let Some(i) = args.iter().position(|a| a == "--scroll") {
@@ -79,51 +80,27 @@ fn snapshot(path: &str, args: &[String]) -> Result<()> {
             .ok_or_else(|| anyhow::anyhow!("unknown section: {section}"))?;
     }
     // Drive the same input path as the window for reproducible component captures.
+    let at = |pointer: Point, down: bool| Input {
+        pointer: Some(pointer),
+        down,
+        ..Default::default()
+    };
     for pair in args.windows(2).filter(|pair| pair[0] == "--click") {
-        let commands = gallery.frame(Input::default(), 1200.0, 850.0, 0.0);
-        let rect = commands
-            .iter()
-            .rev()
-            .find(|c| c.text == pair[1])
-            .or_else(|| commands.iter().rev().find(|c| c.text.starts_with(&pair[1])))
-            .ok_or_else(|| anyhow::anyhow!("control not found: {}", pair[1]))?
-            .rect;
-        if rect.y < 0.0 || rect.y + rect.height > 850.0 {
-            gallery.scroll_by(rect.y - 200.0);
-        }
-        let commands = gallery.frame(Input::default(), 1200.0, 850.0, 0.0);
-        let rect = commands
-            .iter()
-            .rev()
-            .find(|c| c.text == pair[1])
-            .or_else(|| commands.iter().rev().find(|c| c.text.starts_with(&pair[1])))
-            .unwrap()
-            .rect;
-        let pointer = Some(Point::new(
-            rect.x + rect.width * 0.5,
-            rect.y + rect.height * 0.5,
-        ));
-        gallery.frame(
-            Input {
-                pointer,
-                down: true,
-                ..Default::default()
-            },
-            1200.0,
-            850.0,
-            0.0,
-        );
-        gallery.frame(
-            Input {
-                pointer,
-                ..Default::default()
-            },
-            1200.0,
-            850.0,
-            0.0,
-        );
+        let pointer = locate(&mut gallery, &pair[1])?;
+        gallery.frame(at(pointer, true), 1200.0, 850.0, 0.0);
+        gallery.frame(at(pointer, false), 1200.0, 850.0, 0.0);
     }
-    let commands = gallery.frame(Input::default(), 1200.0, 850.0, 0.0);
+    // `--drag FROM TO` presses on FROM and holds it over TO for the capture.
+    let mut held = Input::default();
+    for triple in args.windows(3).filter(|triple| triple[0] == "--drag") {
+        let from = locate(&mut gallery, &triple[1])?;
+        let to = locate(&mut gallery, &triple[2])?;
+        gallery.frame(at(from, false), 1200.0, 850.0, 0.0);
+        gallery.frame(at(from, true), 1200.0, 850.0, 0.0);
+        held = at(Point::new(to.x, to.y + 40.0), true);
+        gallery.frame(held.clone(), 1200.0, 850.0, 0.0);
+    }
+    let commands = gallery.frame(held, 1200.0, 850.0, 0.0);
     let target = renderer.create_texture(1200, 850)?;
     let mut encoder = gpu.device.create_command_encoder(&Default::default());
     renderer.render(
@@ -175,4 +152,27 @@ fn snapshot(path: &str, args: &[String]) -> Result<()> {
     png.write_header()?.write_image_data(&data)?;
     println!("Wrote {path}");
     Ok(())
+}
+
+/// The middle of the topmost control showing `text`, scrolled into view.
+fn locate(gallery: &mut Gallery, text: &str) -> Result<Point> {
+    let find = |commands: &[ui_kit_immediate::DrawCommand]| {
+        commands
+            .iter()
+            .rev()
+            .find(|c| c.text == text)
+            .or_else(|| commands.iter().rev().find(|c| c.text.starts_with(text)))
+            .map(|c| c.rect)
+    };
+    let commands = gallery.frame(Input::default(), 1200.0, 850.0, 0.0);
+    let rect = find(&commands).ok_or_else(|| anyhow::anyhow!("control not found: {text}"))?;
+    if rect.y < 0.0 || rect.y + rect.height > 850.0 {
+        gallery.scroll_by(rect.y - 200.0);
+    }
+    let commands = gallery.frame(Input::default(), 1200.0, 850.0, 0.0);
+    let rect = find(&commands).ok_or_else(|| anyhow::anyhow!("control not found: {text}"))?;
+    Ok(Point::new(
+        rect.x + rect.width * 0.5,
+        rect.y + rect.height * 0.5,
+    ))
 }

@@ -1,6 +1,7 @@
 // Shared semantic UI. No Dioxus, GPU, executor, or application-owned state.
 pub mod graph;
 
+use prism_ui::immediate::{Flex, Size};
 pub use prism_ui::{
     immediate::{Color, Material, Point, Rect, Style},
     rich_text::{self, FormatAction, RichText, RichTextEditor, TextFormat, TextRun},
@@ -107,6 +108,24 @@ pub enum Kind {
         value: String,
         placeholder: String,
     },
+    /// An on/off switch.
+    Toggle {
+        label: String,
+        on: bool,
+    },
+    /// One of a list of options, chosen from a dropdown.
+    Select {
+        label: String,
+        options: Vec<String>,
+        selected: usize,
+    },
+    /// How far along something is, from 0 to 1.
+    Progress {
+        label: String,
+        value: f64,
+    },
+    /// A line between groups of content.
+    Separator,
 }
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
@@ -114,6 +133,8 @@ pub enum Value {
     Toggle(bool),
     Number(f64),
     Text(String),
+    /// The index of the option chosen in a [`Kind::Select`].
+    Select(usize),
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct Event {
@@ -201,6 +222,8 @@ impl<A> View<A> {
                 | Kind::Checkbox { .. }
                 | Kind::Slider { .. }
                 | Kind::TextInput { .. }
+                | Kind::Toggle { .. }
+                | Kind::Select { .. }
         )
     }
     pub fn resolved_style<'a>(&'a self, theme: &'a Theme) -> &'a Style {
@@ -227,7 +250,8 @@ impl<A> View<A> {
                     .fold(0.0, f32::max)
                     + 2.0 * self.layout.padding
             }
-            Kind::Text(_) => 28.0,
+            Kind::Text(_) | Kind::Progress { .. } => 28.0,
+            Kind::Separator => 9.0,
             _ => 44.0,
         })
     }
@@ -244,6 +268,10 @@ impl<A> View<A> {
                     Value::Number(range.normalize(*v)?)
                 }
                 (Kind::TextInput { .. }, Value::Text(v)) => Value::Text(v.clone()),
+                (Kind::Toggle { .. }, Value::Toggle(v)) => Value::Toggle(*v),
+                (Kind::Select { options, .. }, Value::Select(i)) if *i < options.len() => {
+                    Value::Select(*i)
+                }
                 _ => return None,
             };
             return self.handler.as_ref().and_then(|h| (h.0)(value));
@@ -275,6 +303,19 @@ impl<A> View<A> {
             if let Kind::Slider { range, value, .. } = v.kind {
                 if !range.valid() || !value.is_finite() {
                     return Err("invalid slider range/value".into());
+                }
+            }
+            if let Kind::Progress { value, .. } = v.kind {
+                if !(0.0..=1.0).contains(&value) {
+                    return Err("progress must be between 0 and 1".into());
+                }
+            }
+            if let Kind::Select {
+                options, selected, ..
+            } = &v.kind
+            {
+                if *selected >= options.len().max(1) {
+                    return Err("select index out of range".into());
                 }
             }
             if let Some(style) = &v.style {
@@ -323,6 +364,17 @@ impl<A: Clone + Send + Sync + 'static> View<A> {
         self.handler = Some(Handler(Arc::new(move |v| {
             if let Value::Number(v) = v {
                 Some(f(v))
+            } else {
+                None
+            }
+        })));
+        self
+    }
+    /// For a [`Kind::Select`]: the index of the option chosen.
+    pub fn on_select(mut self, f: impl Fn(usize) -> A + Send + Sync + 'static) -> Self {
+        self.handler = Some(Handler(Arc::new(move |v| {
+            if let Value::Select(i) = v {
+                Some(f(i))
             } else {
                 None
             }
@@ -381,6 +433,37 @@ pub fn text_input<A>(
     v.id = Some(id.into());
     v
 }
+pub fn toggle<A>(id: impl Into<String>, label: impl Into<String>, on: bool) -> View<A> {
+    let mut v = View::new(Kind::Toggle {
+        label: label.into(),
+        on,
+    });
+    v.id = Some(id.into());
+    v
+}
+pub fn select<A>(
+    id: impl Into<String>,
+    label: impl Into<String>,
+    options: impl IntoIterator<Item = impl Into<String>>,
+    selected: usize,
+) -> View<A> {
+    let mut v = View::new(Kind::Select {
+        label: label.into(),
+        options: options.into_iter().map(Into::into).collect(),
+        selected,
+    });
+    v.id = Some(id.into());
+    v
+}
+pub fn progress<A>(label: impl Into<String>, value: f64) -> View<A> {
+    View::new(Kind::Progress {
+        label: label.into(),
+        value,
+    })
+}
+pub fn separator<A>() -> View<A> {
+    View::new(Kind::Separator)
+}
 pub fn column<A>(children: impl IntoIterator<Item = View<A>>) -> View<A> {
     let mut v = View::new(Kind::Column);
     v.children = children.into_iter().collect();
@@ -405,7 +488,8 @@ pub struct Placed<'a, A> {
     pub disabled: bool,
 }
 /// Shared supported layout: fixed or fill widths, intrinsic/fixed heights, rows/columns,
-/// padding and gaps. Overflow clips; scrolling and CSS-style wrapping are not yet modeled.
+/// padding and gaps, solved by the same [`Flex`] the immediate host lays bars out with.
+/// Overflow clips; scrolling and CSS-style wrapping are not yet modeled.
 pub fn layout<A>(view: &View<A>, bounds: Rect) -> Vec<Placed<'_, A>> {
     fn walk<'a, A>(
         v: &'a View<A>,
@@ -422,43 +506,40 @@ pub fn layout<A>(view: &View<A>, bounds: Rect) -> Vec<Placed<'_, A>> {
             clip,
             disabled,
         });
-        let p = v.layout.padding;
-        let inside = Rect {
-            x: r.x + p,
-            y: r.y + p,
-            width: (r.width - 2.0 * p).max(0.0),
-            height: (r.height - 2.0 * p).max(0.0),
-        };
+        let inside = r.inset(v.layout.padding);
+        // One solver for both hosts' layouts: a row shares its width between
+        // the children without one, a column stacks them by intrinsic height.
         let is_row = matches!(v.kind, Kind::Row);
-        let gaps = v.layout.gap * v.children.len().saturating_sub(1) as f32;
-        let fixed = v
-            .children
-            .iter()
-            .filter_map(|c| c.layout.width)
-            .sum::<f32>();
-        let flex = v
-            .children
-            .iter()
-            .filter(|c| c.layout.width.is_none())
-            .count()
-            .max(1) as f32;
-        let mut cursor = 0.0;
-        for c in &v.children {
-            let width = c.layout.width.unwrap_or(if is_row {
-                (inside.width - gaps - fixed).max(0.0) / flex
+        let (flex, sizes): (Flex, Vec<Size>) = if is_row {
+            (
+                Flex::row(v.layout.gap),
+                v.children
+                    .iter()
+                    .map(|c| c.layout.width.map_or(Size::FILL, Size::Fixed))
+                    .collect(),
+            )
+        } else {
+            (
+                Flex::column(v.layout.gap),
+                v.children
+                    .iter()
+                    .map(|c| Size::Fixed(c.intrinsic_height()))
+                    .collect(),
+            )
+        };
+        for (c, band) in v.children.iter().zip(flex.place(inside, &sizes)) {
+            let rect = if is_row {
+                Rect {
+                    height: c.intrinsic_height(),
+                    ..band
+                }
             } else {
-                inside.width
-            });
-            let height = c.intrinsic_height();
-            let rect = Rect {
-                x: inside.x + if is_row { cursor } else { 0.0 },
-                y: inside.y + if is_row { 0.0 } else { cursor },
-                width,
-                height,
+                Rect {
+                    width: c.layout.width.unwrap_or(inside.width),
+                    ..band
+                }
             };
             walk(c, rect, clip.intersect(inside), disabled, out);
-            cursor += if is_row { width } else { height };
-            cursor += v.layout.gap;
         }
     }
     let r = Rect {

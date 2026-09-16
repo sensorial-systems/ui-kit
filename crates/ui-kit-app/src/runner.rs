@@ -7,16 +7,15 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use ui_kit_core::Point;
-use ui_kit_immediate::{composition::UiRenderer, immediate::TextNavigation, Input};
+use ui_kit_core::Rect;
+use ui_kit_immediate::composition::UiRenderer;
 use ui_kit_wgpu::{CommandRenderer, GpuContext, NoCustom, TextureTarget, WgpuFrame, WgpuRenderer};
-use ui_kit_window::{WindowStyle, WinitWindow};
+use ui_kit_window::{InputCollector, WindowStyle, WinitWindow};
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{ElementState, Ime, MouseButton, MouseScrollDelta, WindowEvent},
+    event::{MouseScrollDelta, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow},
-    keyboard::{Key, ModifiersState, NamedKey},
     window::{Window, WindowId},
 };
 
@@ -32,9 +31,7 @@ pub struct AppRunner<A, C = NoCustom> {
     renderer: Option<WgpuRenderer<C>>,
     target: Option<ui_kit_wgpu::Texture2d>,
     chrome: WinitWindow,
-    input: Input,
-    modifiers: ModifiersState,
-    ime: bool,
+    collector: InputCollector,
     start: Instant,
     next: Instant,
     error: Option<String>,
@@ -69,9 +66,7 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
             renderer: None,
             target: None,
             chrome,
-            input: Input::default(),
-            modifiers: ModifiersState::default(),
-            ime: false,
+            collector: InputCollector::new(),
             start: Instant::now(),
             next: Instant::now(),
             error: None,
@@ -188,27 +183,19 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
 
         let elapsed = self.start.elapsed().as_secs_f32();
         let dark = self.config.dark;
-        let mut commands = self.chrome.frame(
-            window,
-            self.input.clone(),
-            &style,
-            |input, width, height| {
+        let bounds = self.chrome.bounds(window);
+        let input = self.collector.take(bounds);
+        let mut commands = self
+            .chrome
+            .frame(window, input, &style, |mut input, width, height| {
+                input.viewport = Some(Rect::new(0.0, 0.0, width, height));
                 let ctx = FrameContext::new(input, width, height, elapsed, scale, dark);
                 self.app.frame(&ctx)
-            },
-        );
-
-        self.input.text.clear();
-        self.input.backspace = false;
-        self.input.tab = false;
-        self.input.activate = false;
-        self.input.step = 0;
-        self.input.select_all = false;
-        self.input.navigation = None;
-        self.input.delete = false;
-        self.input.undo = false;
-        self.input.redo = false;
-        self.input.save = false;
+            });
+        // The cursor, input method and clipboard follow what the frame asked for.
+        if let Some(output) = self.app.output() {
+            self.collector.apply(window, &output);
+        }
 
         scale_commands(&mut commands, scale);
 
@@ -287,6 +274,11 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
         }
 
         let scale = self.window.as_ref().map_or(1.0, |w| w.scale_factor()) as f32;
+        if let Some(window) = &self.window {
+            if self.collector.event(window, &event) {
+                window.request_redraw();
+            }
+        }
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => {
@@ -296,110 +288,13 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
                     event_loop.exit();
                 }
             }
-            WindowEvent::CursorMoved { position, .. } => {
-                self.input.pointer = Some(Point::new(
-                    position.x as f32 / scale,
-                    position.y as f32 / scale,
-                ));
-                if let Some(window) = &self.window {
-                    window.request_redraw();
-                }
-            }
-            WindowEvent::CursorLeft { .. } => {
-                if !self.input.down {
-                    self.input.pointer = None;
-                }
-                if let Some(window) = &self.window {
-                    window.request_redraw();
-                }
-            }
-            WindowEvent::MouseInput { state, button, .. } => {
-                if button == MouseButton::Left {
-                    self.input.down = state == ElementState::Pressed;
-                }
-                if let Some(window) = &self.window {
-                    window.request_redraw();
-                }
-            }
-            WindowEvent::Focused(false) => {
-                self.input.down = false;
-                self.input.pointer = None;
-                self.app.on_focus_lost();
-            }
+            WindowEvent::Focused(false) => self.app.on_focus_lost(),
             WindowEvent::MouseWheel { delta, .. } => {
                 let vertical = match delta {
                     MouseScrollDelta::LineDelta(_, y) => -y * 48.0,
                     MouseScrollDelta::PixelDelta(pos) => -pos.y as f32 / scale,
                 };
                 self.app.on_scroll(vertical);
-                if let Some(window) = &self.window {
-                    window.request_redraw();
-                }
-            }
-            WindowEvent::ModifiersChanged(modifiers) => {
-                self.modifiers = modifiers.state();
-                self.input.extend_selection = self.modifiers.shift_key();
-            }
-            WindowEvent::Ime(ime) => match ime {
-                Ime::Enabled => self.ime = true,
-                Ime::Disabled => self.ime = false,
-                Ime::Commit(text) => {
-                    self.input.text.push_str(&text);
-                    if let Some(window) = &self.window {
-                        window.request_redraw();
-                    }
-                }
-                _ => {}
-            },
-            WindowEvent::KeyboardInput { event: key, .. } => {
-                if key.state == ElementState::Pressed {
-                    match key.logical_key {
-                        Key::Named(NamedKey::Backspace) => self.input.backspace = true,
-                        Key::Named(NamedKey::Delete) => self.input.delete = true,
-                        Key::Named(NamedKey::Tab) => self.input.tab = true,
-                        Key::Named(NamedKey::Enter) => self.input.activate = true,
-                        Key::Named(NamedKey::ArrowLeft) => {
-                            self.input.step = -1;
-                            self.input.navigation = Some(TextNavigation::Left);
-                        }
-                        Key::Named(NamedKey::ArrowRight) => {
-                            self.input.step = 1;
-                            self.input.navigation = Some(TextNavigation::Right);
-                        }
-                        Key::Named(NamedKey::ArrowUp) => self.input.step = 1,
-                        Key::Named(NamedKey::ArrowDown) => self.input.step = -1,
-                        Key::Named(NamedKey::Home) => {
-                            self.input.navigation = Some(TextNavigation::Home);
-                        }
-                        Key::Named(NamedKey::End) => {
-                            self.input.navigation = Some(TextNavigation::End);
-                        }
-                        Key::Character(text) => {
-                            let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
-                            if ctrl {
-                                match text.as_str() {
-                                    "a" | "A" => self.input.select_all = true,
-                                    "z" | "Z" => {
-                                        if self.modifiers.shift_key() {
-                                            self.input.redo = true;
-                                        } else {
-                                            self.input.undo = true;
-                                        }
-                                    }
-                                    "y" | "Y" => self.input.redo = true,
-                                    "s" | "S" => self.input.save = true,
-                                    _ => {}
-                                }
-                            } else if !self.ime {
-                                self.input.text.push_str(text.as_str());
-                            }
-                        }
-                        _ => {}
-                    }
-                    if let Some(window) = &self.window {
-                        window.request_redraw();
-                    }
-                }
             }
             _ => {}
         }

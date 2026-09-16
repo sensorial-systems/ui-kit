@@ -1,9 +1,9 @@
 use anyhow::Result;
-use immediate_gallery::{geometry::GeometryRenderer, Gallery};
+use immediate_gallery::Gallery;
 use std::sync::Arc;
 use ui_kit_core::{Material, Rect};
 use ui_kit_immediate::{composition::UiRenderer, Input, Ui};
-use ui_kit_wgpu::{GpuContext, TextureTarget, WgpuFrame, WgpuRenderer};
+use ui_kit_wgpu::{GpuContext, TextureTarget, VectorRenderer, WgpuFrame, WgpuRenderer};
 
 fn gpu() -> Result<GpuContext> {
     pollster::block_on(async {
@@ -18,8 +18,7 @@ fn gpu() -> Result<GpuContext> {
 fn text_is_visually_centered_and_vectors_have_partial_pixel_coverage() -> Result<()> {
     let gpu = gpu()?;
     let format = wgpu::TextureFormat::Rgba8Unorm;
-    let mut renderer =
-        WgpuRenderer::with_custom(&gpu, format, GeometryRenderer::new(&gpu, format))?;
+    let mut renderer = WgpuRenderer::with_custom(&gpu, format, VectorRenderer::new(&gpu, format))?;
     let texture = renderer.create_texture(256, 256)?;
     let mut ui = Ui::default();
     ui.begin(Input::default());
@@ -43,7 +42,7 @@ fn text_is_visually_centered_and_vectors_have_partial_pixel_coverage() -> Result
     }
     ui.style.fill = [1.0; 4];
     ui.style.material = Material::Custom {
-        name: "gallery.triangles".into(),
+        name: ui_kit_immediate::vector::TRIANGLES.into(),
         parameters: vec![1., 1., 201., 41., 201., 43., 1., 1., 201., 43., 1., 3.],
     };
     ui.panel(Rect {
@@ -126,8 +125,7 @@ fn text_is_visually_centered_and_vectors_have_partial_pixel_coverage() -> Result
 fn profile_flow_frames() -> Result<()> {
     let gpu = gpu()?;
     let format = wgpu::TextureFormat::Rgba8Unorm;
-    let mut renderer =
-        WgpuRenderer::with_custom(&gpu, format, GeometryRenderer::new(&gpu, format))?;
+    let mut renderer = WgpuRenderer::with_custom(&gpu, format, VectorRenderer::new(&gpu, format))?;
     let texture = renderer.create_texture(1200, 850)?;
     let mut gallery = Gallery::default();
     gallery.frame(Input::default(), 1200., 850., 0.);

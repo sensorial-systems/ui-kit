@@ -8,6 +8,10 @@ default = []
 immediate = ["dep:ui-kit-immediate"]
 dioxus = ["dep:dioxus", "dep:ui-kit-dioxus"]
 winit = ["dep:winit"]
+# Read and write the system clipboard for copy, cut and paste.
+clipboard = ["winit", "immediate", "dep:arboard"]
+# Publish the accessibility tree to screen readers through AccessKit.
+accesskit = ["winit", "immediate", "dep:accesskit", "dep:accesskit_winit"]
 
 [dependencies]
 ui-kit-core = { path = "../ui-kit-core" }
@@ -16,3 +20,6 @@ ui-kit-immediate = { path = "../ui-kit-immediate", optional = true }
 ui-kit-dioxus = { path = "../ui-kit-dioxus", optional = true }
 dioxus = { version = "0.7.1", default-features = false, features = ["macro", "html", "signals", "hooks"], optional = true }
 winit = { version = "0.30", optional = true }
+arboard = { version = "3.4", optional = true }
+accesskit = { version = "0.24", optional = true }
+accesskit_winit = { version = "0.32", optional = true }
