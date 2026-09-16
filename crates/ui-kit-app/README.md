@@ -64,3 +64,53 @@ fn main() -> anyhow::Result<()> {
     ui_kit_app::run_app(MyApp { counter: 0 }, config)
 }
 ```
+
+### Applications that live in the tray
+
+The runner keeps calling `App::update` at the frame cadence whether or not
+the window is on screen, so an application hidden to the system tray still
+polls and still answers its tray menu. It draws only while visible.
+
+- `AppConfig::with_visible(false)` starts with the window hidden; the window
+  is created hidden either way, so nothing flashes before it is meant to show.
+- `App::window_commands` is drained after every update: return
+  `WindowCommand::Show`, `Hide`, `Focus` or `Exit` to have the runner do it.
+- `App::on_close_requested` is asked when the close button or the system
+  wants the window gone. Return `false` to keep running — having hidden the
+  window, or asked about unsaved work — or `true` to exit.
+- `App::text_measure_ready` hands the application what measures text the way
+  the renderer draws it, once the renderer exists. Install it on the
+  application's `Ui` with `set_shared_text_measure`, and controls sized to
+  their labels fit them rather than an estimate.
+
+```rust,no_run
+use ui_kit_app::{App, FrameContext, WindowCommand};
+use ui_kit_immediate::{DrawCommand, TextMeasure, Ui};
+
+struct TrayApp {
+    ui: Ui,
+    show_requested: bool,
+}
+
+impl App for TrayApp {
+    fn frame(&mut self, _ctx: &FrameContext) -> Vec<DrawCommand> {
+        vec![]
+    }
+
+    fn update(&mut self) {
+        // Poll the tray here; it runs even while the window is hidden.
+    }
+
+    fn text_measure_ready(&mut self, measure: TextMeasure) {
+        self.ui.set_shared_text_measure(measure);
+    }
+
+    fn window_commands(&mut self) -> Vec<WindowCommand> {
+        if std::mem::take(&mut self.show_requested) {
+            vec![WindowCommand::Show]
+        } else {
+            vec![]
+        }
+    }
+}
+```

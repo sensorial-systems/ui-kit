@@ -260,12 +260,21 @@ if let Some(id) = Menu::horizontal(&items).show(&mut ui, "nav", bar, &mut menu_s
 
 Inputs: `Button`, `TextInput`, `Select`, `Dropdown`, `Checkbox`, `Switch`,
 `Slider`, `OtpInput`, `DateTimePicker`, `ColorPicker`, `ColorField`,
-`EditableText`. Feedback: `Label`, `Badge`, `Notification`, `ProgressBar`,
-`Spinner`. Containers: `Card`, `Modal`, `Browser`, `Table`, `PipelineBoard`,
-`Timeline`, `Bill`, `MetricCard`, `FormFlow`. Navigation: `Menu` (horizontal or
-vertical; children cascade into submenus). Charts and graphs: `Sparkline`,
-`PieChart`, `StackedBarChart`, `FlowGraph`, `NetworkGraph`, `HierarchyGraph`,
-`GraphNode`, `GraphCamera`. Menus, dropdowns, pickers and dialogs draw over the
+`EditableText`. Feedback: `Label` (with `ellipsis()` for one-line text),
+`Badge`, `Notification`, `ProgressBar`, `Spinner`, `StatusDot` (a dot with a
+breathing ring while something is alive). Containers: `Card`, `Modal`,
+`Browser`, `Table`, `PipelineBoard`, `Timeline`, `Bill`, `MetricCard`,
+`FormFlow`, plus `card_header`, `stat_row` and `empty_state` for the parts of
+a card that are the same everywhere. Navigation: `Menu` (horizontal or
+vertical; children cascade into submenus) and `Sidebar` (a column of sections
+with icons, badges and a highlight that slides to the chosen one; icons only
+when narrow). Charts and graphs: `Sparkline`, `AreaChart` (a series over a
+filled area, with guide lines and a pinnable range), `Gauge` (a ring filled
+to a fraction, coloured by how full), `BarChart` (bars on a shared scale with
+a caption each), `SegmentedBar` (parts of a whole laid end to end, the rest
+left as track, with tooltips and a legend), `SlotLane` (capacity as slots in
+use and a count waiting), `PieChart`, `StackedBarChart`, `FlowGraph`,
+`NetworkGraph`, `HierarchyGraph`, `GraphNode`, `GraphCamera`. Menus, dropdowns, pickers and dialogs draw over the
 page on their own layers and take the pointer from what is under them, so they
 can be shown from anywhere in a frame; set `Input::viewport` so they stay on screen.
 
@@ -275,8 +284,11 @@ can be shown from anywhere in a frame; set `Input::viewport` so they stay on scr
 `polyline`, `circle`). `svg::Svg::parse` reads an SVG once and tessellates its
 fills and strokes; `paint` and `paint_tinted` then place it at any size.
 `icon::Icon` is a set of line icons (chevrons, arrows, close, plus, check,
-calendar, loader, ...) drawn from SVG, so no control depends on a font having a
-glyph. Meshes are drawn by `ui_kit_wgpu::VectorRenderer`:
+calendar, loader, play, pause, stop, trash, refresh, folder, file, save,
+settings, cpu, download, upload, flame, snowflake, zap, search, copy, external
+link, layers, activity, list, terminal, gauge, clock, undo, info, alert,
+database, hard drive, power, ...) drawn from SVG, so no control depends on a
+font having a glyph. Meshes are drawn by `ui_kit_wgpu::VectorRenderer`:
 `WgpuRenderer::with_custom(&gpu, format, VectorRenderer::new(&gpu, format))`.
 `EditableText` places its caret with `ui_kit_wgpu::ShapedRichText`.
 

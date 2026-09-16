@@ -7,7 +7,7 @@ pub mod context;
 pub mod runner;
 pub mod scale;
 
-pub use app::{App, ClosureApp};
+pub use app::{App, ClosureApp, WindowCommand};
 pub use config::AppConfig;
 pub use context::FrameContext;
 pub use runner::AppRunner;

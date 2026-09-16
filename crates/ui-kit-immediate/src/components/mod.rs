@@ -18,8 +18,10 @@ mod graph;
 mod input;
 mod label;
 mod menu;
+mod navigation;
 mod pipeline;
 pub mod popup;
+mod segmented_bar;
 mod table;
 pub mod theme;
 mod timeline;
@@ -27,18 +29,19 @@ mod timeline;
 pub use button::{Button, ButtonVariant};
 pub use card::{panel, popup_surface, Card};
 pub use charts::{
-    BarGroup, ChartOrientation, PieChart, PieSlice, Sparkline, StackedBarChart, SERIES,
+    arc, AreaChart, Bar, BarChart, BarGroup, ChartOrientation, Gauge, PieChart, PieSlice, SlotLane,
+    Sparkline, StackedBarChart, SERIES,
 };
 pub use color_picker::{
     hsv, parse_hex, ColorField, ColorFieldState, ColorPicker, ColorPickerMode, PRESETS,
 };
 pub use containers::{
-    section_heading, Bill, BillItem, Browser, BrowserEvent, BrowserState, MetricCard, MetricChart,
-    Modal,
+    card_header, empty_state, section_heading, stat_row, Bill, BillItem, Browser, BrowserEvent,
+    BrowserState, MetricCard, MetricChart, Modal,
 };
 pub use date_time_picker::{days_in_month, Calendar, DateTimePicker, DateTimePickerState};
 pub use editable_text::{EditableText, RichTextMetrics};
-pub use feedback::{Badge, Notification, ProgressBar, Spinner, StatusVariant};
+pub use feedback::{Badge, Notification, ProgressBar, Spinner, StatusDot, StatusVariant};
 pub use form_flow::{
     Answer, Condition, FormFlow, FormFlowEvent, FormFlowState, Question, QuestionKind,
 };
@@ -49,7 +52,9 @@ pub use graph::{
 pub use input::{swatch, Checkbox, OtpInput, Select, Slider, Switch, TextInput};
 pub use label::Label;
 pub use menu::{popup_height, Dropdown, Menu, MenuItem, MenuLayout, MenuState};
+pub use navigation::{Sidebar, SidebarItem};
 pub use pipeline::{PipelineBoard, PipelineCard, PipelineColumn, PipelineResponse, PipelineState};
+pub use segmented_bar::{BarSegment, SegmentedBar};
 pub use table::{
     SortDirection, Table, TableCell, TableColumn, TableOptions, TableResponse, TableSort,
 };

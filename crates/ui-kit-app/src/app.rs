@@ -1,5 +1,24 @@
 use crate::context::FrameContext;
-use ui_kit_immediate::{DrawCommand, Output};
+use ui_kit_immediate::{DrawCommand, Output, TextMeasure};
+
+/// Something an application asks the runner to do to its window.
+///
+/// An application that lives in the system tray spends most of its time with
+/// no window on screen, and has to be able to bring one back from a tray
+/// click. The runner owns the window, so the application says what it wants
+/// and the runner does it after the next update.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WindowCommand {
+    /// Put the window on screen, in front.
+    Show,
+    /// Take the window off screen. The application keeps running and keeps
+    /// being updated, so a tray can still reach it.
+    Hide,
+    /// Bring an already visible window to the front.
+    Focus,
+    /// Leave the event loop.
+    Exit,
+}
 
 /// Interface for applications driven by the `ui-kit-app` runner.
 pub trait App {
@@ -20,8 +39,29 @@ pub trait App {
     /// Optional hook called when the window loses focus.
     fn on_focus_lost(&mut self) {}
 
-    /// Optional hook called when the window requests a redraw or updates state.
+    /// Called once per frame interval, whether or not the window is visible,
+    /// before any drawing. Polling, background results and tray events
+    /// belong here: a hidden window still has to notice them.
     fn update(&mut self) {}
+
+    /// Called once the renderer exists, with what measures text the way it
+    /// will be drawn. Install it on the application's `Ui` so content-sized
+    /// controls fit their labels rather than an estimate of them.
+    fn text_measure_ready(&mut self, _measure: TextMeasure) {}
+
+    /// The window was asked to close, by its close button or the system.
+    /// Return `true` to exit, or `false` to keep running, having done
+    /// something else about it -- hidden the window, or asked about unsaved
+    /// work.
+    fn on_close_requested(&mut self) -> bool {
+        true
+    }
+
+    /// What the application wants done to its window, drained after each
+    /// update.
+    fn window_commands(&mut self) -> Vec<WindowCommand> {
+        Vec::new()
+    }
 
     /// Returns true if the application wishes to terminate.
     fn should_exit(&self) -> bool {

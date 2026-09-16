@@ -13,6 +13,10 @@ pub struct AppConfig {
     pub dark: bool,
     pub background: Color,
     pub fps: u32,
+    /// Whether the window is shown when the application starts. An
+    /// application that starts in the system tray sets this to false and
+    /// shows the window with [`WindowCommand::Show`](crate::WindowCommand::Show).
+    pub visible: bool,
 }
 
 impl Default for AppConfig {
@@ -28,6 +32,7 @@ impl Default for AppConfig {
             dark: true,
             background: [0.07, 0.07, 0.08, 1.0],
             fps: 60,
+            visible: true,
         }
     }
 }
@@ -79,6 +84,12 @@ impl AppConfig {
 
     pub fn with_fps(mut self, fps: u32) -> Self {
         self.fps = fps.clamp(1, 240);
+        self
+    }
+
+    /// Start with the window hidden or shown.
+    pub fn with_visible(mut self, visible: bool) -> Self {
+        self.visible = visible;
         self
     }
 }

@@ -1,4 +1,4 @@
-use crate::app::App;
+use crate::app::{App, WindowCommand};
 use crate::config::AppConfig;
 use crate::context::FrameContext;
 use crate::scale::scale_commands;
@@ -35,6 +35,9 @@ pub struct AppRunner<A, C = NoCustom> {
     start: Instant,
     next: Instant,
     error: Option<String>,
+    /// Whether the window is on screen. A hidden window is not drawn, but
+    /// the application is still updated at the frame cadence.
+    visible: bool,
 }
 
 impl<A: App> AppRunner<A, NoCustom> {
@@ -51,6 +54,7 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         let title = config.title.clone();
         let transparent = config.transparent;
         let resizable = config.resizable;
+        let visible = config.visible;
         let mut chrome = WinitWindow::new(title);
         chrome.chrome.transparent = transparent;
         chrome.chrome.resizable = resizable;
@@ -70,12 +74,43 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
             start: Instant::now(),
             next: Instant::now(),
             error: None,
+            visible,
+        }
+    }
+
+    /// Do what the application asked of its window since the last update.
+    fn apply_window_commands(&mut self, event_loop: &ActiveEventLoop) {
+        for command in self.app.window_commands() {
+            match command {
+                WindowCommand::Show => {
+                    self.visible = true;
+                    if let Some(window) = &self.window {
+                        window.set_visible(true);
+                        window.set_minimized(false);
+                        window.focus_window();
+                        window.request_redraw();
+                    }
+                }
+                WindowCommand::Hide => {
+                    self.visible = false;
+                    if let Some(window) = &self.window {
+                        window.set_visible(false);
+                    }
+                }
+                WindowCommand::Focus => {
+                    if let Some(window) = &self.window {
+                        window.focus_window();
+                    }
+                }
+                WindowCommand::Exit => event_loop.exit(),
+            }
         }
     }
 
     fn initialize(&mut self, event_loop: &ActiveEventLoop) -> Result<()> {
         let mut attributes = Window::default_attributes()
-            .with_inner_size(LogicalSize::new(self.config.width, self.config.height));
+            .with_inner_size(LogicalSize::new(self.config.width, self.config.height))
+            .with_visible(false);
 
         if let (Some(w), Some(h)) = (self.config.min_width, self.config.min_height) {
             attributes = attributes.with_min_inner_size(LogicalSize::new(w, h));
@@ -124,11 +159,14 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         let custom = make_custom(&gpu, format);
         let renderer = WgpuRenderer::with_custom(&gpu, format, custom)?;
 
+        self.app.text_measure_ready(renderer.text_measure());
         self.renderer = Some(renderer);
         self.surface_config = Some(surface_config);
         self.surface = Some(surface);
         self.gpu = Some(gpu);
-        window.set_visible(true);
+        // The window is created hidden either way, so a tray application
+        // never flashes a frame it is about to hide.
+        window.set_visible(self.visible);
         self.window = Some(window);
         Ok(())
     }
@@ -137,6 +175,9 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         let Some(window) = &self.window else {
             return Ok(());
         };
+        if !self.visible {
+            return Ok(());
+        }
         let size = window.inner_size();
         if size.width == 0 || size.height == 0 {
             return Ok(());
@@ -259,10 +300,11 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
         if let Some(window) = &self.window {
             match self.chrome.event(window, &event) {
                 Ok(response) => {
-                    if response.close_requested {
+                    if response.close_requested && self.app.on_close_requested() {
                         event_loop.exit();
                     }
                     if response.consumed {
+                        self.apply_window_commands(event_loop);
                         return;
                     }
                 }
@@ -280,9 +322,13 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
             }
         }
         match event {
-            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::CloseRequested => {
+                if self.app.on_close_requested() {
+                    event_loop.exit();
+                }
+                self.apply_window_commands(event_loop);
+            }
             WindowEvent::RedrawRequested => {
-                self.app.update();
                 if let Err(e) = self.draw() {
                     self.error = Some(e.to_string());
                     event_loop.exit();
@@ -304,8 +350,19 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
         let now = Instant::now();
         let frame_interval = Duration::from_micros(1_000_000 / self.config.fps as u64);
         if now >= self.next {
-            if let Some(w) = &self.window {
-                w.request_redraw();
+            // Updated whether or not there is a window to draw: a tray
+            // application hidden from the screen still polls and still
+            // answers its tray menu.
+            self.app.update();
+            self.apply_window_commands(event_loop);
+            if self.app.should_exit() {
+                event_loop.exit();
+                return;
+            }
+            if self.visible {
+                if let Some(w) = &self.window {
+                    w.request_redraw();
+                }
             }
             self.next = now + frame_interval;
         }

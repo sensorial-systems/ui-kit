@@ -5,6 +5,7 @@ use super::card::{panel, Card};
 use super::charts::Sparkline;
 use super::feedback::{Badge, ProgressBar, StatusVariant};
 use super::input::TextInput;
+use super::theme::with_alpha;
 use super::Label;
 use crate::icon::Icon;
 use crate::vector::line;
@@ -353,4 +354,51 @@ impl Browser {
         }
         (events, chrome.rest())
     }
+}
+
+/// The heading row of a card: a title, and a muted line under it saying what
+/// the card is about. Returns what is left of `rect` under the heading.
+pub fn card_header(ui: &mut Ui, rect: Rect, title: &str, subtitle: &str) -> Rect {
+    let height = if subtitle.is_empty() { 26.0 } else { 46.0 };
+    let (heading, rest) = rect.split_top(height, 14.0);
+    let mut lines = Strip::column(heading, 2.0);
+    Label::heading(16.0).show(ui, lines.leading(24.0), title);
+    if !subtitle.is_empty() {
+        Label::muted().size(12.0).show(ui, lines.rest(), subtitle);
+    }
+    rest
+}
+
+/// One line of a list of facts: a muted caption on the left, its value on
+/// the right.
+pub fn stat_row(ui: &mut Ui, rect: Rect, caption: &str, value: &str) {
+    let [left, right] = Flex::row(8.0).split(rect, [Size::Fill(0.5), Size::Fill(0.5)]);
+    Label::muted().size(13.0).show(ui, left, caption);
+    Label::new()
+        .size(13.0)
+        .weight(600)
+        .align(TextAlign::Right)
+        .show(ui, right, value);
+}
+
+/// A short message in the middle of an area that has nothing else to show,
+/// with an icon over it.
+pub fn empty_state(ui: &mut Ui, rect: Rect, icon: Icon, title: &str, body: &str) {
+    let p = ui.theme.palette;
+    let block = rect.centered(rect.width.min(420.0), 96.0);
+    let mut lines = Strip::column(block, 6.0);
+    icon.paint(
+        ui,
+        lines.leading(30.0).centered(28.0, 28.0),
+        with_alpha(p.muted, 0.7),
+    );
+    Label::new()
+        .size(15.0)
+        .weight(600)
+        .align(TextAlign::Center)
+        .show(ui, lines.leading(24.0), title);
+    Label::muted()
+        .size(13.0)
+        .align(TextAlign::Center)
+        .show(ui, lines.rest(), body);
 }

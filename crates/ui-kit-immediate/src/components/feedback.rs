@@ -34,6 +34,7 @@ pub struct Badge {
     variant: StatusVariant,
     color: Option<Color>,
     large: bool,
+    ellipsis: bool,
 }
 
 impl Badge {
@@ -56,6 +57,13 @@ impl Badge {
         self
     }
 
+    /// Keep the text on one line, ending in an ellipsis where it would be
+    /// cut, instead of wrapping.
+    pub fn ellipsis(mut self) -> Self {
+        self.ellipsis = true;
+        self
+    }
+
     pub fn style(&self, ui: &Ui) -> Style {
         let color = self.color.unwrap_or_else(|| self.variant.color(ui));
         Style {
@@ -71,6 +79,11 @@ impl Badge {
             font_size: if self.large { 15.0 } else { 12.0 },
             font_weight: 600,
             radius: 6.0,
+            overflow: if self.ellipsis {
+                crate::TextOverflow::Ellipsis
+            } else {
+                crate::TextOverflow::Wrap
+            },
             ..base(ui)
         }
     }
@@ -192,5 +205,45 @@ impl Spinner {
                 dot * 0.5,
             );
         }
+    }
+}
+
+/// A small dot that says whether something is alive, with a ring that
+/// breathes while it is.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StatusDot {
+    color: Color,
+    pulse: bool,
+}
+
+impl StatusDot {
+    pub fn new(color: Color) -> Self {
+        Self {
+            color,
+            pulse: false,
+        }
+    }
+
+    /// Animate a fading ring around the dot, as a heartbeat.
+    pub fn pulse(mut self, pulse: bool) -> Self {
+        self.pulse = pulse;
+        self
+    }
+
+    /// Draw the dot in the middle of `rect`, `time` seconds in.
+    pub fn show(&self, ui: &mut Ui, rect: Rect, time: f32) {
+        let middle = crate::vector::center(rect);
+        let radius = (rect.width.min(rect.height) * 0.5).max(2.0);
+        if self.pulse {
+            let phase = (time * 1.2).fract();
+            let ring = radius * (1.0 + phase * 1.6);
+            crate::vector::circle(
+                ui,
+                middle,
+                ring,
+                with_alpha(self.color, 0.35 * (1.0 - phase)),
+            );
+        }
+        crate::vector::circle(ui, middle, radius * 0.55, self.color);
     }
 }

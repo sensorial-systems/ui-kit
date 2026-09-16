@@ -1,4 +1,5 @@
 use super::theme::base;
+use crate::TextOverflow;
 use crate::Ui;
 use ui_kit_core::{Color, Rect, Style, TextAlign};
 
@@ -10,6 +11,7 @@ pub struct Label {
     color: Option<Color>,
     muted: bool,
     align: TextAlign,
+    overflow: TextOverflow,
 }
 
 impl Default for Label {
@@ -20,6 +22,7 @@ impl Default for Label {
             color: None,
             muted: false,
             align: TextAlign::Left,
+            overflow: TextOverflow::Wrap,
         }
     }
 }
@@ -83,6 +86,17 @@ impl Label {
         self.align(TextAlign::Right)
     }
 
+    /// What the text does when it is wider than its rect: wrap, by default.
+    pub fn overflow(mut self, overflow: TextOverflow) -> Self {
+        self.overflow = overflow;
+        self
+    }
+
+    /// Stay on one line and end in an ellipsis where it would be cut.
+    pub fn ellipsis(self) -> Self {
+        self.overflow(TextOverflow::Ellipsis)
+    }
+
     /// The style the text is drawn in.
     pub fn style(&self, ui: &Ui) -> Style {
         let p = ui.theme.palette;
@@ -94,6 +108,7 @@ impl Label {
             font_weight: self.weight,
             text_padding: 0.0,
             text_align: self.align,
+            overflow: self.overflow,
             ..base(ui)
         }
     }
