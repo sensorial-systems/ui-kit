@@ -11,6 +11,9 @@ pub mod immediate {
 pub mod number_picker {
     pub use prism_ui::immediate::NumberPicker;
 }
+pub mod scroll_card {
+    pub use prism_ui::immediate::{ScrollCard, ScrollCardResponse};
+}
 pub mod scroll_container {
     pub use prism_ui::immediate::ScrollContainer;
 }
@@ -23,15 +26,20 @@ pub mod spatial {
 pub mod splitter {
     pub use prism_ui::immediate::Splitter;
 }
+pub mod stack {
+    pub use prism_ui::immediate::Stack;
+}
 pub mod xy_graph {
     pub use prism_ui::xy_graph::*;
 }
 pub use combobox::Combobox;
 pub use immediate::{DrawCommand, Input, Layer, Response, RichTextPaint, Ui};
 pub use number_picker::NumberPicker;
+pub use scroll_card::{ScrollCard, ScrollCardResponse};
 pub use scroll_container::ScrollContainer;
 pub use shadow::Shadow;
 pub use splitter::Splitter;
+pub use stack::Stack;
 use ui_kit_core::{layout, Event, Kind, Rect, Theme, Value, View};
 pub use xy_graph::{XyGraphResponse, XyGraphWidget};
 
