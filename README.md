@@ -264,8 +264,11 @@ Inputs: `Button`, `TextInput`, `Select`, `Dropdown`, `Checkbox`, `Switch`,
 `Badge`, `Notification`, `ProgressBar`, `Spinner`, `StatusDot` (a dot with a
 breathing ring while something is alive). Containers: `Card`, `Modal`,
 `Browser`, `Table`, `PipelineBoard`, `Timeline`, `Bill`, `MetricCard`,
-`FormFlow`, plus `card_header`, `stat_row` and `empty_state` for the parts of
-a card that are the same everywhere. Navigation: `Menu` (horizontal or
+`FormFlow`, `JobList` (work something is running or has queued, grouped, with
+pause, resume and stop on each job and each group; the application maps its
+own work onto `Job` and `JobGroup` and acts on the `JobAction` it returns), plus
+`card_header`, `stat_row` and `empty_state` for the parts of a card that are
+the same everywhere. Navigation: `Menu` (horizontal or
 vertical; children cascade into submenus) and `Sidebar` (a column of sections
 with icons, badges and a highlight that slides to the chosen one; icons only
 when narrow). Charts and graphs: `Sparkline`, `AreaChart` (a series over a

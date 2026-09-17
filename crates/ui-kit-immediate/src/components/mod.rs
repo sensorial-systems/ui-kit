@@ -16,6 +16,7 @@ mod feedback;
 mod form_flow;
 mod graph;
 mod input;
+mod job_list;
 mod label;
 mod menu;
 mod navigation;
@@ -50,6 +51,7 @@ pub use graph::{
     HierarchyGraph, HierarchyGraphModel, HierarchyNode, NetworkGraph, NetworkGraphNode, NodeShape,
 };
 pub use input::{swatch, Checkbox, OtpInput, Select, Slider, Switch, TextInput};
+pub use job_list::{Job, JobAction, JobBadge, JobGroup, JobList, JobStatus};
 pub use label::Label;
 pub use menu::{popup_height, Dropdown, Menu, MenuItem, MenuLayout, MenuState};
 pub use navigation::{Sidebar, SidebarItem};
