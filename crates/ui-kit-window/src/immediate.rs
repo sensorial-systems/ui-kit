@@ -87,6 +87,27 @@ pub fn window_chrome(
     bounds: Rect,
     style: &WindowStyle,
 ) -> WindowResponse {
+    window_chrome_with(ui, chrome, bounds, style, |ui, area| {
+        ui.label(area, &chrome.title)
+    })
+}
+
+/// Paint the frame with `content` in the title bar instead of the title.
+///
+/// `content` is given the part of the bar the window's buttons leave, and may
+/// put anything there: a title of its own, breadcrumbs, tabs, a search field.
+/// It starts out with the title's style and is clipped to the bar.
+///
+/// Controls on the bar -- drawn here, or later in the frame -- keep their
+/// presses: a press on one never also starts a window move. Only the bar's
+/// empty space drags the window.
+pub fn window_chrome_with(
+    ui: &mut Ui,
+    chrome: &WindowChrome,
+    bounds: Rect,
+    style: &WindowStyle,
+    content: impl FnOnce(&mut Ui, Rect),
+) -> WindowResponse {
     let radius = chrome.effective_radius();
     let previous_style = std::mem::replace(
         &mut ui.style,
@@ -113,12 +134,21 @@ pub fn window_chrome(
         radius: 0.0,
         ..style.title.clone()
     };
-    ui.label(chrome.drag_area(bounds), &chrome.title);
+    let area = chrome.drag_area(bounds);
+    ui.clip = Some(area);
+    content(ui, area);
+    ui.clip = Some(bounds);
 
-    let region = ui
-        .input()
-        .pointer
-        .map(|p| chrome.hit(bounds, Point::new(p.x, p.y)));
+    let region = ui.input().pointer.map(|p| {
+        let point = Point::new(p.x, p.y);
+        match chrome.hit(bounds, point) {
+            // Empty bar drags; a control somebody put on it does not. The
+            // controls are the ones claimed on the last frame, so the ones the
+            // application draws after this call count as well as `content`'s.
+            WindowRegion::Drag if on_control(ui, chrome, bounds, point) => WindowRegion::Client,
+            region => region,
+        }
+    });
     // The top few pixels of a button are also the window's top edge, and the
     // hit test hands those to the resize. The buttons have to agree, or one
     // press would both arm a button and start a resize: while the pointer is on
@@ -182,6 +212,20 @@ pub fn window_chrome(
         },
         client: chrome.client(bounds),
     }
+}
+
+/// Whether `point` is on a control on the title bar other than the window's
+/// own buttons.
+fn on_control(ui: &Ui, chrome: &WindowChrome, bounds: Rect, point: Point) -> bool {
+    let bar = chrome.drag_area(bounds);
+    ui.widget_rects().any(|(id, rect)| {
+        WindowControl::from_id(id).is_none()
+            && rect.contains(point)
+            && bar.contains(Point::new(
+                rect.x + rect.width * 0.5,
+                rect.y + rect.height * 0.5,
+            ))
+    })
 }
 
 #[cfg(test)]
@@ -261,6 +305,53 @@ mod tests {
         let down = press(&mut ui, &chrome, point, true);
         assert_eq!(down.resize, Some(crate::ResizeEdge::North));
         assert_eq!(press(&mut ui, &chrome, point, false).action, None);
+    }
+    /// Breadcrumbs, tabs or a button on the bar are pressed, not dragged by;
+    /// the empty bar around them still moves the window.
+    #[test]
+    fn a_control_on_the_bar_takes_its_press_instead_of_moving_the_window() {
+        let chrome = WindowChrome::new("Explorer");
+        let crumb = Rect {
+            x: 20.0,
+            y: 8.0,
+            width: 60.0,
+            height: 22.0,
+        };
+        let frame = |ui: &mut Ui, point: Point, down: bool| {
+            ui.begin(Input {
+                pointer: Some(point),
+                down,
+                ..Default::default()
+            });
+            let mut given = None;
+            let mut clicked = false;
+            let response = window_chrome_with(
+                ui,
+                &chrome,
+                bounds(),
+                &WindowStyle::default(),
+                |ui, area| {
+                    given = Some(area);
+                    clicked = ui.button("crumb", crumb, "Home").clicked;
+                },
+            );
+            ui.end();
+            assert_eq!(given, Some(chrome.drag_area(bounds())));
+            (response, clicked)
+        };
+        let on = Point::new(40.0, 18.0);
+        let mut ui = Ui::default();
+        // The first frame learns where the control is.
+        frame(&mut ui, on, false);
+        let (pressed, _) = frame(&mut ui, on, true);
+        assert!(
+            !pressed.drag,
+            "a press on the crumb must not move the window"
+        );
+        let (_, clicked) = frame(&mut ui, on, false);
+        assert!(clicked);
+        let (empty, _) = frame(&mut ui, Point::new(300.0, 18.0), true);
+        assert!(empty.drag, "the bar around it still moves the window");
     }
     #[test]
     fn the_client_area_starts_below_the_bar() {
