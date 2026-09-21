@@ -16,6 +16,7 @@ mod feedback;
 mod form_flow;
 mod graph;
 mod input;
+mod instruments;
 mod job_list;
 mod label;
 mod menu;
@@ -52,6 +53,7 @@ pub use graph::{
 };
 pub use input::{swatch, Checkbox, OtpInput, Select, Slider, Switch, TextInput};
 pub use job_list::{Job, JobAction, JobBadge, JobGroup, JobList, JobStatus};
+pub use instruments::{centered_text, Dial, Indicator, InstrumentPanel, Oscilloscope};
 pub use label::Label;
 pub use menu::{popup_height, Dropdown, Menu, MenuItem, MenuLayout, MenuState};
 pub use navigation::{Sidebar, SidebarItem};
