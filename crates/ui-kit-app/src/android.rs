@@ -14,17 +14,29 @@
 use jni::objects::{JObject, JValue};
 use jni::{jni_sig, jni_str, Env, JavaVM};
 use std::sync::OnceLock;
-use winit::event_loop::EventLoop;
-use winit::platform::android::EventLoopBuilderExtAndroid;
+use winit::event_loop::{EventLoop, EventLoopBuilder};
 pub use winit::platform::android::activity::{AndroidApp, WindowManagerFlags};
+pub use winit::platform::android::EventLoopBuilderExtAndroid;
 
 /// The activity the event loop was built for, for calls into its window.
 static ACTIVITY: OnceLock<AndroidApp> = OnceLock::new();
 
 /// The event loop for an Android activity.
 pub fn event_loop(app: AndroidApp) -> anyhow::Result<EventLoop<()>> {
+    event_loop_with(app, |_| {})
+}
+
+/// The event loop for an Android activity, with further Android options set
+/// on its builder by `configure` (an input filter, volume key handling).
+pub fn event_loop_with(
+    app: AndroidApp,
+    configure: impl FnOnce(&mut EventLoopBuilder<()>),
+) -> anyhow::Result<EventLoop<()>> {
     let _ = ACTIVITY.set(app.clone());
-    Ok(EventLoop::builder().with_android_app(app).build()?)
+    let mut builder = EventLoop::builder();
+    builder.with_android_app(app);
+    configure(&mut builder);
+    Ok(builder.build()?)
 }
 
 /// Hides the status and navigation bars, the way a game does: they come back
