@@ -3,16 +3,21 @@
 
 use std::time::Instant;
 use ui_kit_core::{Point, Rect};
-use ui_kit_immediate::{AccessAction, CursorIcon, Input, Key, Modifiers, Output, TextNavigation};
+use ui_kit_immediate::{
+    AccessAction, CursorIcon, Input, Key, Modifiers, Output, TextNavigation, Touch,
+};
 use winit::{
     dpi::{LogicalPosition, LogicalSize},
-    event::{ElementState, Ime, MouseButton, MouseScrollDelta, WindowEvent},
+    event::{ElementState, Ime, MouseButton, MouseScrollDelta, TouchPhase, WindowEvent},
     keyboard::{Key as WinitKey, ModifiersState, NamedKey},
     window::{CursorIcon as WinitCursor, Window},
 };
 
 /// How far one notch of a wheel scrolls, in logical pixels.
 const LINE: f32 = 48.0;
+/// Change in reported force under one finger that shows the screen senses
+/// pressure rather than reporting a constant.
+const PRESSURE_EPSILON: f32 = 0.01;
 
 /// Collects a window's events between frames into one [`Input`].
 ///
@@ -30,6 +35,15 @@ pub struct InputCollector {
     secondary_down: bool,
     modifiers: ModifiersState,
     composing: bool,
+    /// Fingers down, in the order they touched.
+    touches: Vec<Touch>,
+    /// The finger driving the pointer: the first of a gesture, until it lifts.
+    primary_touch: Option<u64>,
+    /// The force each finger touched down with, to tell a screen that senses
+    /// pressure from one that reports a constant.
+    first_force: Vec<(u64, f32)>,
+    pressure_sensing: bool,
+    held: Vec<Key>,
     start: Instant,
     #[cfg(feature = "clipboard")]
     clipboard: Option<arboard::Clipboard>,
@@ -50,6 +64,11 @@ impl InputCollector {
             secondary_down: false,
             modifiers: ModifiersState::default(),
             composing: false,
+            touches: Vec::new(),
+            primary_touch: None,
+            first_force: Vec::new(),
+            pressure_sensing: false,
+            held: Vec::new(),
             start: Instant::now(),
             #[cfg(feature = "clipboard")]
             clipboard: arboard::Clipboard::new().ok(),
@@ -109,6 +128,14 @@ impl InputCollector {
                 self.secondary_down = false;
                 self.pointer = None;
                 self.modifiers = ModifiersState::default();
+                self.touches.clear();
+                self.primary_touch = None;
+                self.held.clear();
+            }
+            WindowEvent::Touch(touch) => {
+                let p = touch.location.to_logical::<f32>(scale);
+                let force = touch.force.map(|f| f.normalized() as f32);
+                self.touch(touch.id, Point::new(p.x, p.y), force, touch.phase);
             }
             WindowEvent::Ime(ime) => match ime {
                 Ime::Enabled => self.composing = false,
@@ -127,8 +154,13 @@ impl InputCollector {
                 }
             },
             WindowEvent::KeyboardInput { event, .. } => {
+                let key = key_of(&event.logical_key);
                 if event.state != ElementState::Pressed {
+                    self.held.retain(|k| Some(*k) != key);
                     return false;
+                }
+                if let Some(key) = key.filter(|k| !self.held.contains(k)) {
+                    self.held.push(key);
                 }
                 self.key(&event.logical_key, event.text.as_deref());
             }
@@ -137,34 +169,55 @@ impl InputCollector {
         true
     }
 
+    /// A finger went down, moved or lifted. The first finger of a gesture
+    /// is the pointer, pressed while it is down, so every widget answers to
+    /// touch; the others are only in [`Input::touches`], and a finger landing
+    /// while another is down does not move the pointer.
+    fn touch(&mut self, id: u64, position: Point, force: Option<f32>, phase: TouchPhase) {
+        if let Some(f) = force {
+            match self.first_force.iter().find(|(i, _)| *i == id) {
+                // A force that changes under one finger is a pressure sensor.
+                Some((_, first)) if (f - first).abs() > PRESSURE_EPSILON => self.pressure_sensing = true,
+                Some(_) => {}
+                None => self.first_force.push((id, f)),
+            }
+        }
+        match phase {
+            TouchPhase::Started => {
+                self.touches.retain(|t| t.id != id);
+                self.touches.push(Touch { id, position, force });
+                if self.primary_touch.is_none() {
+                    self.primary_touch = Some(id);
+                    self.pointer = Some(position);
+                    self.down = true;
+                }
+            }
+            TouchPhase::Moved => {
+                if let Some(t) = self.touches.iter_mut().find(|t| t.id == id) {
+                    t.position = position;
+                    t.force = force;
+                }
+                if self.primary_touch == Some(id) {
+                    self.pointer = Some(position);
+                }
+            }
+            TouchPhase::Ended | TouchPhase::Cancelled => {
+                self.touches.retain(|t| t.id != id);
+                self.first_force.retain(|(i, _)| *i != id);
+                if self.primary_touch == Some(id) {
+                    self.down = false;
+                    self.pointer = Some(position);
+                }
+                if self.touches.is_empty() {
+                    self.primary_touch = None;
+                }
+            }
+        }
+    }
+
     fn key(&mut self, key: &WinitKey, text: Option<&str>) {
         let command = self.modifiers.control_key() || self.modifiers.super_key();
-        let named = match key {
-            WinitKey::Named(named) => Some(*named),
-            _ => None,
-        };
-        let pressed = match (key, named) {
-            (_, Some(NamedKey::Escape)) => Some(Key::Escape),
-            (_, Some(NamedKey::Enter)) => Some(Key::Enter),
-            (_, Some(NamedKey::Tab)) => Some(Key::Tab),
-            (_, Some(NamedKey::Space)) => Some(Key::Space),
-            (_, Some(NamedKey::Backspace)) => Some(Key::Backspace),
-            (_, Some(NamedKey::Delete)) => Some(Key::Delete),
-            (_, Some(NamedKey::ArrowLeft)) => Some(Key::Left),
-            (_, Some(NamedKey::ArrowRight)) => Some(Key::Right),
-            (_, Some(NamedKey::ArrowUp)) => Some(Key::Up),
-            (_, Some(NamedKey::ArrowDown)) => Some(Key::Down),
-            (_, Some(NamedKey::Home)) => Some(Key::Home),
-            (_, Some(NamedKey::End)) => Some(Key::End),
-            (_, Some(NamedKey::PageUp)) => Some(Key::PageUp),
-            (_, Some(NamedKey::PageDown)) => Some(Key::PageDown),
-            (WinitKey::Named(named), _) => function_key(*named).map(Key::F),
-            (WinitKey::Character(c), _) => c
-                .chars()
-                .next()
-                .map(|c| Key::Character(c.to_ascii_lowercase())),
-            _ => None,
-        };
+        let pressed = key_of(key);
         // While an input method composes, the keys are its to interpret.
         if self.composing {
             return;
@@ -241,6 +294,9 @@ impl InputCollector {
         input.pointer = self.pointer;
         input.down = self.down;
         input.secondary_down = self.secondary_down;
+        input.touches = self.touches.clone();
+        input.pressure_sensing = self.pressure_sensing;
+        input.held = self.held.clone();
         input.modifiers = modifiers(self.modifiers);
         input.extend_selection = self.modifiers.shift_key();
         input.time = Some(self.start.elapsed().as_secs_f64());
@@ -287,6 +343,37 @@ fn modifiers(state: ModifiersState) -> Modifiers {
         control: state.control_key(),
         alt: state.alt_key(),
         meta: state.super_key(),
+    }
+}
+
+/// The UI key for a winit key; characters are lower case, so a shortcut is
+/// the same key with or without shift.
+fn key_of(key: &WinitKey) -> Option<Key> {
+    let named = match key {
+        WinitKey::Named(named) => Some(*named),
+        _ => None,
+    };
+    match (key, named) {
+        (_, Some(NamedKey::Escape)) => Some(Key::Escape),
+        (_, Some(NamedKey::Enter)) => Some(Key::Enter),
+        (_, Some(NamedKey::Tab)) => Some(Key::Tab),
+        (_, Some(NamedKey::Space)) => Some(Key::Space),
+        (_, Some(NamedKey::Backspace)) => Some(Key::Backspace),
+        (_, Some(NamedKey::Delete)) => Some(Key::Delete),
+        (_, Some(NamedKey::ArrowLeft)) => Some(Key::Left),
+        (_, Some(NamedKey::ArrowRight)) => Some(Key::Right),
+        (_, Some(NamedKey::ArrowUp)) => Some(Key::Up),
+        (_, Some(NamedKey::ArrowDown)) => Some(Key::Down),
+        (_, Some(NamedKey::Home)) => Some(Key::Home),
+        (_, Some(NamedKey::End)) => Some(Key::End),
+        (_, Some(NamedKey::PageUp)) => Some(Key::PageUp),
+        (_, Some(NamedKey::PageDown)) => Some(Key::PageDown),
+        (WinitKey::Named(named), _) => function_key(*named).map(Key::F),
+        (WinitKey::Character(c), _) => c
+            .chars()
+            .next()
+            .map(|c| Key::Character(c.to_ascii_lowercase())),
+        _ => None,
     }
 }
 
@@ -349,6 +436,64 @@ mod tests {
             next.keys.is_empty() && !next.copy,
             "keys belong to one frame"
         );
+    }
+
+    #[test]
+    fn first_finger_is_the_pointer_and_all_fingers_are_touches() {
+        let mut c = InputCollector::new();
+        c.touch(7, Point::new(10.0, 20.0), None, TouchPhase::Started);
+        c.touch(9, Point::new(300.0, 40.0), None, TouchPhase::Started);
+        c.touch(9, Point::new(310.0, 50.0), None, TouchPhase::Moved);
+        let input = c.take(Rect::default());
+        assert!(input.down);
+        assert_eq!(
+            input.pointer,
+            Some(Point::new(10.0, 20.0)),
+            "a second finger does not move the pointer"
+        );
+        assert_eq!(input.touches.len(), 2);
+        assert_eq!(input.touches[1].position, Point::new(310.0, 50.0));
+
+        // The first finger lifts: the press ends, and the other finger stays
+        // a touch without taking over the pointer mid-gesture.
+        c.touch(7, Point::new(12.0, 22.0), None, TouchPhase::Ended);
+        let input = c.take(Rect::default());
+        assert!(!input.down);
+        assert_eq!(input.touches.iter().map(|t| t.id).collect::<Vec<_>>(), vec![9]);
+        c.touch(9, Point::new(320.0, 50.0), None, TouchPhase::Moved);
+        assert_eq!(c.take(Rect::default()).pointer, Some(Point::new(12.0, 22.0)));
+
+        // Once every finger is up, the next one leads a new gesture.
+        c.touch(9, Point::new(320.0, 50.0), None, TouchPhase::Ended);
+        c.touch(3, Point::new(5.0, 5.0), None, TouchPhase::Started);
+        let input = c.take(Rect::default());
+        assert!(input.down);
+        assert_eq!(input.pointer, Some(Point::new(5.0, 5.0)));
+    }
+
+    #[test]
+    fn pressure_sensing_needs_a_force_that_changes() {
+        let mut c = InputCollector::new();
+        // A screen that reports a constant force.
+        c.touch(1, Point::new(0.0, 0.0), Some(1.0), TouchPhase::Started);
+        c.touch(1, Point::new(1.0, 0.0), Some(1.0), TouchPhase::Moved);
+        c.touch(1, Point::new(1.0, 0.0), Some(1.0), TouchPhase::Ended);
+        assert!(!c.take(Rect::default()).pressure_sensing);
+        // A finger pressing harder.
+        c.touch(2, Point::new(0.0, 0.0), Some(0.2), TouchPhase::Started);
+        c.touch(2, Point::new(0.0, 0.0), Some(0.6), TouchPhase::Moved);
+        let input = c.take(Rect::default());
+        assert!(input.pressure_sensing);
+        assert_eq!(input.touches[0].force, Some(0.6));
+    }
+
+    #[test]
+    fn held_keys_last_until_released() {
+        let mut c = InputCollector::new();
+        c.held.push(Key::Up);
+        let input = c.take(Rect::default());
+        assert_eq!(input.held, vec![Key::Up]);
+        assert_eq!(c.take(Rect::default()).held, vec![Key::Up], "held keys carry over frames");
     }
 
     #[test]

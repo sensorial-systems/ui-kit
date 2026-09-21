@@ -188,6 +188,10 @@ impl WinitWindow {
             .pointer
             .filter(|p| client.contains(*p))
             .map(|p| Point::new(p.x - client.x, p.y - client.y));
+        // Fingers live in the same client coordinates as the pointer.
+        for touch in &mut input.touches {
+            touch.position = Point::new(touch.position.x - client.x, touch.position.y - client.y);
+        }
         let mut commands = content(input, client.width, client.height);
         for command in &mut commands {
             command.rect.x += client.x;
