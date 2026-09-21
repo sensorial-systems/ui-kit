@@ -29,10 +29,13 @@ where
 
 /// Run an [`App`] instance with a specific [`AppConfig`].
 pub fn run_app<A: App + 'static>(app: A, config: AppConfig) -> Result<()> {
-    let event_loop = EventLoop::new()?;
-    let mut runner = AppRunner::new(app, config);
-    event_loop.run_app(&mut runner)?;
-    Ok(())
+    run_app_on(EventLoop::new()?, app, config)
+}
+
+/// [`run_app`] on an event loop the caller built, such as
+/// [`android::event_loop`].
+pub fn run_app_on<A: App + 'static>(event_loop: EventLoop<()>, app: A, config: AppConfig) -> Result<()> {
+    run_with_custom_on(event_loop, app, config, |_, _| ui_kit_wgpu::NoCustom)
 }
 
 /// Run an [`App`] with custom GPU shader command rendering.
@@ -42,8 +45,28 @@ where
     C: CommandRenderer + 'static,
     F: FnOnce(&ui_kit_wgpu::GpuContext, wgpu::TextureFormat) -> C + 'static,
 {
-    let event_loop = EventLoop::new()?;
+    run_with_custom_on(EventLoop::new()?, app, config, make_custom)
+}
+
+/// [`run_with_custom`] on an event loop the caller built.
+pub fn run_with_custom_on<A, C, F>(
+    event_loop: EventLoop<()>,
+    app: A,
+    config: AppConfig,
+    make_custom: F,
+) -> Result<()>
+where
+    A: App + 'static,
+    C: CommandRenderer + 'static,
+    F: FnOnce(&ui_kit_wgpu::GpuContext, wgpu::TextureFormat) -> C + 'static,
+{
     let mut runner = AppRunner::with_custom(app, config, make_custom);
     event_loop.run_app(&mut runner)?;
-    Ok(())
+    match runner.error() {
+        Some(error) => Err(anyhow::anyhow!("{error}")),
+        None => Ok(()),
+    }
 }
+
+#[cfg(target_os = "android")]
+pub mod android;

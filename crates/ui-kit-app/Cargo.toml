@@ -7,8 +7,17 @@ edition = "2021"
 ui-kit-core = { path = "../ui-kit-core" }
 ui-kit-immediate = { path = "../ui-kit-immediate" }
 ui-kit-wgpu = { path = "../ui-kit-wgpu" }
-ui-kit-window = { path = "../ui-kit-window", features = ["winit", "immediate", "clipboard"] }
-winit = "0.30"
 wgpu = { version = "30", default-features = false }
 pollster = "0.4"
 anyhow = "1"
+winit = "0.30"
+
+# The system clipboard is desktop only (arboard has no Android backend).
+[target.'cfg(not(target_os = "android"))'.dependencies]
+ui-kit-window = { path = "../ui-kit-window", features = ["winit", "immediate", "clipboard"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+ui-kit-window = { path = "../ui-kit-window", features = ["winit", "immediate"] }
+winit = { version = "0.30", features = ["android-native-activity"] }
+# The window's system bars are only reachable through the Java activity.
+jni = "0.22"

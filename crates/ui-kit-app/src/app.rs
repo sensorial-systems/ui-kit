@@ -39,6 +39,17 @@ pub trait App {
     /// Optional hook called when the window loses focus.
     fn on_focus_lost(&mut self) {}
 
+    /// The application is on screen: once at start, once the window and its
+    /// surface exist, and again each time it comes back from
+    /// [`on_suspend`](App::on_suspend). Start audio and other
+    /// foreground-only work here.
+    fn on_resume(&mut self) {}
+
+    /// The application left the screen (on Android, the activity went to the
+    /// background and its window is gone). Nothing is drawn until
+    /// [`on_resume`](App::on_resume); stop audio and other foreground work.
+    fn on_suspend(&mut self) {}
+
     /// Called once per frame interval, whether or not the window is visible,
     /// before any drawing. Polling, background results and tray events
     /// belong here: a hidden window still has to notice them.

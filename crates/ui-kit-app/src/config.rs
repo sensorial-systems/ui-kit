@@ -17,6 +17,13 @@ pub struct AppConfig {
     /// application that starts in the system tray sets this to false and
     /// shows the window with [`WindowCommand::Show`](crate::WindowCommand::Show).
     pub visible: bool,
+    /// Draw ui-kit's own title bar and window controls around the content.
+    /// Off on Android, where the application owns the whole screen.
+    pub chrome: bool,
+    /// Take the whole screen: on Android, hide the status and navigation bars
+    /// (a swipe from the edge shows them for a moment); on desktop, a
+    /// borderless fullscreen window.
+    pub fullscreen: bool,
 }
 
 impl Default for AppConfig {
@@ -33,6 +40,8 @@ impl Default for AppConfig {
             background: [0.07, 0.07, 0.08, 1.0],
             fps: 60,
             visible: true,
+            chrome: !cfg!(target_os = "android"),
+            fullscreen: false,
         }
     }
 }
@@ -84,6 +93,19 @@ impl AppConfig {
 
     pub fn with_fps(mut self, fps: u32) -> Self {
         self.fps = fps.clamp(1, 240);
+        self
+    }
+
+    /// Draw ui-kit's title bar and window controls, or leave the whole
+    /// window to the application.
+    pub fn with_chrome(mut self, chrome: bool) -> Self {
+        self.chrome = chrome;
+        self
+    }
+
+    /// Take the whole screen (see [`AppConfig::fullscreen`]).
+    pub fn with_fullscreen(mut self, fullscreen: bool) -> Self {
+        self.fullscreen = fullscreen;
         self
     }
 

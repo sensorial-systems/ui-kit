@@ -20,11 +20,19 @@ use winit::{
 };
 
 /// The main application runner managing the winit event loop, GPU presentation, and input routing.
+///
+/// On Android the system takes the native window away whenever the activity
+/// goes to the background: the runner drops its surface on
+/// [`suspended`](ApplicationHandler::suspended) and makes a new one on the
+/// next [`resumed`](ApplicationHandler::resumed), keeping the device, the
+/// renderer and the application.
 pub struct AppRunner<A, C = NoCustom> {
     pub app: A,
     pub config: AppConfig,
     custom_renderer: Option<Box<dyn FnOnce(&GpuContext, wgpu::TextureFormat) -> C>>,
     window: Option<Arc<Window>>,
+    instance: Option<wgpu::Instance>,
+    adapter: Option<wgpu::Adapter>,
     surface: Option<wgpu::Surface<'static>>,
     surface_config: Option<wgpu::SurfaceConfiguration>,
     gpu: Option<GpuContext>,
@@ -64,6 +72,8 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
             config,
             custom_renderer: Some(Box::new(make_custom)),
             window: None,
+            instance: None,
+            adapter: None,
             surface: None,
             surface_config: None,
             gpu: None,
@@ -76,6 +86,18 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
             error: None,
             visible,
         }
+    }
+
+    fn hide_system_bars(&self) {
+        #[cfg(target_os = "android")]
+        if self.config.fullscreen {
+            crate::android::hide_system_bars();
+        }
+    }
+
+    /// What stopped the event loop, if it stopped on an error.
+    pub fn error(&self) -> Option<&str> {
+        self.error.as_deref()
     }
 
     /// Do what the application asked of its window since the last update.
@@ -115,9 +137,21 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         if let (Some(w), Some(h)) = (self.config.min_width, self.config.min_height) {
             attributes = attributes.with_min_inner_size(LogicalSize::new(w, h));
         }
+        let attributes = if self.config.chrome {
+            self.chrome.attributes(attributes)
+        } else {
+            attributes
+                .with_title(&self.config.title)
+                .with_resizable(self.config.resizable)
+                .with_transparent(self.config.transparent)
+        };
 
-        let window = Arc::new(event_loop.create_window(self.chrome.attributes(attributes))?);
+        let window = Arc::new(event_loop.create_window(attributes)?);
         window.set_ime_allowed(true);
+        #[cfg(not(target_os = "android"))]
+        if self.config.fullscreen {
+            window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(None)));
+        }
 
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
         let surface = instance.create_surface(window.clone())?;
@@ -128,29 +162,7 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         let (device, queue) = pollster::block_on(adapter.request_device(&Default::default()))?;
         let gpu = GpuContext::new(Arc::new(device), Arc::new(queue));
 
-        let size = window.inner_size();
-        let mut surface_config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .ok_or_else(|| anyhow::anyhow!("surface has no supported format"))?;
-
-        if let Some(format) = surface
-            .get_capabilities(&adapter)
-            .formats
-            .into_iter()
-            .find(|f| !f.is_srgb())
-        {
-            surface_config.format = format;
-        }
-        surface_config.usage =
-            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_DST;
-
-        let caps = surface.get_capabilities(&adapter);
-        if self.config.transparent {
-            surface_config.alpha_mode = ui_kit_wgpu::transparent_alpha_mode(&caps);
-        }
-
-        surface.configure(&gpu.device, &surface_config);
-
+        let surface_config = self.configure(&surface, &adapter, &gpu, &window)?;
         let format = surface_config.format;
         let make_custom = self
             .custom_renderer
@@ -163,11 +175,57 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         self.renderer = Some(renderer);
         self.surface_config = Some(surface_config);
         self.surface = Some(surface);
+        self.adapter = Some(adapter);
+        self.instance = Some(instance);
         self.gpu = Some(gpu);
         // The window is created hidden either way, so a tray application
         // never flashes a frame it is about to hide.
         window.set_visible(self.visible);
         self.window = Some(window);
+        Ok(())
+    }
+
+    /// Chooses the surface's format and usage and configures it.
+    fn configure(
+        &self,
+        surface: &wgpu::Surface<'static>,
+        adapter: &wgpu::Adapter,
+        gpu: &GpuContext,
+        window: &Window,
+    ) -> Result<wgpu::SurfaceConfiguration> {
+        let size = window.inner_size();
+        let mut surface_config = surface
+            .get_default_config(adapter, size.width.max(1), size.height.max(1))
+            .ok_or_else(|| anyhow::anyhow!("surface has no supported format"))?;
+        let caps = surface.get_capabilities(adapter);
+        // A renderer made for one format keeps it: a surface made again on
+        // resume takes the format the first one had.
+        if let Some(previous) = &self.surface_config {
+            surface_config.format = previous.format;
+        } else if let Some(format) = caps.formats.iter().copied().find(|f| !f.is_srgb()) {
+            surface_config.format = format;
+        }
+        surface_config.usage = wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_DST;
+        if self.config.transparent {
+            surface_config.alpha_mode = ui_kit_wgpu::transparent_alpha_mode(&caps);
+        }
+        surface.configure(&gpu.device, &surface_config);
+        Ok(surface_config)
+    }
+
+    /// A new surface for the existing window, after the platform took the
+    /// last one away (Android, on suspend).
+    fn recreate_surface(&mut self) -> Result<()> {
+        let (Some(window), Some(instance), Some(adapter), Some(gpu)) =
+            (&self.window, &self.instance, &self.adapter, &self.gpu)
+        else {
+            return Ok(());
+        };
+        let surface = instance.create_surface(window.clone())?;
+        let surface_config = self.configure(&surface, adapter, gpu, window)?;
+        self.surface_config = Some(surface_config);
+        self.surface = Some(surface);
+        window.request_redraw();
         Ok(())
     }
 
@@ -178,14 +236,17 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         if !self.visible {
             return Ok(());
         }
+        let (Some(surface), Some(surface_config)) = (self.surface.as_ref(), self.surface_config.as_mut())
+        else {
+            // Suspended: there is nothing to draw on.
+            return Ok(());
+        };
         let size = window.inner_size();
         if size.width == 0 || size.height == 0 {
             return Ok(());
         }
 
         let gpu = self.gpu.as_ref().unwrap();
-        let surface = self.surface.as_ref().unwrap();
-        let surface_config = self.surface_config.as_mut().unwrap();
 
         if surface_config.width != size.width || surface_config.height != size.height {
             surface_config.width = size.width;
@@ -226,13 +287,17 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         let dark = self.config.dark;
         let bounds = self.chrome.bounds(window);
         let input = self.collector.take(bounds);
-        let mut commands = self
-            .chrome
-            .frame(window, input, &style, |mut input, width, height| {
-                input.viewport = Some(Rect::new(0.0, 0.0, width, height));
-                let ctx = FrameContext::new(input, width, height, elapsed, scale, dark);
-                self.app.frame(&ctx)
-            });
+        let mut commands = if self.config.chrome {
+            self.chrome
+                .frame(window, input, &style, |mut input, width, height| {
+                    input.viewport = Some(Rect::new(0.0, 0.0, width, height));
+                    let ctx = FrameContext::new(input, width, height, elapsed, scale, dark);
+                    self.app.frame(&ctx)
+                })
+        } else {
+            let ctx = FrameContext::new(input, bounds.width, bounds.height, elapsed, scale, dark);
+            self.app.frame(&ctx)
+        };
         // The cursor, input method and clipboard follow what the frame asked for.
         if let Some(output) = self.app.output() {
             self.collector.apply(window, &output);
@@ -283,12 +348,26 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
 
 impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.window.is_none() {
-            if let Err(e) = self.initialize(event_loop) {
-                self.error = Some(e.to_string());
-                event_loop.exit();
-            }
+        let result = if self.window.is_none() {
+            self.initialize(event_loop)
+        } else if self.surface.is_none() {
+            self.recreate_surface()
+        } else {
+            Ok(())
+        };
+        if let Err(e) = result {
+            self.error = Some(e.to_string());
+            event_loop.exit();
+            return;
         }
+        self.hide_system_bars();
+        self.app.on_resume();
+    }
+
+    fn suspended(&mut self, _: &ActiveEventLoop) {
+        // The native window behind the surface is going away (Android).
+        self.surface = None;
+        self.app.on_suspend();
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
@@ -297,7 +376,7 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
             return;
         }
 
-        if let Some(window) = &self.window {
+        if let (Some(window), true) = (&self.window, self.config.chrome) {
             match self.chrome.event(window, &event) {
                 Ok(response) => {
                     if response.close_requested && self.app.on_close_requested() {
@@ -335,6 +414,9 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
                 }
             }
             WindowEvent::Focused(false) => self.app.on_focus_lost(),
+            // Android shows the system bars again after a dialog or the
+            // notification shade took focus.
+            WindowEvent::Focused(true) => self.hide_system_bars(),
             WindowEvent::MouseWheel { delta, .. } => {
                 let vertical = match delta {
                     MouseScrollDelta::LineDelta(_, y) => -y * 48.0,
