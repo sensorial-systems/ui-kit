@@ -258,9 +258,10 @@ Dropdown::new(&["Rust", "Go"]).show(&mut ui, "language", field, &mut language);
 if let Some(id) = Menu::horizontal(&items).show(&mut ui, "nav", bar, &mut menu_state) { /* ... */ }
 ```
 
-Inputs: `Button`, `TextInput`, `Select`, `Dropdown`, `Checkbox`, `Switch`,
-`Slider`, `OtpInput`, `DateTimePicker`, `ColorPicker`, `ColorField`,
-`EditableText`. Feedback: `Label` (with `ellipsis()` for one-line text),
+Inputs: `Button`, `TextInput`, `NumberField` (one number, typed and held to
+a range, for what a slider cannot say exactly), `Select`, `Dropdown`,
+`Checkbox`, `Switch`, `Slider`, `OtpInput`, `DateTimePicker`, `ColorPicker`,
+`ColorField`, `EditableText`. Feedback: `Label` (with `ellipsis()` for one-line text),
 `Badge`, `Notification`, `ProgressBar`, `Spinner`, `StatusDot` (a dot with a
 breathing ring while something is alive). Containers: `Card`, `Modal`,
 `Browser`, `Table`, `PipelineBoard`, `Timeline`, `Bill`, `MetricCard`,
@@ -277,9 +278,50 @@ to a fraction, coloured by how full), `BarChart` (bars on a shared scale with
 a caption each), `SegmentedBar` (parts of a whole laid end to end, the rest
 left as track, with tooltips and a legend), `SlotLane` (capacity as slots in
 use and a count waiting), `PieChart`, `StackedBarChart`, `FlowGraph`,
-`NetworkGraph`, `HierarchyGraph`, `GraphNode`, `GraphCamera`. Menus, dropdowns, pickers and dialogs draw over the
+`NetworkGraph`, `HierarchyGraph`, `GraphNode`, `GraphCamera`. Time: `CurveEditor`
+(see below). Menus, dropdowns, pickers and dialogs draw over the
 page on their own layers and take the pointer from what is under them, so they
 can be shown from anywhere in a frame; set `Input::viewport` so they stay on screen.
+
+### Values over time
+
+`ui_kit_core::animation` is the model a curve editor edits and a renderer
+reads, with no UI in it: a `Track` is an id, a name, a range, a unit and a
+sorted run of `Keyframe`s, and `Track::value_at(time)` is the one question
+worth asking of it. A key says how the segment leaving it is shaped --
+`Hold`, `Linear`, `Smooth` (tangents worked out from the neighbours, held so
+the curve never swings past the keys it joins) or `Bezier` (tangents dragged
+by hand) -- and an `Animation` is the tracks of one thing, looked up by id.
+Time is whatever the caller counts in.
+
+`components::CurveEditor` is the editor: a track list down the left, time
+across the top and the curves in the middle. Keys are dragged (shift holds
+the time, alt holds the value, and they snap to whole frames), double
+clicking a curve adds one, Delete takes one away, the toolbar reshapes the
+segment leaving the selected key, the wheel zooms about the pointer and a
+drag on empty space pans. The selected key's time and value are also fields
+in the toolbar, for the numbers a pointer cannot land on exactly; what is
+typed there is taken as written, rather than snapped. Tracks are drawn against their own ranges,
+normalised, so degrees and multiples share one box.
+
+What can be animated comes from the application as `TrackOption`s -- an id, a
+name, what the number is worth now, its range and its unit -- and the "Add
+parameter" menu turns the chosen one into a track keyed at the playhead. The
+editor never learns what any of them mean, so making one more number
+animatable is one more `TrackOption`.
+
+```rust
+use ui_kit_core::animation::Animation;
+use ui_kit_immediate::components::{CurveEditor, CurveEditorState, TrackOption};
+
+let options = [TrackOption::new("camera.fov", "Field of view", 50.0).range(10.0, 120.0)];
+let response = CurveEditor::new(duration)
+    .fps(fps)
+    .options(&options)
+    .show(&mut ui, "curves", rect, &mut animation, &mut state, &mut playhead);
+if response.scrubbed { /* the playhead moved */ }
+if response.changed { /* a curve changed */ }
+```
 
 ### Vectors, SVG and icons
 

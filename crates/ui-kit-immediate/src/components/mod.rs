@@ -10,6 +10,7 @@ mod card;
 mod charts;
 mod color_picker;
 mod containers;
+mod curve_editor;
 mod date_time_picker;
 mod editable_text;
 mod feedback;
@@ -41,6 +42,9 @@ pub use containers::{
     card_header, empty_state, section_heading, stat_row, Bill, BillItem, Browser, BrowserEvent,
     BrowserState, MetricCard, MetricChart, Modal,
 };
+pub use curve_editor::{
+    shown, CurveEditor, CurveEditorResponse, CurveEditorState, CurveView, TrackOption, TRACK_COLORS,
+};
 pub use date_time_picker::{days_in_month, Calendar, DateTimePicker, DateTimePickerState};
 pub use editable_text::{EditableText, RichTextMetrics};
 pub use feedback::{Badge, Notification, ProgressBar, Spinner, StatusDot, StatusVariant};
@@ -51,9 +55,9 @@ pub use graph::{
     animated_line, arrow, elbow, FlowGraph, FlowNode, GraphCamera, GraphEdge, GraphNode,
     HierarchyGraph, HierarchyGraphModel, HierarchyNode, NetworkGraph, NetworkGraphNode, NodeShape,
 };
-pub use input::{swatch, Checkbox, OtpInput, Select, Slider, Switch, TextInput};
-pub use job_list::{Job, JobAction, JobBadge, JobGroup, JobList, JobStatus};
+pub use input::{swatch, Checkbox, NumberField, OtpInput, Select, Slider, Switch, TextInput};
 pub use instruments::{centered_text, Dial, Indicator, InstrumentPanel, Oscilloscope};
+pub use job_list::{Job, JobAction, JobBadge, JobGroup, JobList, JobStatus};
 pub use label::Label;
 pub use menu::{popup_height, Dropdown, Menu, MenuItem, MenuLayout, MenuState};
 pub use navigation::{Sidebar, SidebarItem};

@@ -5,7 +5,7 @@ use super::Label;
 use crate::icon::Icon;
 use crate::layout::{HorizontalAlignment, VerticalAlignment};
 use crate::{Response, Strip, Ui};
-use ui_kit_core::{Color, Rect, TextAlign};
+use ui_kit_core::{Color, Rect, Style, TextAlign};
 
 /// A single-line text field with a placeholder.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -48,6 +48,104 @@ impl<'a> TextInput<'a> {
                 }
             }
             response
+        })
+    }
+}
+
+/// A field for one number, typed rather than dragged.
+///
+/// A [`Slider`] can only land on what the pointer can reach, and some numbers
+/// are arrived at rather than hunted for: 1920, 0.004, a keyframe at exactly
+/// 360 degrees. This is where they are said.
+///
+/// What is typed is parsed and clamped into the range; what will not parse
+/// yet -- an empty field, a lone minus sign half way through a number --
+/// leaves the value alone and stays on screen to be finished rather than
+/// being taken away mid-word. The value is shown to [`NumberField::decimals`]
+/// while the field is not being typed into.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct NumberField {
+    min: f32,
+    max: f32,
+    decimals: u8,
+    font_size: f32,
+    padding: Option<f32>,
+    align: TextAlign,
+    disabled: bool,
+}
+
+impl NumberField {
+    /// A field for a number between `min` and `max`, either of which may be
+    /// infinite where the number is not bounded.
+    pub fn new(min: f32, max: f32) -> Self {
+        Self {
+            min,
+            max,
+            decimals: 2,
+            font_size: 14.0,
+            padding: None,
+            align: TextAlign::Right,
+            disabled: false,
+        }
+    }
+
+    pub fn decimals(mut self, decimals: u8) -> Self {
+        self.decimals = decimals;
+        self
+    }
+
+    pub fn font_size(mut self, size: f32) -> Self {
+        self.font_size = size;
+        self
+    }
+
+    /// Space between the number and the field's sides.
+    pub fn padding(mut self, padding: f32) -> Self {
+        self.padding = Some(padding);
+        self
+    }
+
+    pub fn align(mut self, align: TextAlign) -> Self {
+        self.align = align;
+        self
+    }
+
+    /// Shown as it is, but not typed into.
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.disabled = disabled;
+        self
+    }
+
+    /// The style the field and its number are drawn in.
+    pub fn style(&self, ui: &Ui) -> Style {
+        Style {
+            font_size: self.font_size,
+            text_padding: self
+                .padding
+                .unwrap_or_else(|| (self.font_size * 0.6).max(6.0)),
+            text_align: self.align,
+            ..base(ui)
+        }
+    }
+
+    /// Edit `value`; the response is `changed` on the frame it was typed into.
+    pub fn show(&self, ui: &mut Ui, id: &str, rect: Rect, value: &mut f32) -> Response {
+        let p = ui.theme.palette;
+        let style = self.style(ui);
+        ui.with_style(style, |ui| {
+            if self.disabled {
+                // The same text the field would show, in a fill and a colour
+                // that say it is not to be typed into.
+                let text = format!("{:.*}", self.decimals.max(1) as usize, *value);
+                ui.paint("text_input", &text, rect, 0.0, Response::default(), false);
+                if let Some(command) = ui.last_command_mut() {
+                    command.style.fill = faded(command.style.fill, 0.5);
+                    command.style.stroke = faded(command.style.stroke, 0.5);
+                    command.style.foreground = p.muted;
+                }
+                return Response::default();
+            }
+            ui.number_input_f32(id, rect, value, self.min, self.max, self.decimals)
         })
     }
 }

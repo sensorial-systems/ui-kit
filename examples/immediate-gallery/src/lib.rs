@@ -4,19 +4,22 @@
 #[cfg(test)]
 mod tests;
 use std::collections::HashMap;
+use ui_kit_core::animation::{Animation, Interpolation, Keyframe, Track};
 use ui_kit_core::{Point, Rect, RichText, Style, TextAlign, TextFormat, TextRun};
 use ui_kit_immediate::components::theme::{rgb, DANGER, INFO, SUCCESS, WARNING};
 use ui_kit_immediate::components::{
     self as kit, section_heading, Answer, Badge, BarGroup, Bill, BillItem, Browser, BrowserState,
     Button, ButtonVariant, Card, Checkbox, ColorField, ColorFieldState, ColorPicker,
-    DateTimePicker, DateTimePickerState, Dropdown, EditableText, FlowGraph, FlowNode, FormFlow,
+    CurveEditor, CurveEditorState, DateTimePicker, DateTimePickerState, Dropdown, EditableText,
+    FlowGraph, FlowNode, FormFlow,
     FormFlowEvent, FormFlowState, GraphCamera, GraphEdge, GraphNode, HierarchyGraph,
     HierarchyGraphModel, Label, Menu, MenuItem, MenuState, MetricCard, MetricChart, Modal,
-    NetworkGraph, NetworkGraphNode, NodeShape, Notification, OtpInput, PieChart, PieSlice,
+    NetworkGraph, NetworkGraphNode, NodeShape, Notification, NumberField, OtpInput, PieChart,
+    PieSlice,
     PipelineBoard, PipelineCard, PipelineColumn, PipelineState, ProgressBar, Question,
     QuestionKind, Slider, Sparkline, Spinner, StackedBarChart, StatusVariant, Switch, Table,
     TableCell, TableColumn, TableOptions, TableSort, TextInput, Timeline, TimelineMilestone,
-    TimelineProject, TimelineRange, TimelineState, TimelineTask,
+    TimelineProject, TimelineRange, TimelineState, TimelineTask, TrackOption, TRACK_COLORS,
 };
 use ui_kit_immediate::icon::Icon;
 use ui_kit_immediate::vector::line;
@@ -43,6 +46,7 @@ pub const SECTIONS: &[&str] = &[
     "7. Planning Components",
     "8. Bill Component",
     "9. Graph Components",
+    "10. Curve Editor",
 ];
 pub const LANGUAGES: [&str; 4] = ["Rust", "TypeScript", "Python", "Go"];
 const RATIOS: [&str; 5] = ["1:1", "16:9", "9:16", "4:3", "3:4"];
@@ -78,6 +82,8 @@ pub struct Gallery {
     pub language: usize,
     pub otp: String,
     pub slider: f32,
+    /// The number typed into the form's number field.
+    pub number: f32,
     pub date: String,
     pub date_picker: DateTimePickerState,
     pub color: String,
@@ -100,6 +106,12 @@ pub struct Gallery {
     timeline_zoom: f32,
     pub timeline: Vec<TimelineProject>,
     timeline_state: TimelineState,
+    pub curves: Animation,
+    curves_state: CurveEditorState,
+    /// The playhead of the curve editor, in the same seconds its tracks are
+    /// keyed in.
+    pub curve_time: f32,
+    curve_options: Vec<TrackOption>,
     pub tree_edit: bool,
     pub tree: HierarchyGraphModel,
     pub rich: EditableText,
@@ -113,6 +125,65 @@ pub struct Gallery {
     pub survey_result: Option<SurveyResult>,
     pub section_positions: HashMap<String, f32>,
     time: f32,
+}
+
+/// How long the curve editor's example animation runs for, and how many
+/// frames a second it counts in.
+const CURVE_SECONDS: f32 = 6.0;
+const CURVE_FPS: f32 = 24.0;
+
+/// The numbers the example offers to animate. An application builds these
+/// from whatever it is willing to have keyed; nothing in the editor knows
+/// what any of them are.
+fn curve_options() -> Vec<TrackOption> {
+    vec![
+        TrackOption::new("camera.distance", "Camera distance", 3.0)
+            .range(0.5, 12.0)
+            .unit("m")
+            .decimals(2),
+        TrackOption::new("camera.fov", "Field of view", 50.0)
+            .range(10.0, 120.0)
+            .unit(" deg")
+            .decimals(1),
+        TrackOption::new("light.intensity", "Key light", 1.0)
+            .range(0.0, 4.0)
+            .unit("x")
+            .decimals(2),
+        TrackOption::new("grade.exposure", "Exposure", 0.0)
+            .range(-3.0, 3.0)
+            .unit(" EV")
+            .decimals(2),
+        TrackOption::new("fog.density", "Fog", 0.1).range(0.0, 1.0).decimals(3),
+    ]
+}
+
+/// Two curves to open on: a camera pushing in and easing out, and a light
+/// that holds and then jumps.
+fn shot_curves() -> Animation {
+    let mut animation = Animation::new();
+    animation.add(
+        Track::new("camera.distance", "Camera distance")
+            .with_range(0.5, 12.0)
+            .with_unit("m")
+            .with_color(TRACK_COLORS[0])
+            .with_keys([
+                Keyframe::new(0.0, 8.0).with_interpolation(Interpolation::Smooth),
+                Keyframe::new(2.5, 3.0).with_interpolation(Interpolation::Bezier),
+                Keyframe::new(6.0, 2.2),
+            ]),
+    );
+    animation.add(
+        Track::new("light.intensity", "Key light")
+            .with_range(0.0, 4.0)
+            .with_unit("x")
+            .with_color(TRACK_COLORS[1])
+            .with_keys([
+                Keyframe::new(0.0, 0.6).with_interpolation(Interpolation::Hold),
+                Keyframe::new(3.0, 2.4).with_interpolation(Interpolation::Linear),
+                Keyframe::new(6.0, 1.2),
+            ]),
+    );
+    animation
 }
 
 fn rich_text_sample() -> RichText {
@@ -263,6 +334,7 @@ impl Default for Gallery {
             language: 0,
             otp: String::new(),
             slider: 50.0,
+            number: 2.5,
             date: "2026-07-16 18:00".into(),
             date_picker: DateTimePickerState::default(),
             color: "#3b82f6".into(),
@@ -296,6 +368,10 @@ impl Default for Gallery {
             timeline_zoom: 1.0,
             timeline: timeline_projects(),
             timeline_state: TimelineState::default(),
+            curves: shot_curves(),
+            curves_state: CurveEditorState::new(CURVE_SECONDS),
+            curve_time: 1.2,
+            curve_options: curve_options(),
             tree_edit: false,
             tree: HierarchyGraphModel::new(&[
                 ("Core App", None),
@@ -432,6 +508,7 @@ impl Gallery {
         self.planning(&mut ui, &mut page);
         self.bills(&mut ui, &mut page);
         self.graphs(&mut ui, &mut page);
+        self.curve_editor(&mut ui, &mut page);
         self.content_height = 40.0 + page.height() + 80.0;
         if self.content_height > height {
             let thumb = (height * height / self.content_height).max(24.0);
@@ -757,7 +834,7 @@ impl Gallery {
 
     fn forms(&mut self, ui: &mut Ui, page: &mut Stack) {
         self.section(ui, page, "2. Form Controls");
-        let card = page.row(1330.0 + self.rich.height());
+        let card = page.row(1396.0 + self.rich.height());
         self.card(ui, card);
         let mut rows = Stack::new(card.inset(20.0), 8.0);
         let field = Flex::row(0.0);
@@ -864,6 +941,23 @@ impl Gallery {
             "slider-disabled",
             slider,
             &mut value,
+        );
+        rows.space(GROUP_SPACE);
+        // What a slider cannot say: the number written out, to the decimal.
+        let title = format!("Number Field (Value: {:.2})", self.number);
+        let (typed, fixed) = group(ui, &mut rows, &title, 32.0)
+            .split_left(500.0, 0.0)
+            .0
+            .split_left(160.0, 16.0);
+        NumberField::new(-20.0, 20.0)
+            .decimals(2)
+            .show(ui, "form-number", typed, &mut self.number);
+        let mut held = 1.5;
+        NumberField::new(0.0, 10.0).decimals(1).disabled(true).show(
+            ui,
+            "number-disabled",
+            fixed.split_left(160.0, 0.0).0,
+            &mut held,
         );
         rows.space(24.0);
         let date = group(ui, &mut rows, "Appointment Date & Time", 38.0)
@@ -1205,6 +1299,48 @@ impl Gallery {
             card.inset_by(Insets::new(20.0, 66.0, 20.0, 32.0)),
             &mut self.timeline,
             &mut self.timeline_state,
+        );
+    }
+
+    fn curve_editor(&mut self, ui: &mut Ui, page: &mut Stack) {
+        self.section(ui, page, "10. Curve Editor");
+        Label::muted().show(
+            ui,
+            page.row(56.0),
+            "Any number over time. Drag a key to move it, double-click a curve to add one, \
+             Delete to take one away; the toolbar reshapes the segment leaving the selected \
+             key, and \"Add parameter\" turns one of the application's own numbers into a track.",
+        );
+        let editor = CurveEditor::new(CURVE_SECONDS)
+            .fps(CURVE_FPS)
+            .options(&self.curve_options);
+        let height = CurveEditor::height(self.curves.tracks.len(), 6);
+        let card = page.row(20.0 + 26.0 + 16.0 + height + 20.0);
+        self.card(ui, card);
+        let (title, area) = card.inset(20.0).split_top(26.0, 16.0);
+        let (heading, readout) = title.split_right(220.0, 12.0);
+        Label::heading(18.0).show(ui, heading, "CurveEditor");
+        Label::muted().align(TextAlign::Right).show(
+            ui,
+            readout,
+            &self
+                .curves
+                .value_at("camera.distance", self.curve_time)
+                .map_or_else(
+                    || "no camera curve".to_string(),
+                    |value| format!("camera distance {value:.2}m"),
+                ),
+        );
+        editor.show(
+            ui,
+            "gallery-curves",
+            Rect {
+                height,
+                ..area
+            },
+            &mut self.curves,
+            &mut self.curves_state,
+            &mut self.curve_time,
         );
     }
 

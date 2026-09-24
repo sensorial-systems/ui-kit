@@ -65,7 +65,12 @@ impl InstrumentPanel {
         if title.is_empty() {
             return rect;
         }
-        let strip = Rect::new(rect.x + 10.0, rect.y + 4.0, rect.width - 20.0, self.title_height() - 4.0);
+        let strip = Rect::new(
+            rect.x + 10.0,
+            rect.y + 4.0,
+            rect.width - 20.0,
+            self.title_height() - 4.0,
+        );
         Label::new()
             .size(self.title_size)
             .weight(600)
@@ -150,7 +155,11 @@ impl Dial {
                 at(radius),
                 at(radius - length),
                 if major { 1.8 } else { 1.0 },
-                if f >= self.danger_from { DANGER } else { scale_color },
+                if f >= self.danger_from {
+                    DANGER
+                } else {
+                    scale_color
+                },
             );
         }
         let fraction = if value.is_finite() {
@@ -177,7 +186,12 @@ impl Dial {
             .centered()
             .show(
                 ui,
-                Rect::new(rect.x, rect.bottom() - readout_height, rect.width, readout_height),
+                Rect::new(
+                    rect.x,
+                    rect.bottom() - readout_height,
+                    rect.width,
+                    readout_height,
+                ),
                 readout,
             );
     }
@@ -215,11 +229,22 @@ impl Oscilloscope {
     }
     pub fn show(&self, ui: &mut Ui, rect: Rect, values: &[f32]) {
         let p = ui.theme.palette;
-        let inset = Rect::new(rect.x + 6.0, rect.y + 6.0, rect.width - 12.0, rect.height - 12.0);
+        let inset = Rect::new(
+            rect.x + 6.0,
+            rect.y + 6.0,
+            rect.width - 12.0,
+            rect.height - 12.0,
+        );
         let middle_y = inset.y + inset.height * 0.5;
         for i in 1..self.divisions {
             let x = inset.x + i as f32 * inset.width / self.divisions as f32;
-            line(ui, Point::new(x, inset.y), Point::new(x, inset.bottom()), 0.5, p.border);
+            line(
+                ui,
+                Point::new(x, inset.y),
+                Point::new(x, inset.bottom()),
+                0.5,
+                p.border,
+            );
         }
         line(
             ui,
@@ -236,7 +261,11 @@ impl Oscilloscope {
             .iter()
             .enumerate()
             .map(|(i, v)| {
-                let v = if v.is_finite() { v.clamp(-self.scale, self.scale) } else { 0.0 };
+                let v = if v.is_finite() {
+                    v.clamp(-self.scale, self.scale)
+                } else {
+                    0.0
+                };
                 Point::new(
                     inset.x + i as f32 / last * inset.width,
                     middle_y - v / self.scale * inset.height * 0.5,
@@ -327,7 +356,12 @@ mod tests {
         let content = panel.show(&mut ui, Rect::new(0.0, 0.0, 200.0, 100.0), "SPEED");
         assert_eq!(content.y, 30.0);
         assert_eq!(content.height, 70.0);
-        assert_eq!(panel.show(&mut ui, Rect::new(0.0, 0.0, 200.0, 100.0), "").height, 100.0);
+        assert_eq!(
+            panel
+                .show(&mut ui, Rect::new(0.0, 0.0, 200.0, 100.0), "")
+                .height,
+            100.0
+        );
     }
 
     #[test]
