@@ -1,4 +1,5 @@
 use crate::context::FrameContext;
+use crate::images::ImageStore;
 use ui_kit_immediate::{DrawCommand, Output, TextMeasure};
 
 /// Something an application asks the runner to do to its window.
@@ -54,6 +55,12 @@ pub trait App {
     /// before any drawing. Polling, background results and tray events
     /// belong here: a hidden window still has to notice them.
     fn update(&mut self) {}
+
+    /// Called before each drawn frame, with the pictures the renderer can
+    /// draw. Upload what this frame will show with
+    /// [`Ui::image`](ui_kit_immediate::Ui::image) and remove what it no
+    /// longer will. Not called while the window is hidden.
+    fn prepare(&mut self, _images: &mut dyn ImageStore) {}
 
     /// Called once the renderer exists, with what measures text the way it
     /// will be drawn. Install it on the application's `Ui` so content-sized

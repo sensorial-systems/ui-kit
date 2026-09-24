@@ -4,12 +4,14 @@
 pub mod app;
 pub mod config;
 pub mod context;
+pub mod images;
 pub mod runner;
 pub mod scale;
 
 pub use app::{App, ClosureApp, WindowCommand};
 pub use config::AppConfig;
 pub use context::FrameContext;
+pub use images::ImageStore;
 pub use runner::AppRunner;
 pub use scale::scale_commands;
 

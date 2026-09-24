@@ -283,6 +283,11 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         style.control.foreground = style.title.foreground;
         style.close.foreground = style.title.foreground;
 
+        // Pictures first, so the frame can draw what was just uploaded.
+        if let Some(renderer) = self.renderer.as_mut() {
+            self.app.prepare(renderer);
+        }
+
         let elapsed = self.start.elapsed().as_secs_f32();
         let dark = self.config.dark;
         let bounds = self.chrome.bounds(window);
