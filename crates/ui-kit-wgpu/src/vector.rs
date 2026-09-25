@@ -6,13 +6,28 @@
 use crate::{CommandRenderer, GpuContext, WgpuFrame};
 use anyhow::Result;
 use ui_kit_core::{Material, Rect};
-use ui_kit_immediate::vector::{COLORED_TRIANGLES, TRIANGLES};
+use ui_kit_immediate::vector::{COLORED_TRIANGLES, DOTS, TRIANGLES};
 use ui_kit_immediate::DrawCommand;
 use wgpu::util::DeviceExt;
 
-/// Draws vector meshes; hands every other command back to the standard renderer.
+/// Draws vector meshes and dot grids; hands every other command back to the
+/// standard renderer.
 pub struct VectorRenderer {
     pipeline: wgpu::RenderPipeline,
+    dots: wgpu::RenderPipeline,
+}
+
+/// A dot grid's quad corner: where it is, then the grid, the same at every
+/// corner: spacing, first dot, radius, colour.
+type DotVertex = [f32; 11];
+
+/// Linear from sRGB, for targets that blend in linear light.
+fn linear(c: f32) -> f32 {
+    if c <= 0.04045 {
+        c / 12.92
+    } else {
+        ((c + 0.055) / 1.055).powf(2.4)
+    }
 }
 impl VectorRenderer {
     pub fn new(gpu: &GpuContext, format: wgpu::TextureFormat) -> Self {
@@ -62,7 +77,158 @@ struct Vertex { @builtin(position) position:vec4<f32>, @location(0) color:vec4<f
                 multiview_mask: None,
                 cache: None,
             });
-        Self { pipeline }
+        let dots_shader = gpu
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("ui-kit dot grid"),
+                source: wgpu::ShaderSource::Wgsl(
+                    r#"
+struct Vertex {
+    @builtin(position) position:vec4<f32>,
+    @location(0) @interpolate(flat) spacing:vec2<f32>,
+    @location(1) @interpolate(flat) first:vec2<f32>,
+    @location(2) @interpolate(flat) radius:f32,
+    @location(3) @interpolate(flat) color:vec4<f32>,
+}
+@vertex fn vs(
+    @location(0) position:vec2<f32>, @location(1) spacing:vec2<f32>,
+    @location(2) first:vec2<f32>, @location(3) radius:f32, @location(4) color:vec4<f32>,
+)->Vertex {
+    var v:Vertex; v.position=vec4(position,0.,1.); v.spacing=spacing; v.first=first;
+    v.radius=radius; v.color=color; return v;
+}
+@fragment fn fs(v:Vertex)->@location(0) vec4<f32> {
+    // Distance from this pixel's centre to the nearest dot's.
+    let cell = (v.position.xy - v.first) / v.spacing;
+    let offset = (cell - round(cell)) * v.spacing;
+    let coverage = clamp(v.radius + 0.5 - length(offset), 0., 1.);
+    return vec4(v.color.rgb, v.color.a * coverage);
+}
+"#
+                    .into(),
+                ),
+            });
+        let dots = gpu
+            .device
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("ui-kit dot grid"),
+                layout: None,
+                vertex: wgpu::VertexState {
+                    module: &dots_shader,
+                    entry_point: Some("vs"),
+                    compilation_options: Default::default(),
+                    buffers: &[Some(wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<DotVertex>() as u64,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &wgpu::vertex_attr_array![
+                            0=>Float32x2, 1=>Float32x2, 2=>Float32x2, 3=>Float32, 4=>Float32x4
+                        ],
+                    })],
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &dots_shader,
+                    entry_point: Some("fs"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format,
+                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                primitive: Default::default(),
+                depth_stencil: None,
+                multisample: Default::default(),
+                multiview_mask: None,
+                cache: None,
+            });
+        Self { pipeline, dots }
+    }
+
+    /// A dot grid: one quad over the command's rect, the dots found per
+    /// pixel.
+    fn dots(&self, gpu: &GpuContext, frame: &mut WgpuFrame<'_>, command: &DrawCommand, parameters: &[f32]) -> Result<bool> {
+        anyhow::ensure!(
+            parameters.len() == 5 && parameters.iter().all(|v| v.is_finite()),
+            "invalid dot grid"
+        );
+        let (w, h) = frame.target.size();
+        let bounds = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: w as f32,
+            height: h as f32,
+        };
+        let clip = command.clip.unwrap_or(bounds).intersect(bounds).intersect(command.rect);
+        if clip.width <= 0.0 || clip.height <= 0.0 {
+            return Ok(true);
+        }
+        let mut color = command.style.fill;
+        if frame.target.format.is_srgb() || frame.target.format == wgpu::TextureFormat::Rgba16Float {
+            for c in &mut color[..3] {
+                *c = linear(*c);
+            }
+        }
+        let corner = |x: f32, y: f32| -> DotVertex {
+            [
+                x / w as f32 * 2.0 - 1.0,
+                1.0 - y / h as f32 * 2.0,
+                parameters[0],
+                parameters[1],
+                command.rect.x + parameters[2],
+                command.rect.y + parameters[3],
+                parameters[4],
+                color[0],
+                color[1],
+                color[2],
+                color[3],
+            ]
+        };
+        let r = command.rect;
+        let vertices = [
+            corner(r.x, r.y),
+            corner(r.x + r.width, r.y),
+            corner(r.x, r.y + r.height),
+            corner(r.x, r.y + r.height),
+            corner(r.x + r.width, r.y),
+            corner(r.x + r.width, r.y + r.height),
+        ];
+        let buffer = gpu
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("ui-kit dot grid"),
+                contents: bytemuck::cast_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+        let mut pass = frame
+            .encoder
+            .begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("ui-kit dot grid"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: frame.target.view,
+                    resolve_target: None,
+                    depth_slice: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+        pass.set_pipeline(&self.dots);
+        pass.set_vertex_buffer(0, buffer.slice(..));
+        let x = clip.x.floor() as u32;
+        let y = clip.y.floor() as u32;
+        pass.set_scissor_rect(
+            x,
+            y,
+            ((clip.x + clip.width).ceil() as u32).min(w) - x,
+            ((clip.y + clip.height).ceil() as u32).min(h) - y,
+        );
+        pass.draw(0..6, 0..1);
+        Ok(true)
     }
 }
 impl CommandRenderer for VectorRenderer {
@@ -75,6 +241,9 @@ impl CommandRenderer for VectorRenderer {
         let Material::Custom { name, parameters } = &command.style.material else {
             return Ok(false);
         };
+        if name == DOTS {
+            return self.dots(gpu, frame, command, parameters);
+        }
         let colored = name == COLORED_TRIANGLES;
         if name != TRIANGLES && !colored {
             return Ok(false);

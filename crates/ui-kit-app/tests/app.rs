@@ -28,6 +28,7 @@ impl App for TestApp {
             hovered: false,
             active: false,
             focused: false,
+            transform: None,
         }]
     }
 }
@@ -97,6 +98,7 @@ fn scale_commands_scales_geometry_and_styles() {
         hovered: false,
         active: false,
         focused: false,
+        transform: None,
     }];
 
     scale_commands(&mut commands, 2.0);

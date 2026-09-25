@@ -8,6 +8,39 @@ use crate::{WindowAction, WindowChrome, WindowControl, WindowRegion};
 use ui_kit_core::{Material, Point, Rect, Style, TextAlign, Theme};
 use ui_kit_immediate::Ui;
 
+/// A window control's mark, drawn as lines 10px across in the middle of its
+/// button rather than as a font's glyph.
+fn paint_control(ui: &mut Ui, control: WindowControl, maximized: bool, rect: Rect, color: ui_kit_core::Color) {
+    use ui_kit_immediate::vector::{line, polyline};
+    let (cx, cy, h) = (rect.x + rect.width * 0.5, rect.y + rect.height * 0.5, 5.0);
+    let square = |x: f32, y: f32, size: f32| {
+        [
+            Point::new(x, y),
+            Point::new(x + size, y),
+            Point::new(x + size, y + size),
+            Point::new(x, y + size),
+            Point::new(x, y),
+        ]
+    };
+    match control {
+        WindowControl::Minimize => line(ui, Point::new(cx - h, cy), Point::new(cx + h, cy), 1.0, color),
+        WindowControl::Maximize if maximized => {
+            polyline(ui, &square(cx - h, cy - h + 2.0, 2.0 * h - 2.0), 1.0, color);
+            polyline(
+                ui,
+                &[Point::new(cx - h + 2.0, cy - h + 2.0), Point::new(cx - h + 2.0, cy - h), Point::new(cx + h, cy - h), Point::new(cx + h, cy + h - 2.0), Point::new(cx + h - 2.0, cy + h - 2.0)],
+                1.0,
+                color,
+            );
+        }
+        WindowControl::Maximize => polyline(ui, &square(cx - h, cy - h, 2.0 * h), 1.0, color),
+        WindowControl::Close => {
+            line(ui, Point::new(cx - h, cy - h), Point::new(cx + h, cy + h), 1.0, color);
+            line(ui, Point::new(cx + h, cy - h), Point::new(cx - h, cy + h), 1.0, color);
+        }
+    }
+}
+
 /// The colours a frame is painted with. Derived from a [`Theme`] by default;
 /// override individual fields for an application with its own title bar look.
 #[derive(Clone, Debug, PartialEq)]
@@ -184,14 +217,9 @@ pub fn window_chrome_with(
                 rect
             },
         );
-        ui.paint(
-            "button",
-            control.glyph(chrome.maximized),
-            rect,
-            0.0,
-            response,
-            ui.focused(control.id()),
-        );
+        ui.paint("button", "", rect, 0.0, response, ui.focused(control.id()));
+        let color = ui.style.foreground;
+        paint_control(ui, *control, chrome.maximized, rect, color);
         if response.clicked {
             action = Some(WindowAction::from(*control));
         }
