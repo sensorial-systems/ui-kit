@@ -1,5 +1,7 @@
 // Shared semantic UI. No Dioxus, GPU, executor, or application-owned state.
 pub mod animation;
+pub mod morph;
+pub mod motion;
 pub mod graph;
 
 use prism_ui::immediate::{Flex, Size};

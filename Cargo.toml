@@ -1,5 +1,5 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "examples/gallery", "examples/shared-gallery", "examples/immediate-gallery"]
+members = ["crates/*", "examples/gallery", "examples/shared-gallery", "examples/immediate-gallery", "examples/morph-reel"]
 
 [workspace.package]

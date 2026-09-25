@@ -12,7 +12,7 @@ pub use components::{
     GraphNodeData, Heading, HeadingLevel, HierarchyGraphEditor, HierarchyGraphModel,
     HierarchyGraphViewer, HierarchyNode, HorizontalMenu, HorizontalMenuItem,
     HorizontalMenuLeafItem, HorizontalMenuSubItem, LabelLayout, Menu, MenuItem, MenuLayout,
-    MenuLeafItem, MenuSubItem, Modal, NetworkGraph, Node, NodeShape, Notification,
+    MenuLeafItem, MenuSubItem, Modal, MorphReel, NetworkGraph, Node, NodeShape, Notification,
     NotificationVariant, OtpInput, PieChart, PieChartSlice, PipelineBoard, PipelineCard,
     PipelineColumn, PipelineDragPreview, ProgressBar, Question, QuestionAnswer, QuestionOption,
     QuestionType, Select, SelectableButton, Slider, SortDirection, Sparkline, Spinner, SpinnerSize,

@@ -21,6 +21,7 @@ mod instruments;
 mod job_list;
 mod label;
 mod menu;
+mod morph_reel;
 mod navigation;
 mod pipeline;
 pub mod popup;
@@ -60,6 +61,7 @@ pub use instruments::{centered_text, Dial, Indicator, InstrumentPanel, Oscillosc
 pub use job_list::{Job, JobAction, JobBadge, JobGroup, JobList, JobStatus};
 pub use label::Label;
 pub use menu::{popup_height, Dropdown, Menu, MenuItem, MenuLayout, MenuState};
+pub use morph_reel::{fill_mesh, paint_scene, stroke_mesh, MorphReel};
 pub use navigation::{Sidebar, SidebarItem};
 pub use pipeline::{PipelineBoard, PipelineCard, PipelineColumn, PipelineResponse, PipelineState};
 pub use segmented_bar::{BarSegment, SegmentedBar};

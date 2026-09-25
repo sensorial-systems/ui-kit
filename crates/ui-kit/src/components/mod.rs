@@ -2,6 +2,7 @@ pub mod containers;
 pub mod graph;
 pub mod info;
 pub mod input;
+pub mod motion;
 pub mod navigation;
 
 pub use containers::{
@@ -27,6 +28,7 @@ pub use input::{
     ColorPicker, ColorPickerMode, DateTimePicker, EditableText, EditableTextVariant, FormField,
     LabelLayout, OtpInput, Select, SelectableButton, Slider, Switch, TextInput, ThemeSelector,
 };
+pub use motion::MorphReel;
 pub use navigation::{
     HorizontalMenu, HorizontalMenuItem, HorizontalMenuLeafItem, HorizontalMenuSubItem, Menu,
     MenuItem, MenuLayout, MenuLeafItem, MenuSubItem,

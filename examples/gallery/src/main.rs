@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
 use std::collections::HashMap;
 use ui_kit::*;
+use ui_kit::shared::morph::{Reel, REEL_BEATS};
 
 fn main() {
     dioxus::launch(App);
@@ -156,6 +157,7 @@ fn App() -> Element {
     let mut cpu_usage = use_signal(|| 75.4);
     let mut memory_load = use_signal(|| 4.2);
     let mut sparkline_data = use_signal(|| vec![1.2, 1.5, 2.0, 1.8, 2.4, 3.1, 2.8, 3.5, 4.2]);
+
 
     let bill_data_sig = use_signal(|| {
         let items = vec![
@@ -2200,6 +2202,17 @@ fn App() -> Element {
                             }
                         }
                     }
+
+                    // 10. Morph Reel Section
+                    section {
+                        style: "display: flex; flex-direction: column; gap: 16px;",
+                        Heading { level: HeadingLevel::H2, bordered: true, "10. Morph Reel" }
+                        p {
+                            style: "color: var(--uikit-muted); font-size: 14px; margin-top: -8px;",
+                            "One shape through twelve UI states in seven bars at 120 BPM, driven by a cursor. Every frame is a pure function of time, so it scrubs, steps and loops without a seam. The immediate gallery draws the same scene with wgpu."
+                        }
+                        MorphReelShowcase {}
+                    }
                 }
 
                 // Data Visualization & Charts Card
@@ -2403,6 +2416,119 @@ fn App() -> Element {
                         next_question_id: None,
                     },
                 ],
+            }
+        }
+    }
+}
+
+/// The morph reel with a playhead the gallery owns. It is its own component
+/// so the clock re-renders the reel and its controls, not the whole page.
+#[component]
+fn MorphReelShowcase() -> Element {
+    // The morph reel's playhead. The reel is a pure function of time, so
+    // playing is only advancing this, and scrubbing is setting it.
+    let reel = use_signal(Reel::default);
+    let mut reel_time = use_signal(|| 0.0f32);
+    let mut reel_playing = use_signal(|| true);
+    let mut reel_accent = use_signal(|| false);
+    use_future(move || async move {
+        let mut last = web_time::Instant::now();
+        loop {
+            #[cfg(target_arch = "wasm32")]
+            gloo_timers::future::TimeoutFuture::new(16).await;
+            #[cfg(not(target_arch = "wasm32"))]
+            std::thread::sleep(std::time::Duration::from_millis(16));
+            let now = web_time::Instant::now();
+            let elapsed = (now - last).as_secs_f32();
+            last = now;
+            if *reel_playing.peek() {
+                let duration = reel.peek().duration();
+                reel_time.with_mut(|t| *t = (*t + elapsed).rem_euclid(duration));
+            }
+        }
+    });
+
+    rsx! {
+        Card {
+            div {
+                style: "display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start;",
+                div {
+                    style: "flex: 1 1 360px; max-width: 540px; border-radius: 16px; overflow: hidden;",
+                    MorphReel {
+                        time: reel_time(),
+                        accent: if reel_accent() { Some("#3b82f6".to_string()) } else { None },
+                    }
+                }
+                {
+                    let beat_length = reel.read().grid().beat_length();
+                    let beat = reel_time() / beat_length;
+                    let whole = (beat.floor() as usize).min(REEL_BEATS as usize - 1);
+                    let state = reel.read().state_at(reel_time()).name();
+                    let states: Vec<(f32, &'static str)> = std::iter::once((0.0, "Button"))
+                        .chain(Reel::timeline().take(11).map(|(beat, state)| (beat, state.name())))
+                        .collect();
+                    rsx! {
+                        div {
+                            style: "flex: 1 1 260px; display: flex; flex-direction: column; gap: 12px;",
+                            Heading { level: HeadingLevel::H3, "MorphReel" }
+                            strong { style: "font-size: 14px;", "Bar {whole / 4 + 1}, beat {whole % 4 + 1}: {state}" }
+                            span { style: "font-size: 13px; color: var(--uikit-muted);", "{Reel::beat_caption(whole)}" }
+                            Slider {
+                                value: beat as f64,
+                                min: 0.0,
+                                max: REEL_BEATS as f64,
+                                step: 0.01,
+                                on_change: move |value: f64| {
+                                    reel_playing.set(false);
+                                    reel_time.set((value as f32).clamp(0.0, REEL_BEATS - 1e-3) * beat_length);
+                                },
+                            }
+                            div {
+                                style: "display: flex; gap: 8px;",
+                                Button {
+                                    variant: ButtonVariant::Secondary,
+                                    onclick: move |_| {
+                                        reel_playing.set(false);
+                                        reel_time.set((beat - 0.01).floor().rem_euclid(REEL_BEATS) * beat_length);
+                                    },
+                                    "Previous beat"
+                                }
+                                Button {
+                                    onclick: move |_| reel_playing.toggle(),
+                                    if reel_playing() { "Pause" } else { "Play" }
+                                }
+                                Button {
+                                    variant: ButtonVariant::Secondary,
+                                    onclick: move |_| {
+                                        reel_playing.set(false);
+                                        reel_time.set(((beat + 1.0).floor() % REEL_BEATS) * beat_length);
+                                    },
+                                    "Next beat"
+                                }
+                            }
+                            Switch {
+                                checked: reel_accent(),
+                                onchange: move |value| reel_accent.set(value),
+                                label: "Accent colour"
+                            }
+                            span { style: "font-size: 11px; font-weight: 700; color: var(--uikit-muted); text-transform: uppercase;", "States" }
+                            div {
+                                style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px;",
+                                for (start, name) in states {
+                                    Button {
+                                        size: ButtonSize::Small,
+                                        variant: if name == state { ButtonVariant::Primary } else { ButtonVariant::Outline },
+                                        onclick: move |_| {
+                                            reel_playing.set(false);
+                                            reel_time.set((start + 0.5) * beat_length);
+                                        },
+                                        "{name}"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

@@ -323,6 +323,59 @@ if response.scrubbed { /* the playhead moved */ }
 if response.changed { /* a curve changed */ }
 ```
 
+### Motion as a function of time
+
+`ui_kit_core::motion` has springs solved in closed form. A `Spring` is a
+response (roughly how long it takes, in seconds) and a damping ratio; the
+house springs overshoot by well under one percent. A `SpringTrack` is a list
+of target changes known up front, and its value at any time is the sum of one
+spring step per change, so it can be seeked, rendered out of order and looped
+(`looped(period)` lets the springs still settling at the end of a lap carry
+into the next, so the seam matches in position and speed). `jump` and `kick`
+let a dragged value go from wherever it was, `Blend` crossfades between
+states with weights that always sum to one, `BeatGrid` places things on a
+song's beats and `rubber_band` resists a drag past its limit.
+
+`ui_kit_core::morph` builds on it. A `Scene` is a stack of layers (opacity,
+blur) of rounded rects, one-line text, stroked paths and filled outlines on a
+square stage. `Reel` is a choreography: one shape through twelve UI states in
+seven bars (button, loader, check, dynamic island, music player with a
+play/pause morph and a scrub, a volume slider that stretches past max, a
+toggle, a liquid tab indicator, a chart that draws itself with a tooltip,
+⌘K, a filtered command palette and a toast), driven by a cursor, where
+`Reel::seek(t)` is a pure function of time. `Reel::cues` says where each UI
+sound belongs. One scene, two renderers:
+
+```rust
+// Immediate: draw commands (vector meshes need `VectorRenderer`).
+ui_kit_immediate::components::MorphReel::new(&reel).show(&mut ui, rect, time);
+// Dioxus: SVG, with real Gaussian blur on the fading content.
+rsx! { ui_kit::MorphReel { time, accent: "#3b82f6".to_string() } }
+```
+
+The immediate renderer has no blur for text, so a blurred layer is drawn as
+faint copies around a disc that add up to its opacity. Both galleries have a
+"Morph Reel" section with play, scrub, beat stepping, an accent switch and a
+jump to each state.
+
+`examples/morph-reel` renders it without a window:
+
+```powershell
+cargo run --release -p morph-reel -- beats target/beats   # one PNG per beat + sheet.png
+cargo run --release -p morph-reel -- frame 7.25 target/frame.png
+python examples/morph-reel/render.py --song path/to/song.mp3 --laps 2
+```
+
+`render.py` finds the song's tempo and first downbeat with numpy (spectral
+flux autocorrelation, then attacks at millisecond resolution), measures each
+UI sound's peak, mixes the song from that downbeat with every sound's peak on
+its cue, renders the beat sheet for review, then renders 1440 × 1440 at
+60 fps from four subframes per frame blended by ffmpeg `tmix`. Without
+`--song` it synthesises a placeholder 120 BPM track and UI sounds; give it a
+royalty-free song (and `--sounds <dir>` of `press`, `release`, `click`,
+`toggle`, `success`, `type`, `enter`, `pop` WAVs) for a real cut. It needs
+`ffmpeg` on the path and Python with numpy.
+
 ### Vectors, SVG and icons
 
 `ui_kit_immediate::vector` paints antialiased meshes (`fill_triangles`, `line`,

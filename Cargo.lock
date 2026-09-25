@@ -2577,6 +2577,7 @@ dependencies = [
  "dioxus",
  "gloo-timers",
  "ui-kit",
+ "web-time",
 ]
 
 [[package]]
@@ -4094,6 +4095,20 @@ dependencies = [
  "libc",
  "wasi 0.11.1+wasi-snapshot-preview1",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "morph-reel"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "png 0.18.1",
+ "pollster",
+ "serde_json",
+ "ui-kit-core",
+ "ui-kit-immediate",
+ "ui-kit-wgpu",
+ "wgpu",
 ]
 
 [[package]]

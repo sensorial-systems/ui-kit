@@ -5,13 +5,15 @@
 mod tests;
 use std::collections::HashMap;
 use ui_kit_core::animation::{Animation, Interpolation, Keyframe, Track};
+use ui_kit_core::morph::{Reel, REEL_BEATS};
+use ui_kit_core::motion::BeatGrid;
 use ui_kit_core::{Point, Rect, RichText, Style, TextAlign, TextFormat, TextRun};
 use ui_kit_immediate::components::theme::{rgb, DANGER, INFO, SUCCESS, WARNING};
 use ui_kit_immediate::components::{
     self as kit, section_heading, Answer, Badge, BarGroup, Bill, BillItem, Browser, BrowserState,
     Button, ButtonVariant, Card, Checkbox, ColorField, ColorFieldState, ColorPicker,
     CurveEditor, CurveEditorState, DateTimePicker, DateTimePickerState, Dropdown, EditableText,
-    FlowGraph, FlowNode, FormFlow,
+    FlowGraph, FlowNode, FormFlow, MorphReel,
     FormFlowEvent, FormFlowState, GraphCamera, GraphEdge, GraphNode, HierarchyGraph,
     HierarchyGraphModel, Label, Menu, MenuItem, MenuState, MetricCard, MetricChart, Modal,
     NetworkGraph, NetworkGraphNode, NodeShape, Notification, NumberField, OtpInput, PieChart,
@@ -47,6 +49,7 @@ pub const SECTIONS: &[&str] = &[
     "8. Bill Component",
     "9. Graph Components",
     "10. Curve Editor",
+    "11. Morph Reel",
 ];
 pub const LANGUAGES: [&str; 4] = ["Rust", "TypeScript", "Python", "Go"];
 const RATIOS: [&str; 5] = ["1:1", "16:9", "9:16", "4:3", "3:4"];
@@ -125,6 +128,13 @@ pub struct Gallery {
     pub survey_result: Option<SurveyResult>,
     pub section_positions: HashMap<String, f32>,
     time: f32,
+    pub reel: Reel,
+    /// Where the reel is, in seconds from its first downbeat.
+    pub reel_time: f32,
+    pub reel_playing: bool,
+    pub reel_accent: bool,
+    /// The gallery time the reel's playhead was at zero, while it plays.
+    reel_anchor: f32,
 }
 
 /// How long the curve editor's example animation runs for, and how many
@@ -396,6 +406,11 @@ impl Default for Gallery {
             survey_result: None,
             section_positions: HashMap::new(),
             time: 0.0,
+            reel: Reel::default(),
+            reel_time: 0.0,
+            reel_playing: true,
+            reel_accent: false,
+            reel_anchor: 0.0,
         }
     }
 }
@@ -509,6 +524,7 @@ impl Gallery {
         self.bills(&mut ui, &mut page);
         self.graphs(&mut ui, &mut page);
         self.curve_editor(&mut ui, &mut page);
+        self.morph_reel(&mut ui, &mut page);
         self.content_height = 40.0 + page.height() + 80.0;
         if self.content_height > height {
             let thumb = (height * height / self.content_height).max(24.0);
@@ -1342,6 +1358,113 @@ impl Gallery {
             &mut self.curves_state,
             &mut self.curve_time,
         );
+    }
+
+    fn morph_reel(&mut self, ui: &mut Ui, page: &mut Stack) {
+        self.section(ui, page, "11. Morph Reel");
+        Label::muted().show(
+            ui,
+            page.row(56.0),
+            "One shape through twelve UI states in seven bars at 120 BPM, driven by a cursor. Every frame is a pure function of time -- springs solved in closed form, drags computed from where the cursor is -- so it scrubs, steps and loops without a seam. The Dioxus gallery draws the same scene as SVG.",
+        );
+        let beat_length = self.reel.grid().beat_length();
+        if self.reel_playing {
+            self.reel_time = (self.time - self.reel_anchor).rem_euclid(self.reel.duration());
+            ui.output_mut().repaint_within(0.0);
+        }
+        let card = page.row(560.0);
+        self.card(ui, card);
+        let inner = card.inset(20.0);
+        let (stage, side) = inner.split_left(inner.height.min(inner.width * 0.6), 24.0);
+        MorphReel::new(&self.reel).show(ui, stage, self.reel_time);
+
+        let mut rows = Stack::new(side, 10.0);
+        Label::heading(18.0).show(ui, rows.row(26.0), "MorphReel");
+        let beat = self.reel_time / beat_length;
+        let whole = (beat.floor() as usize).min(REEL_BEATS as usize - 1);
+        Label::new().weight(600).show(
+            ui,
+            rows.row(20.0),
+            &format!(
+                "Bar {}, beat {}: {}",
+                whole / 4 + 1,
+                whole % 4 + 1,
+                self.reel.state_at(self.reel_time).name()
+            ),
+        );
+        Label::muted().show(ui, rows.row(20.0), Reel::beat_caption(whole));
+        rows.space(4.0);
+        let mut scrub = beat;
+        if Slider::new(0.0, REEL_BEATS)
+            .show(ui, "reel-scrub", rows.row(38.0), &mut scrub)
+            .changed
+        {
+            self.reel_playing = false;
+            self.reel_time = scrub.clamp(0.0, REEL_BEATS - 1e-3) * beat_length;
+        }
+        let mut controls = Strip::row(rows.row(38.0), 8.0);
+        if Button::icon_only(Icon::ChevronLeft)
+            .variant(ButtonVariant::Secondary)
+            .show(ui, "reel-back", controls.leading(38.0))
+            .clicked
+        {
+            self.reel_playing = false;
+            let previous = (beat - 0.01).floor().rem_euclid(REEL_BEATS);
+            self.reel_time = previous * beat_length;
+        }
+        let (label, icon) = if self.reel_playing {
+            ("Pause", Icon::Pause)
+        } else {
+            ("Play", Icon::Play)
+        };
+        if Button::new(label)
+            .icon(icon)
+            .show(ui, "reel-play", controls.leading(96.0))
+            .clicked
+        {
+            self.reel_playing = !self.reel_playing;
+            self.reel_anchor = self.time - self.reel_time;
+        }
+        if Button::icon_only(Icon::ChevronRight)
+            .variant(ButtonVariant::Secondary)
+            .show(ui, "reel-forward", controls.leading(38.0))
+            .clicked
+        {
+            self.reel_playing = false;
+            self.reel_time = ((beat + 1.0).floor() % REEL_BEATS) * beat_length;
+        }
+        rows.space(4.0);
+        if Switch::new()
+            .show(ui, "reel-accent", rows.row(32.0), "Accent colour", &mut self.reel_accent)
+            .changed
+        {
+            self.reel = Reel::new(BeatGrid::default(), self.reel_accent.then_some(INFO));
+        }
+        rows.space(GROUP_SPACE);
+        // Jump to a state: the beat it begins on.
+        Label::subheading().show(ui, rows.row(20.0), "States");
+        let states: Vec<(f32, &str)> = std::iter::once((0.0, "Button"))
+            .chain(Reel::timeline().take(11).map(|(beat, state)| (beat, state.name())))
+            .collect();
+        let grid = Grid::fit(rows.row(0.0), 120.0, 6.0).with_cell_height(30.0);
+        let area = rows.row(grid.height(states.len()));
+        let grid = Grid::fit(area, 120.0, 6.0).with_cell_height(30.0);
+        for (i, (start, name)) in states.iter().enumerate() {
+            let current = self.reel.state_at(self.reel_time).name() == *name;
+            let variant = if current {
+                ButtonVariant::Primary
+            } else {
+                ButtonVariant::Outline
+            };
+            if Button::new(name)
+                .variant(variant)
+                .show(ui, &format!("reel-state-{i}"), grid.cell(i))
+                .clicked
+            {
+                self.reel_playing = false;
+                self.reel_time = (start + 0.5) * beat_length;
+            }
+        }
     }
 
     fn bills(&mut self, ui: &mut Ui, page: &mut Stack) {
