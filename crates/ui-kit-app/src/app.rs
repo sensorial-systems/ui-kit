@@ -1,4 +1,6 @@
 use crate::context::FrameContext;
+use crate::fonts::Fonts;
+use crate::gpu::Gpu;
 use crate::images::ImageStore;
 use ui_kit_immediate::{DrawCommand, Output, TextMeasure};
 
@@ -61,6 +63,23 @@ pub trait App {
     /// [`Ui::image`](ui_kit_immediate::Ui::image) and remove what it no
     /// longer will. Not called while the window is hidden.
     fn prepare(&mut self, _images: &mut dyn ImageStore) {}
+
+    /// What the device has to support: features and limits beyond wgpu's
+    /// defaults, for an application that runs its own GPU work on the
+    /// renderer's device. Called once, with the adapter chosen for the window.
+    fn device_descriptor(&self, _adapter: &wgpu::Adapter) -> wgpu::DeviceDescriptor<'static> {
+        wgpu::DeviceDescriptor::default()
+    }
+
+    /// Called once the device exists, before the renderer is made, with
+    /// everything it was made from. An application that renders content of
+    /// its own keeps it, to render on the device the UI draws with.
+    fn gpu_ready(&mut self, _gpu: &Gpu) {}
+
+    /// Called once the renderer exists, before anything is measured, with
+    /// its fonts: load the application's own and choose the faces the
+    /// generic families stand for.
+    fn fonts_ready(&mut self, _fonts: &dyn Fonts) {}
 
     /// Called once the renderer exists, with what measures text the way it
     /// will be drawn. Install it on the application's `Ui` so content-sized

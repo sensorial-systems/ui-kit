@@ -1,7 +1,12 @@
 //! Immediate host: interaction state and rendering commands, independent of wgpu.
 pub mod components;
+pub mod easing {
+    pub use prism_ui::immediate::easing::*;
+}
+pub mod host;
 pub mod icon;
 pub mod svg;
+pub mod task;
 pub mod vector;
 pub mod combobox {
     pub use prism_ui::immediate::Combobox;
@@ -56,6 +61,8 @@ pub use layout::{
 };
 pub use number_picker::NumberPicker;
 pub use prism_ui::immediate::*;
+/// How a line of text sits across its rect; [`Style::text_align`] takes it.
+pub use prism_ui::TextAlign;
 pub use scroll_card::{ScrollCard, ScrollCardResponse};
 pub use scroll_container::ScrollContainer;
 pub use shadow::Shadow;

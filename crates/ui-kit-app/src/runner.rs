@@ -1,6 +1,8 @@
 use crate::app::{App, WindowCommand};
 use crate::config::AppConfig;
 use crate::context::FrameContext;
+use crate::gpu;
+use crate::present::Presenter;
 use crate::scale::scale_commands;
 use anyhow::Result;
 use std::{
@@ -8,8 +10,7 @@ use std::{
     time::{Duration, Instant},
 };
 use ui_kit_core::Rect;
-use ui_kit_immediate::composition::UiRenderer;
-use ui_kit_wgpu::{CommandRenderer, GpuContext, NoCustom, TextureTarget, WgpuFrame, WgpuRenderer};
+use ui_kit_wgpu::{CommandRenderer, GpuContext, NoCustom};
 use ui_kit_window::{InputCollector, WindowStyle, WinitWindow};
 use winit::{
     application::ApplicationHandler,
@@ -31,13 +32,7 @@ pub struct AppRunner<A, C = NoCustom> {
     pub config: AppConfig,
     custom_renderer: Option<Box<dyn FnOnce(&GpuContext, wgpu::TextureFormat) -> C>>,
     window: Option<Arc<Window>>,
-    instance: Option<wgpu::Instance>,
-    adapter: Option<wgpu::Adapter>,
-    surface: Option<wgpu::Surface<'static>>,
-    surface_config: Option<wgpu::SurfaceConfiguration>,
-    gpu: Option<GpuContext>,
-    renderer: Option<WgpuRenderer<C>>,
-    target: Option<ui_kit_wgpu::Texture2d>,
+    presenter: Option<Presenter<C>>,
     chrome: WinitWindow,
     collector: InputCollector,
     start: Instant,
@@ -72,13 +67,7 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
             config,
             custom_renderer: Some(Box::new(make_custom)),
             window: None,
-            instance: None,
-            adapter: None,
-            surface: None,
-            surface_config: None,
-            gpu: None,
-            renderer: None,
-            target: None,
+            presenter: None,
             chrome,
             collector: InputCollector::new(),
             start: Instant::now(),
@@ -153,31 +142,27 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
             window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(None)));
         }
 
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+        let instance = pollster::block_on(gpu::instance());
         let surface = instance.create_surface(window.clone())?;
-        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            compatible_surface: Some(&surface),
-            ..Default::default()
-        }))?;
-        let (device, queue) = pollster::block_on(adapter.request_device(&Default::default()))?;
-        let gpu = GpuContext::new(Arc::new(device), Arc::new(queue));
+        let gpu = pollster::block_on(gpu::request(instance, &surface, &self.app))?;
+        self.app.gpu_ready(&gpu);
 
-        let surface_config = self.configure(&surface, &adapter, &gpu, &window)?;
-        let format = surface_config.format;
         let make_custom = self
             .custom_renderer
             .take()
             .ok_or_else(|| anyhow::anyhow!("renderer already initialized"))?;
-        let custom = make_custom(&gpu, format);
-        let renderer = WgpuRenderer::with_custom(&gpu, format, custom)?;
-
-        self.app.text_measure_ready(renderer.text_measure());
-        self.renderer = Some(renderer);
-        self.surface_config = Some(surface_config);
-        self.surface = Some(surface);
-        self.adapter = Some(adapter);
-        self.instance = Some(instance);
-        self.gpu = Some(gpu);
+        let size = window.inner_size();
+        let presenter = Presenter::new(
+            &gpu,
+            surface,
+            size.width,
+            size.height,
+            self.config.transparent,
+            make_custom,
+        )?;
+        self.app.fonts_ready(&presenter.renderer);
+        self.app.text_measure_ready(presenter.renderer.text_measure());
+        self.presenter = Some(presenter);
         // The window is created hidden either way, so a tray application
         // never flashes a frame it is about to hide.
         window.set_visible(self.visible);
@@ -185,46 +170,15 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         Ok(())
     }
 
-    /// Chooses the surface's format and usage and configures it.
-    fn configure(
-        &self,
-        surface: &wgpu::Surface<'static>,
-        adapter: &wgpu::Adapter,
-        gpu: &GpuContext,
-        window: &Window,
-    ) -> Result<wgpu::SurfaceConfiguration> {
-        let size = window.inner_size();
-        let mut surface_config = surface
-            .get_default_config(adapter, size.width.max(1), size.height.max(1))
-            .ok_or_else(|| anyhow::anyhow!("surface has no supported format"))?;
-        let caps = surface.get_capabilities(adapter);
-        // A renderer made for one format keeps it: a surface made again on
-        // resume takes the format the first one had.
-        if let Some(previous) = &self.surface_config {
-            surface_config.format = previous.format;
-        } else if let Some(format) = caps.formats.iter().copied().find(|f| !f.is_srgb()) {
-            surface_config.format = format;
-        }
-        surface_config.usage = wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_DST;
-        if self.config.transparent {
-            surface_config.alpha_mode = ui_kit_wgpu::transparent_alpha_mode(&caps);
-        }
-        surface.configure(&gpu.device, &surface_config);
-        Ok(surface_config)
-    }
-
     /// A new surface for the existing window, after the platform took the
     /// last one away (Android, on suspend).
     fn recreate_surface(&mut self) -> Result<()> {
-        let (Some(window), Some(instance), Some(adapter), Some(gpu)) =
-            (&self.window, &self.instance, &self.adapter, &self.gpu)
-        else {
+        let (Some(window), Some(presenter)) = (&self.window, self.presenter.as_mut()) else {
             return Ok(());
         };
-        let surface = instance.create_surface(window.clone())?;
-        let surface_config = self.configure(&surface, adapter, gpu, window)?;
-        self.surface_config = Some(surface_config);
-        self.surface = Some(surface);
+        let surface = presenter.gpu().instance.create_surface(window.clone())?;
+        let size = window.inner_size();
+        presenter.set_surface(surface, size.width, size.height)?;
         window.request_redraw();
         Ok(())
     }
@@ -236,38 +190,13 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         if !self.visible {
             return Ok(());
         }
-        let (Some(surface), Some(surface_config)) = (self.surface.as_ref(), self.surface_config.as_mut())
-        else {
-            // Suspended: there is nothing to draw on.
+        let Some(presenter) = self.presenter.as_mut() else {
             return Ok(());
         };
         let size = window.inner_size();
-        if size.width == 0 || size.height == 0 {
+        // Suspended, minimized or occluded: there is nothing to draw on.
+        let Some(surface_texture) = presenter.acquire(size.width, size.height)? else {
             return Ok(());
-        }
-
-        let gpu = self.gpu.as_ref().unwrap();
-
-        if surface_config.width != size.width || surface_config.height != size.height {
-            surface_config.width = size.width;
-            surface_config.height = size.height;
-            surface.configure(&gpu.device, surface_config);
-        }
-
-        let output = match surface.get_current_texture() {
-            wgpu::CurrentSurfaceTexture::Success(v)
-            | wgpu::CurrentSurfaceTexture::Suboptimal(v) => v,
-            wgpu::CurrentSurfaceTexture::Outdated => {
-                surface.configure(&gpu.device, surface_config);
-                return Ok(());
-            }
-            wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
-                return Ok(())
-            }
-            wgpu::CurrentSurfaceTexture::Lost => {
-                anyhow::bail!("presentation surface lost")
-            }
-            wgpu::CurrentSurfaceTexture::Validation => anyhow::bail!("surface validation error"),
         };
 
         let scale = window.scale_factor() as f32;
@@ -284,9 +213,7 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         style.close.foreground = style.title.foreground;
 
         // Pictures first, so the frame can draw what was just uploaded.
-        if let Some(renderer) = self.renderer.as_mut() {
-            self.app.prepare(renderer);
-        }
+        self.app.prepare(&mut presenter.renderer);
 
         let elapsed = self.start.elapsed().as_secs_f32();
         let dark = self.config.dark;
@@ -309,44 +236,9 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         }
 
         scale_commands(&mut commands, scale);
-
-        let renderer = self.renderer.as_mut().unwrap();
-        if self
-            .target
-            .as_ref()
-            .is_none_or(|t| t.size.0 != size.width || t.size.1 != size.height)
-        {
-            self.target = Some(renderer.create_texture(size.width, size.height)?);
-        }
-
-        let target = self.target.as_ref().unwrap();
-        let mut encoder = gpu.device.create_command_encoder(&Default::default());
-
-        let frame = if self.config.transparent {
-            WgpuFrame::transparent(&mut encoder, TextureTarget::from_texture2d(&target)?)
-        } else {
-            WgpuFrame {
-                encoder: &mut encoder,
-                target: TextureTarget::from_texture2d(&target)?,
-                clear: Some(wgpu::Color {
-                    r: bg[0] as f64,
-                    g: bg[1] as f64,
-                    b: bg[2] as f64,
-                    a: bg[3] as f64,
-                }),
-            }
-        };
-
-        renderer.render(&mut { frame }, &commands)?;
-
-        encoder.copy_texture_to_texture(
-            target.texture.as_ref().unwrap().as_image_copy(),
-            output.texture.as_image_copy(),
-            output.texture.size(),
-        );
-        gpu.queue.submit([encoder.finish()]);
+        presenter.present(&surface_texture, &commands, bg)?;
         window.pre_present_notify();
-        gpu.queue.present(output);
+        presenter.show(surface_texture);
         Ok(())
     }
 }
@@ -355,7 +247,7 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let result = if self.window.is_none() {
             self.initialize(event_loop)
-        } else if self.surface.is_none() {
+        } else if self.presenter.as_ref().is_some_and(|p| !p.has_surface()) {
             self.recreate_surface()
         } else {
             Ok(())
@@ -371,7 +263,9 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
 
     fn suspended(&mut self, _: &ActiveEventLoop) {
         // The native window behind the surface is going away (Android).
-        self.surface = None;
+        if let Some(presenter) = self.presenter.as_mut() {
+            presenter.drop_surface();
+        }
         self.app.on_suspend();
     }
 
@@ -433,6 +327,11 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
         }
     }
 
+    /// A task was woken: move it along now rather than at the next frame.
+    fn user_event(&mut self, _: &ActiveEventLoop, (): ()) {
+        crate::task::run_ready();
+    }
+
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         let now = Instant::now();
         let frame_interval = Duration::from_micros(1_000_000 / self.config.fps as u64);
@@ -440,6 +339,7 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
             // Updated whether or not there is a window to draw: a tray
             // application hidden from the screen still polls and still
             // answers its tray menu.
+            crate::task::run_ready();
             self.app.update();
             self.apply_window_commands(event_loop);
             if self.app.should_exit() {

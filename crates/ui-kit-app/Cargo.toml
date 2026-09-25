@@ -3,17 +3,30 @@ name = "ui-kit-app"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+# Enter a multi-threaded Tokio runtime for the whole event loop, so that tasks
+# spawned with `task::spawn` can use Tokio's timers and I/O natively.
+tokio = ["dep:tokio"]
+
 [dependencies]
 ui-kit-core = { path = "../ui-kit-core" }
 ui-kit-immediate = { path = "../ui-kit-immediate" }
 ui-kit-wgpu = { path = "../ui-kit-wgpu" }
 wgpu = { version = "30", default-features = false }
-pollster = "0.4"
 anyhow = "1"
+# `std::time::Instant` panics in a browser; this is the same type natively.
+web-time = "1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+pollster = "0.4"
+# `snapshot`: frames drawn without a window, saved as PNG.
+png = "0.17"
 winit = "0.30"
+tokio = { version = "1", features = ["rt-multi-thread", "time"], optional = true }
 
 # The system clipboard is desktop only (arboard has no Android backend).
-[target.'cfg(not(target_os = "android"))'.dependencies]
+[target.'cfg(not(any(target_os = "android", target_arch = "wasm32")))'.dependencies]
 ui-kit-window = { path = "../ui-kit-window", features = ["winit", "immediate", "clipboard"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
@@ -21,3 +34,36 @@ ui-kit-window = { path = "../ui-kit-window", features = ["winit", "immediate"] }
 winit = { version = "0.30", features = ["android-native-activity"] }
 # The window's system bars are only reachable through the Java activity.
 jni = "0.22"
+
+# In a browser the page is the window: a canvas, and the DOM's own events.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "AddEventListenerOptions",
+    "Clipboard",
+    "ClipboardEvent",
+    "CompositionEvent",
+    "CssStyleDeclaration",
+    "DataTransfer",
+    "Document",
+    "DomRect",
+    "Element",
+    "Event",
+    "EventTarget",
+    "FocusEvent",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "HtmlTextAreaElement",
+    "InputEvent",
+    "Node",
+    "KeyboardEvent",
+    "MouseEvent",
+    "Navigator",
+    "Performance",
+    "PointerEvent",
+    "WheelEvent",
+    "Window",
+    "console",
+] }

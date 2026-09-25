@@ -3,6 +3,7 @@
 
 use std::time::Instant;
 use ui_kit_core::{Point, Rect};
+use ui_kit_immediate::host::ButtonLatch;
 use ui_kit_immediate::{
     AccessAction, CursorIcon, Input, Key, Modifiers, Output, TextNavigation, Touch,
 };
@@ -31,8 +32,9 @@ const PRESSURE_EPSILON: f32 = 0.01;
 pub struct InputCollector {
     input: Input,
     pointer: Option<Point>,
-    down: bool,
-    secondary_down: bool,
+    down: ButtonLatch,
+    secondary_down: ButtonLatch,
+    middle_down: ButtonLatch,
     modifiers: ModifiersState,
     composing: bool,
     /// Fingers down, in the order they touched.
@@ -60,8 +62,9 @@ impl InputCollector {
         Self {
             input: Input::default(),
             pointer: None,
-            down: false,
-            secondary_down: false,
+            down: ButtonLatch::default(),
+            secondary_down: ButtonLatch::default(),
+            middle_down: ButtonLatch::default(),
             modifiers: ModifiersState::default(),
             composing: false,
             touches: Vec::new(),
@@ -95,15 +98,16 @@ impl InputCollector {
             }
             WindowEvent::CursorLeft { .. } => {
                 // A drag that leaves the window still ends where it is let go.
-                if !self.down {
+                if !(self.down.held() || self.secondary_down.held() || self.middle_down.held()) {
                     self.pointer = None;
                 }
             }
             WindowEvent::MouseInput { state, button, .. } => {
                 let pressed = *state == ElementState::Pressed;
                 match button {
-                    MouseButton::Left => self.down = pressed,
-                    MouseButton::Right => self.secondary_down = pressed,
+                    MouseButton::Left => self.down.set(pressed),
+                    MouseButton::Right => self.secondary_down.set(pressed),
+                    MouseButton::Middle => self.middle_down.set(pressed),
                     _ => return false,
                 }
             }
@@ -124,8 +128,9 @@ impl InputCollector {
                 return false;
             }
             WindowEvent::Focused(false) => {
-                self.down = false;
-                self.secondary_down = false;
+                self.down.reset();
+                self.secondary_down.reset();
+                self.middle_down.reset();
                 self.pointer = None;
                 self.modifiers = ModifiersState::default();
                 self.touches.clear();
@@ -189,7 +194,7 @@ impl InputCollector {
                 if self.primary_touch.is_none() {
                     self.primary_touch = Some(id);
                     self.pointer = Some(position);
-                    self.down = true;
+                    self.down.press();
                 }
             }
             TouchPhase::Moved => {
@@ -205,7 +210,7 @@ impl InputCollector {
                 self.touches.retain(|t| t.id != id);
                 self.first_force.retain(|(i, _)| *i != id);
                 if self.primary_touch == Some(id) {
-                    self.down = false;
+                    self.down.release();
                     self.pointer = Some(position);
                 }
                 if self.touches.is_empty() {
@@ -292,8 +297,9 @@ impl InputCollector {
     pub fn take(&mut self, viewport: Rect) -> Input {
         let mut input = std::mem::take(&mut self.input);
         input.pointer = self.pointer;
-        input.down = self.down;
-        input.secondary_down = self.secondary_down;
+        input.down = self.down.sample();
+        input.secondary_down = self.secondary_down.sample();
+        input.middle_down = self.middle_down.sample();
         input.touches = self.touches.clone();
         input.pressure_sensing = self.pressure_sensing;
         input.held = self.held.clone();
@@ -407,6 +413,9 @@ pub fn cursor(icon: CursorIcon) -> WinitCursor {
         CursorIcon::Grab => WinitCursor::Grab,
         CursorIcon::Grabbing => WinitCursor::Grabbing,
         CursorIcon::NotAllowed => WinitCursor::NotAllowed,
+        CursorIcon::Crosshair => WinitCursor::Crosshair,
+        CursorIcon::ResizeDiagonal => WinitCursor::NwseResize,
+        CursorIcon::Help => WinitCursor::Help,
     }
 }
 

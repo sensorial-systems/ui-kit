@@ -8,3 +8,6 @@ prism-ui = { path = "../../../../studio/prism/products/prism/libraries/ui" }
 serde = { version = "1", features = ["derive"] }
 usvg = { version = "0.48.1", default-features = false }
 lyon_tessellation = "1.0.22"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures = "0.4"

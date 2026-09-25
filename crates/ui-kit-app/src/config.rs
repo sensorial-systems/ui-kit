@@ -24,6 +24,9 @@ pub struct AppConfig {
     /// (a swipe from the edge shows them for a moment); on desktop, a
     /// borderless fullscreen window.
     pub fullscreen: bool,
+    /// In a browser, the id of the `<canvas>` to draw into. Without one, a
+    /// canvas filling the page is added to its body. Unused natively.
+    pub canvas: Option<String>,
 }
 
 impl Default for AppConfig {
@@ -34,14 +37,19 @@ impl Default for AppConfig {
             height: 850.0,
             min_width: Some(320.0),
             min_height: Some(240.0),
-            transparent: true,
+            // A page shows through a transparent canvas only where the
+            // browser composites it that way; draw the background instead.
+            transparent: !cfg!(target_arch = "wasm32"),
             resizable: true,
             dark: true,
             background: [0.07, 0.07, 0.08, 1.0],
             fps: 60,
             visible: true,
-            chrome: !cfg!(target_os = "android"),
+            // Android owns the screen, and a page is already inside the
+            // browser's window.
+            chrome: !cfg!(any(target_os = "android", target_arch = "wasm32")),
             fullscreen: false,
+            canvas: None,
         }
     }
 }
@@ -112,6 +120,12 @@ impl AppConfig {
     /// Start with the window hidden or shown.
     pub fn with_visible(mut self, visible: bool) -> Self {
         self.visible = visible;
+        self
+    }
+
+    /// In a browser, draw into the `<canvas>` with this id.
+    pub fn with_canvas(mut self, id: impl Into<String>) -> Self {
+        self.canvas = Some(id.into());
         self
     }
 }
