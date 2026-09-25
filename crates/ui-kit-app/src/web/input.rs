@@ -40,6 +40,8 @@ struct State {
     /// only when a text field asks for it.
     touch: bool,
     wants_keyboard: bool,
+    /// Whether the page holds the pointer on the canvas.
+    pointer_locked: bool,
 }
 
 /// An event listener, removed from its target when dropped.
@@ -62,6 +64,9 @@ pub(crate) struct DomInput {
     canvas: HtmlCanvasElement,
     textarea: HtmlTextAreaElement,
     cursor: CursorIcon,
+    /// Whether a frame's ask for the pointer was passed on, until frames
+    /// stop asking: a lock the user took back is not asked for again.
+    lock_asked: bool,
     _listeners: Vec<Listener>,
 }
 
@@ -159,7 +164,12 @@ impl DomInput {
                         event.prevent_default();
                         state.finger(event.pointer_id() as u64, position, force(&event), Phase::Move);
                     } else {
-                        state.pointer = Some(position);
+                        // Held, the pointer stays put and only its motion is news.
+                        state.input.pointer_motion.x += event.movement_x() as f32;
+                        state.input.pointer_motion.y += event.movement_y() as f32;
+                        if !state.pointer_locked {
+                            state.pointer = Some(position);
+                        }
                     }
                 }),
             );
@@ -373,12 +383,34 @@ impl DomInput {
             );
         }
 
+        {
+            // Whether the canvas holds the pointer: taken when a frame asked,
+            // given back when the user presses Esc or the page loses it.
+            let state = state.clone();
+            let canvas: web_sys::Element = canvas.clone().into();
+            let document_target: EventTarget = document.clone().into();
+            listen(
+                &document_target,
+                "pointerlockchange",
+                Box::new(move |_| {
+                    let locked = web_sys::window()
+                        .and_then(|w| w.document())
+                        .and_then(|d| d.pointer_lock_element())
+                        .is_some_and(|element| element == canvas);
+                    let mut state = state.borrow_mut();
+                    state.segment();
+                    state.pointer_locked = locked;
+                }),
+            );
+        }
+
         let _ = textarea.focus();
         Ok(Self {
             state,
             canvas: canvas.clone(),
             textarea,
             cursor: CursorIcon::Default,
+            lock_asked: false,
             _listeners: listeners,
         })
     }
@@ -404,6 +436,19 @@ impl DomInput {
         if output.cursor != self.cursor {
             self.cursor = output.cursor;
             let _ = self.canvas.style().set_property("cursor", css_cursor(output.cursor));
+        }
+        // The frame after the click that asked, well within the browser's
+        // grace for a lock to follow a gesture.
+        if output.pointer_lock && !self.lock_asked {
+            self.lock_asked = true;
+            self.canvas.request_pointer_lock();
+        } else if !output.pointer_lock && self.lock_asked {
+            self.lock_asked = false;
+            if self.state.borrow().pointer_locked {
+                if let Some(document) = web_sys::window().and_then(|w| w.document()) {
+                    document.exit_pointer_lock();
+                }
+            }
         }
         {
             let mut state = self.state.borrow_mut();
@@ -492,6 +537,7 @@ impl State {
         input.held = self.held.clone();
         input.modifiers = self.modifiers;
         input.extend_selection = self.modifiers.shift;
+        input.pointer_locked = self.pointer_locked;
     }
 
     /// A finger went down, moved or lifted. The first finger of a gesture is

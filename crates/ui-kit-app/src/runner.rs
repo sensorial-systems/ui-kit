@@ -15,7 +15,7 @@ use ui_kit_window::{InputCollector, WindowStyle, WinitWindow};
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{MouseScrollDelta, WindowEvent},
+    event::{DeviceEvent, DeviceId, MouseScrollDelta, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow},
     window::{Window, WindowId},
 };
@@ -324,6 +324,13 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
                 self.app.on_scroll(vertical);
             }
             _ => {}
+        }
+    }
+
+    /// The mouse moved: the motion a held pointer reports.
+    fn device_event(&mut self, _: &ActiveEventLoop, _: DeviceId, event: DeviceEvent) {
+        if let (DeviceEvent::MouseMotion { delta }, Some(window)) = (event, &self.window) {
+            self.collector.motion(window, delta);
         }
     }
 

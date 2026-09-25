@@ -11,7 +11,7 @@ use winit::{
     dpi::{LogicalPosition, LogicalSize},
     event::{ElementState, Ime, MouseButton, MouseScrollDelta, TouchPhase, WindowEvent},
     keyboard::{Key as WinitKey, ModifiersState, NamedKey},
-    window::{CursorIcon as WinitCursor, Window},
+    window::{CursorGrabMode, CursorIcon as WinitCursor, Window},
 };
 
 /// How far one notch of a wheel scrolls, in logical pixels.
@@ -47,6 +47,11 @@ pub struct InputCollector {
     pressure_sensing: bool,
     held: Vec<Key>,
     start: Instant,
+    /// Whether the window holds the pointer for the UI.
+    pointer_locked: bool,
+    /// Whether a frame's ask for the pointer was acted on, until frames stop
+    /// asking: a lock lost with the focus is not taken again unasked.
+    lock_asked: bool,
     #[cfg(feature = "clipboard")]
     clipboard: Option<arboard::Clipboard>,
 }
@@ -73,6 +78,8 @@ impl InputCollector {
             pressure_sensing: false,
             held: Vec::new(),
             start: Instant::now(),
+            pointer_locked: false,
+            lock_asked: false,
             #[cfg(feature = "clipboard")]
             clipboard: arboard::Clipboard::new().ok(),
         }
@@ -93,8 +100,11 @@ impl InputCollector {
         let scale = window.scale_factor();
         match event {
             WindowEvent::CursorMoved { position, .. } => {
-                let p = position.to_logical::<f32>(scale);
-                self.pointer = Some(Point::new(p.x, p.y));
+                // Held, the pointer stays put and only its motion is news.
+                if !self.pointer_locked {
+                    let p = position.to_logical::<f32>(scale);
+                    self.pointer = Some(Point::new(p.x, p.y));
+                }
             }
             WindowEvent::CursorLeft { .. } => {
                 // A drag that leaves the window still ends where it is let go.
@@ -128,6 +138,11 @@ impl InputCollector {
                 return false;
             }
             WindowEvent::Focused(false) => {
+                // The system gives a held pointer back with the focus, as a
+                // browser does.
+                if self.pointer_locked {
+                    self.release_pointer(window);
+                }
                 self.down.reset();
                 self.secondary_down.reset();
                 self.middle_down.reset();
@@ -305,6 +320,7 @@ impl InputCollector {
         input.held = self.held.clone();
         input.modifiers = modifiers(self.modifiers);
         input.extend_selection = self.modifiers.shift_key();
+        input.pointer_locked = self.pointer_locked;
         input.time = Some(self.start.elapsed().as_secs_f64());
         input.viewport = Some(viewport);
         // A composition in progress stays on screen until it is committed.
@@ -317,6 +333,23 @@ impl InputCollector {
     /// rectangles are in logical pixels.
     pub fn apply(&mut self, window: &Window, output: &Output) {
         window.set_cursor(cursor(output.cursor));
+        if output.pointer_lock && !self.lock_asked {
+            self.lock_asked = true;
+            // Locked where the system can, kept in the window where it only
+            // confines, as winit offers on each.
+            let grabbed = window
+                .set_cursor_grab(CursorGrabMode::Locked)
+                .or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined));
+            if grabbed.is_ok() {
+                window.set_cursor_visible(false);
+                self.pointer_locked = true;
+            }
+        } else if !output.pointer_lock && self.lock_asked {
+            self.lock_asked = false;
+            if self.pointer_locked {
+                self.release_pointer(window);
+            }
+        }
         window.set_ime_allowed(output.wants_keyboard);
         if let Some(area) = output.ime_area {
             window.set_ime_cursor_area(
@@ -330,6 +363,20 @@ impl InputCollector {
         if output.repaint_after.is_some() {
             window.request_redraw();
         }
+    }
+
+    /// The mouse moved by `delta` device units, whatever the pointer did:
+    /// from `DeviceEvent::MouseMotion`, which goes on while it is held.
+    pub fn motion(&mut self, window: &Window, delta: (f64, f64)) {
+        let scale = window.scale_factor();
+        self.input.pointer_motion.x += (delta.0 / scale) as f32;
+        self.input.pointer_motion.y += (delta.1 / scale) as f32;
+    }
+
+    fn release_pointer(&mut self, window: &Window) {
+        let _ = window.set_cursor_grab(CursorGrabMode::None);
+        window.set_cursor_visible(true);
+        self.pointer_locked = false;
     }
 
     #[cfg(feature = "clipboard")]
