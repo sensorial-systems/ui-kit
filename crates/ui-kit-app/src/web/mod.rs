@@ -12,6 +12,7 @@ use crate::app::{App, WindowCommand};
 use crate::config::AppConfig;
 use crate::context::FrameContext;
 use crate::gpu;
+use crate::damage::Region;
 use crate::present::Presenter;
 use crate::scale::scale_commands;
 use anyhow::{anyhow, Result};
@@ -117,14 +118,14 @@ impl<A: App, C: CommandRenderer> WebRunner<A, C> {
         }
 
         let (width, height) = fit(&self.canvas);
-        let Some(surface_texture) = self.presenter.acquire(width, height)? else {
+        if width == 0 || height == 0 {
             return Ok(());
-        };
+        }
         let scale = web_sys::window().map_or(1.0, |w| w.device_pixel_ratio()) as f32;
         let (logical_width, logical_height) = (width as f32 / scale, height as f32 / scale);
 
         // Pictures first, so the frame can draw what was just uploaded.
-        self.app.prepare(&mut self.presenter.renderer);
+        self.app.prepare(&mut self.presenter.images());
 
         let time = (now() - self.start) / 1000.0;
         let viewport = Rect::new(0.0, 0.0, logical_width, logical_height);
@@ -150,7 +151,15 @@ impl<A: App, C: CommandRenderer> WebRunner<A, C> {
             }
         }
         scale_commands(&mut commands, scale);
-        self.presenter.present(&surface_texture, &commands, self.config.background)?;
+        // A frame that changes nothing leaves the canvas as it is.
+        let region = self.presenter.region(&commands, width, height);
+        if region == Region::Nothing {
+            return Ok(());
+        }
+        let Some(surface_texture) = self.presenter.acquire(width, height)? else {
+            return Ok(());
+        };
+        self.presenter.present(&surface_texture, commands, self.config.background, region)?;
         self.presenter.show(surface_texture);
         Ok(())
     }

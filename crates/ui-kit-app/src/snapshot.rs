@@ -133,6 +133,105 @@ pub fn render<A: App>(app: &mut A, snapshot: Snapshot) -> Result<Vec<u8>> {
         .collect())
 }
 
+/// Where the time of the frames [`bench`] ran went, in milliseconds a frame.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Timings {
+    pub frames: u32,
+    /// Draw commands the last frame made.
+    pub commands: usize,
+    /// The application making its commands.
+    pub build: f64,
+    /// The renderer turning them into GPU work.
+    pub encode: f64,
+    /// Submitting that work and waiting for the device to finish it.
+    pub gpu: f64,
+}
+
+impl std::fmt::Display for Timings {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} frames, {} commands: build {:.3} ms, encode {:.3} ms, gpu {:.3} ms, total {:.3} ms",
+            self.frames,
+            self.commands,
+            self.build,
+            self.encode,
+            self.gpu,
+            self.build + self.encode + self.gpu
+        )
+    }
+}
+
+/// Run `app` for the snapshot's frames, drawing every one and waiting for the
+/// device each time, and report where the time went. The first `warmup`
+/// frames are run and drawn before timing starts, for loads and caches to
+/// settle.
+pub fn bench<A: App>(app: &mut A, snapshot: Snapshot, warmup: u32) -> Result<Timings> {
+    use std::time::Instant;
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+    let adapter = pollster::block_on(instance.request_adapter(&Default::default()))?;
+    let (device, queue) = pollster::block_on(adapter.request_device(&app.device_descriptor(&adapter)))?;
+    let gpu = Gpu {
+        instance: instance.into(),
+        adapter: adapter.into(),
+        device: device.into(),
+        queue: queue.into(),
+    };
+    app.gpu_ready(&gpu);
+    let format = wgpu::TextureFormat::Bgra8Unorm;
+    let context = gpu.context();
+    let mut renderer = WgpuRenderer::with_custom(&context, format, VectorRenderer::new(&context, format))?;
+    app.fonts_ready(&renderer);
+    app.text_measure_ready(renderer.text_measure());
+    let target = renderer.create_texture(snapshot.width, snapshot.height)?;
+
+    let (width, height) = (snapshot.width as f32, snapshot.height as f32);
+    let mut timings = Timings::default();
+    for frame in 0..warmup + snapshot.frames.max(1) {
+        crate::task::run_ready();
+        let time = frame as f64 / 60.0;
+        let input = Input {
+            time: Some(time),
+            viewport: Some(Rect::new(0.0, 0.0, width, height)),
+            ..Default::default()
+        };
+        let ctx = FrameContext::new(input, width, height, time as f32, 1.0, true);
+        app.prepare(&mut renderer);
+        let start = Instant::now();
+        let mut commands = app.frame(&ctx);
+        resolve_transforms(&mut commands);
+        let built = Instant::now();
+        let mut encoder = gpu.device.create_command_encoder(&Default::default());
+        renderer.render(
+            &mut WgpuFrame {
+                encoder: &mut encoder,
+                target: TextureTarget::from_texture2d(&target)?,
+                clear: Some(wgpu::Color::BLACK),
+            },
+            &commands,
+        )?;
+        let encoded = Instant::now();
+        gpu.queue.submit([encoder.finish()]);
+        gpu.device.poll(wgpu::PollType::wait_indefinitely())?;
+        let done = Instant::now();
+        if frame >= warmup {
+            timings.frames += 1;
+            timings.commands = commands.len();
+            timings.build += (built - start).as_secs_f64() * 1000.0;
+            timings.encode += (encoded - built).as_secs_f64() * 1000.0;
+            timings.gpu += (done - encoded).as_secs_f64() * 1000.0;
+        } else {
+            // Let what the frame started (loads from storage) finish.
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+    }
+    let frames = timings.frames.max(1) as f64;
+    timings.build /= frames;
+    timings.encode /= frames;
+    timings.gpu /= frames;
+    Ok(timings)
+}
+
 /// Write RGBA pixels, row after row, as a PNG.
 pub fn save_png(path: &str, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
     let file = std::fs::File::create(path).with_context(|| path.to_string())?;

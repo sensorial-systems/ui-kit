@@ -1,6 +1,7 @@
 use crate::app::{App, WindowCommand};
 use crate::config::AppConfig;
 use crate::context::FrameContext;
+use crate::damage::Region;
 use crate::gpu;
 use crate::present::Presenter;
 use crate::scale::scale_commands;
@@ -41,6 +42,67 @@ pub struct AppRunner<A, C = NoCustom> {
     /// Whether the window is on screen. A hidden window is not drawn, but
     /// the application is still updated at the frame cadence.
     visible: bool,
+    /// What the frames did, printed each second when `UI_KIT_FRAME_STATS` is set.
+    stats: Option<FrameStats>,
+    /// When the last frame was made that changed nothing. Presenting waits
+    /// for the display, but a frame that is not presented does not: until a
+    /// refresh has passed, another is put off rather than made, so a mouse
+    /// reporting a thousand times a second makes no more frames than the
+    /// display shows.
+    unchanged_at: Option<Instant>,
+    /// A frame put off until then.
+    redraw_at: Option<Instant>,
+}
+
+/// How long the display shows a frame.
+fn refresh_interval(window: &Window) -> Duration {
+    let millihertz = window
+        .current_monitor()
+        .and_then(|monitor| monitor.refresh_rate_millihertz())
+        .unwrap_or(60_000)
+        .max(1_000);
+    Duration::from_micros(1_000_000_000 / millihertz as u64)
+}
+
+/// How many frames were made in a second, and how many of them drawn.
+#[derive(Default)]
+struct FrameStats {
+    since: Option<Instant>,
+    built: u32,
+    whole: u32,
+    parts: u32,
+    /// The share of the window the parts drawn covered, summed.
+    part_area: f32,
+    /// Time spent making and drawing frames, in seconds.
+    busy: f64,
+}
+
+impl FrameStats {
+    fn frame(&mut self, region: Region, size: (u32, u32), busy: Duration) {
+        self.built += 1;
+        self.busy += busy.as_secs_f64();
+        match region {
+            Region::Nothing => {}
+            Region::Everywhere => self.whole += 1,
+            Region::Part(rect) => {
+                self.parts += 1;
+                self.part_area += rect.width * rect.height / (size.0 as f32 * size.1 as f32);
+            }
+        }
+        let since = *self.since.get_or_insert_with(Instant::now);
+        if since.elapsed() >= Duration::from_secs(1) {
+            eprintln!(
+                "{} frames made: {} drawn whole, {} in part ({:.1}% of the window each), {} unchanged; {:.2} ms to make each",
+                self.built,
+                self.whole,
+                self.parts,
+                self.part_area / self.parts.max(1) as f32 * 100.0,
+                self.built - self.whole - self.parts,
+                self.busy * 1000.0 / self.built.max(1) as f64,
+            );
+            *self = Self::default();
+        }
+    }
 }
 
 impl<A: App> AppRunner<A, NoCustom> {
@@ -74,6 +136,9 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
             next: Instant::now(),
             error: None,
             visible,
+            stats: std::env::var_os("UI_KIT_FRAME_STATS").map(|_| FrameStats::default()),
+            unchanged_at: None,
+            redraw_at: None,
         }
     }
 
@@ -193,11 +258,19 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         let Some(presenter) = self.presenter.as_mut() else {
             return Ok(());
         };
+        let started = Instant::now();
+        if let Some(unchanged) = self.unchanged_at {
+            let due = unchanged + refresh_interval(window);
+            if started < due {
+                self.redraw_at = Some(due);
+                return Ok(());
+            }
+        }
+        self.unchanged_at = None;
         let size = window.inner_size();
-        // Suspended, minimized or occluded: there is nothing to draw on.
-        let Some(surface_texture) = presenter.acquire(size.width, size.height)? else {
+        if size.width == 0 || size.height == 0 {
             return Ok(());
-        };
+        }
 
         let scale = window.scale_factor() as f32;
         let mut style = WindowStyle::default();
@@ -213,7 +286,7 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         style.close.foreground = style.title.foreground;
 
         // Pictures first, so the frame can draw what was just uploaded.
-        self.app.prepare(&mut presenter.renderer);
+        self.app.prepare(&mut presenter.images());
 
         let elapsed = self.start.elapsed().as_secs_f32();
         let dark = self.config.dark;
@@ -236,9 +309,28 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         }
 
         scale_commands(&mut commands, scale);
-        presenter.present(&surface_texture, &commands, bg)?;
+        // A frame that changes nothing is not drawn: the window keeps
+        // showing the last one.
+        let region = presenter.region(&commands, size.width, size.height);
+        if let Some(stats) = &mut self.stats {
+            stats.frame(region, (size.width, size.height), started.elapsed());
+        }
+        if region == Region::Nothing {
+            self.unchanged_at = Some(started);
+            return Ok(());
+        }
+        // Suspended, minimized or occluded: there is nothing to draw on.
+        let Some(surface_texture) = presenter.acquire(size.width, size.height)? else {
+            return Ok(());
+        };
+        presenter.present(&surface_texture, commands, bg, region)?;
         window.pre_present_notify();
         presenter.show(surface_texture);
+        // Something changed, and may be moving: look again at the display's
+        // next refresh rather than the next update. Presenting waits for the
+        // refresh, so this runs at the display's rate while things move and
+        // stops the first frame nothing does.
+        window.request_redraw();
         Ok(())
     }
 }
@@ -360,6 +452,17 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
             }
             self.next = now + frame_interval;
         }
-        event_loop.set_control_flow(ControlFlow::WaitUntil(self.next));
+        let mut wake = self.next;
+        if let Some(at) = self.redraw_at {
+            if now >= at {
+                self.redraw_at = None;
+                if let Some(w) = &self.window {
+                    w.request_redraw();
+                }
+            } else {
+                wake = wake.min(at);
+            }
+        }
+        event_loop.set_control_flow(ControlFlow::WaitUntil(wake));
     }
 }

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 use ui_kit_immediate::ImageId;
 use ui_kit_wgpu::{CommandRenderer, GpuContext, Texture2d, WgpuRenderer};
@@ -59,5 +60,50 @@ impl<C: CommandRenderer> ImageStore for WgpuRenderer<C> {
 
     fn image_format(&self) -> wgpu::TextureFormat {
         WgpuRenderer::image_format(self)
+    }
+}
+
+/// The renderer's pictures, noting what changes: a picture the application
+/// renders into itself changes without asking, so wherever it is drawn is
+/// drawn again every frame; an uploaded one changes only when uploaded.
+pub(crate) struct TrackedImages<'a, C> {
+    pub renderer: &'a mut WgpuRenderer<C>,
+    /// The pictures the application renders into.
+    pub live: &'a mut HashSet<ImageId>,
+    /// Whether any picture was uploaded, registered or removed.
+    pub changed: &'a mut bool,
+}
+
+impl<C: CommandRenderer> ImageStore for TrackedImages<'_, C> {
+    fn upload_rgba(&mut self, id: ImageId, width: u32, height: u32, rgba: &[u8]) -> anyhow::Result<()> {
+        self.live.remove(&id);
+        *self.changed = true;
+        self.renderer.upload_image(id, width, height, rgba)
+    }
+
+    fn register(&mut self, id: ImageId, texture: Texture2d) {
+        self.live.insert(id);
+        *self.changed = true;
+        self.renderer.register_image(id, texture);
+    }
+
+    fn register_texture(&mut self, id: ImageId, texture: Arc<wgpu::Texture>, view: Arc<wgpu::TextureView>) {
+        self.live.insert(id);
+        *self.changed = true;
+        self.renderer.register_texture(id, texture, view);
+    }
+
+    fn remove(&mut self, id: ImageId) {
+        self.live.remove(&id);
+        *self.changed = true;
+        self.renderer.remove_image(id);
+    }
+
+    fn gpu(&self) -> &GpuContext {
+        self.renderer.gpu_context()
+    }
+
+    fn image_format(&self) -> wgpu::TextureFormat {
+        self.renderer.image_format()
     }
 }

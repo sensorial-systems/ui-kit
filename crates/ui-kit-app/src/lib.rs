@@ -6,6 +6,7 @@
 
 pub mod app;
 mod blit;
+mod damage;
 pub mod config;
 pub mod context;
 pub mod fonts;
@@ -111,3 +112,25 @@ where
 
 #[cfg(target_os = "android")]
 pub mod android;
+
+/// Where `after` differs from `before` on a `size` target, and the commands
+/// that draw it there over `before`, the part cleared to `background` first.
+/// `None` when nothing or everything has to be drawn. For tests of drawing
+/// in part.
+#[doc(hidden)]
+pub fn damage_region(
+    before: &[DrawCommand],
+    after: &[DrawCommand],
+    size: (u32, u32),
+    background: ui_kit_core::Color,
+) -> Option<(ui_kit_core::Rect, Vec<DrawCommand>)> {
+    let mut damage = damage::Damage::default();
+    damage.shown(before.to_vec());
+    match damage.region(after, size, |_| false) {
+        damage::Region::Part(part) => {
+            let screen = ui_kit_core::Rect::new(0.0, 0.0, size.0 as f32, size.1 as f32);
+            Some((part, damage::clip_to(after, part, screen, background)))
+        }
+        _ => None,
+    }
+}

@@ -3,7 +3,7 @@
 
 pub use prism_ui_render::{
     alpha_mode::transparent_alpha_mode,
-    command_renderer::{CommandRenderer, NoCustom},
+    command_renderer::{CommandRenderer, NoCustom, TargetInfo},
     frame::WgpuFrame,
     gpu_context::GpuContext,
     renderer::WgpuUiRenderer,

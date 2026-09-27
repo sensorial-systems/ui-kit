@@ -2,11 +2,14 @@
 //! the texture the UI is drawn into. Shared by every runner.
 
 use crate::blit::Blit;
+use crate::damage::{clip_to, Damage, Region};
 use crate::gpu::Gpu;
+use crate::images::TrackedImages;
 use anyhow::{anyhow, bail, Result};
-use ui_kit_core::Color;
+use std::collections::HashSet;
+use ui_kit_core::{Color, Material, Rect};
 use ui_kit_immediate::composition::UiRenderer;
-use ui_kit_immediate::DrawCommand;
+use ui_kit_immediate::{DrawCommand, Image, ImageId, IMAGE_MATERIAL};
 use ui_kit_wgpu::{CommandRenderer, Texture2d, TextureTarget, WgpuFrame, WgpuRenderer};
 
 pub(crate) struct Presenter<C> {
@@ -21,6 +24,12 @@ pub(crate) struct Presenter<C> {
     /// canvas), made the first time one is met.
     blit: Option<Blit>,
     transparent: bool,
+    /// What the target shows, to draw only what changes.
+    damage: Damage,
+    /// The pictures the application renders into itself.
+    live_images: HashSet<ImageId>,
+    /// Whether a picture changed since the last frame drawn.
+    images_changed: bool,
 }
 
 // Surfaces come and go only natively (Android's suspend and resume), so a
@@ -46,6 +55,9 @@ impl<C: CommandRenderer> Presenter<C> {
             target: None,
             blit: None,
             transparent,
+            damage: Damage::default(),
+            live_images: HashSet::new(),
+            images_changed: false,
         })
     }
 
@@ -105,24 +117,64 @@ impl<C: CommandRenderer> Presenter<C> {
         })
     }
 
-    /// Draw `commands`, already in physical pixels, onto `output`; opaque
-    /// windows are cleared to `background` first. [`Presenter::show`] then
-    /// puts it on screen.
+    /// The pictures the renderer draws, for [`App::prepare`](crate::App::prepare).
+    pub fn images(&mut self) -> TrackedImages<'_, C> {
+        TrackedImages {
+            renderer: &mut self.renderer,
+            live: &mut self.live_images,
+            changed: &mut self.images_changed,
+        }
+    }
+
+    /// Where `commands`, in physical pixels, have to be drawn on a `width`
+    /// by `height` surface for it to show them. [`Region::Nothing`] when it
+    /// already does: there is no frame to present.
+    pub fn region(&self, commands: &[DrawCommand], width: u32, height: u32) -> Region {
+        let target = self.target.as_ref().map(|t| t.size);
+        if target != Some((width, height)) || self.images_changed {
+            return Region::Everywhere;
+        }
+        let live = |command: &DrawCommand| match &command.style.material {
+            Material::Custom { name, parameters } if name == IMAGE_MATERIAL => {
+                Image::decode(parameters).is_some_and(|(id, _)| self.live_images.contains(&id))
+            }
+            _ => self.renderer.custom.wants(command) && !self.renderer.custom.is_static(command),
+        };
+        self.damage.region(commands, (width, height), live)
+    }
+
+    /// Draw `commands`, already in physical pixels, onto `output` where
+    /// [`region`](Self::region) found they changed; opaque windows are
+    /// cleared to `background` first. [`Presenter::show`] then puts it on
+    /// screen.
     pub fn present(
         &mut self,
         output: &wgpu::SurfaceTexture,
-        commands: &[DrawCommand],
+        commands: Vec<DrawCommand>,
         background: Color,
+        region: Region,
     ) -> Result<()> {
         let config = self.config.as_ref().ok_or_else(|| anyhow!("no surface"))?;
         let (width, height) = (output.texture.width(), output.texture.height());
+        let mut region = region;
         if self.target.as_ref().is_none_or(|t| t.size != (width, height)) {
             self.target = Some(self.renderer.create_texture(width, height)?);
+            region = Region::Everywhere;
         }
+        self.images_changed = false;
+        // Until this frame is drawn, what the target shows is not known.
+        self.damage.invalidate();
         let target = self.target.as_ref().unwrap();
         let mut encoder = self.gpu.device.create_command_encoder(&Default::default());
         let frame_target = TextureTarget::from_texture2d(target)?;
-        let frame = if self.transparent {
+        let part = match region {
+            Region::Part(part) => Some(part),
+            _ => None,
+        };
+        let frame = if part.is_some() {
+            // The part is cleared by the first command drawn in it.
+            WgpuFrame::new(&mut encoder, frame_target)
+        } else if self.transparent {
             WgpuFrame::transparent(&mut encoder, frame_target)
         } else {
             WgpuFrame {
@@ -136,7 +188,16 @@ impl<C: CommandRenderer> Presenter<C> {
                 }),
             }
         };
-        self.renderer.render(&mut { frame }, commands)?;
+        match part {
+            Some(part) => {
+                let screen = Rect::new(0.0, 0.0, width as f32, height as f32);
+                // The part is cleared to what the whole would be.
+                let clear = if self.transparent { [0.0; 4] } else { background };
+                let clipped = clip_to(&commands, part, screen, clear);
+                self.renderer.render(&mut { frame }, &clipped)?;
+            }
+            None => self.renderer.render(&mut { frame }, &commands)?,
+        }
         if config.usage.contains(wgpu::TextureUsages::COPY_DST) {
             encoder.copy_texture_to_texture(
                 target.texture.as_ref().unwrap().as_image_copy(),
@@ -156,6 +217,7 @@ impl<C: CommandRenderer> Presenter<C> {
             );
         }
         self.gpu.queue.submit([encoder.finish()]);
+        self.damage.shown(commands);
         Ok(())
     }
 
@@ -185,6 +247,9 @@ fn configure(
     } else if let Some(format) = caps.formats.iter().copied().find(|f| !f.is_srgb()) {
         config.format = format;
     }
+    // Presenting waits for the display's refresh: a host that draws again
+    // as soon as a frame is shown runs at the display's rate, not faster.
+    config.present_mode = wgpu::PresentMode::AutoVsync;
     config.usage = wgpu::TextureUsages::RENDER_ATTACHMENT;
     if caps.usages.contains(wgpu::TextureUsages::COPY_DST) {
         config.usage |= wgpu::TextureUsages::COPY_DST;
