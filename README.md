@@ -273,7 +273,10 @@ the same everywhere. Navigation: `Menu` (horizontal or
 vertical; children cascade into submenus) and `Sidebar` (a column of sections
 with icons, badges and a highlight that slides to the chosen one; icons only
 when narrow). Charts and graphs: `Sparkline`, `AreaChart` (a series over a
-filled area, with guide lines and a pinnable range), `Gauge` (a ring filled
+filled area, with guide lines, a pinnable range, a reference line and a
+window it scrolls through), `TimeSeries` (the last seconds of a live value,
+sampled at a steady rate for an `AreaChart`, with readouts held long enough
+to read), `Gauge` (a ring filled
 to a fraction, coloured by how full), `BarChart` (bars on a shared scale with
 a caption each), `SegmentedBar` (parts of a whole laid end to end, the rest
 left as track, with tooltips and a legend), `SlotLane` (capacity as slots in

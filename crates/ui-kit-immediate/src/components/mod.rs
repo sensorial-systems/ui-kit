@@ -34,7 +34,7 @@ pub use button::{Button, ButtonVariant};
 pub use card::{panel, popup_surface, Card};
 pub use charts::{
     arc, AreaChart, Bar, BarChart, BarGroup, ChartOrientation, Gauge, PieChart, PieSlice, SlotLane,
-    Sparkline, StackedBarChart, SERIES,
+    Sparkline, StackedBarChart, TimeSeries, SERIES,
 };
 pub use color_picker::{
     hsv, parse_hex, ColorField, ColorFieldState, ColorPicker, ColorPickerMode, PRESETS,

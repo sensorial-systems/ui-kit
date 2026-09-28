@@ -450,12 +450,19 @@ pub fn arc(
 /// Where a [`Sparkline`] shows a shape, this shows a quantity: the range can
 /// be pinned, so a series that is nowhere near its ceiling looks that way,
 /// and the fill gives the line weight against the page.
+///
+/// Given a [`window`](Self::window), the values are laid out at the pace of
+/// a full window and against the right edge: a chart of a live
+/// [`TimeSeries`] scrolls as it fills instead of stretching.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AreaChart {
     color: Option<Color>,
     range: Option<(f32, f32)>,
     guides: usize,
     line_width: f32,
+    background: Option<Color>,
+    window: Option<usize>,
+    reference: Option<(f32, Color)>,
 }
 
 impl Default for AreaChart {
@@ -465,6 +472,9 @@ impl Default for AreaChart {
             range: None,
             guides: 3,
             line_width: 1.5,
+            background: None,
+            window: None,
+            reference: None,
         }
     }
 }
@@ -496,6 +506,31 @@ impl AreaChart {
         self
     }
 
+    /// Fill the chart's rect behind the series, as a well it is drawn in.
+    pub fn background(mut self, color: Color) -> Self {
+        self.background = Some(color);
+        self
+    }
+
+    /// Lay the values out as `values` of a window this many long, against
+    /// the right edge, so fewer values take less of the width.
+    pub fn window(mut self, values: usize) -> Self {
+        self.window = Some(values.max(2));
+        self
+    }
+
+    /// A line across the chart at `value`, when it is in range: a limit or
+    /// a target to read the series against.
+    pub fn reference(mut self, value: f32, color: Color) -> Self {
+        self.reference = Some((value, color));
+        self
+    }
+
+    /// Draw a [`TimeSeries`] over the time it holds.
+    pub fn show_series(&self, ui: &mut Ui, rect: Rect, series: &TimeSeries) {
+        self.window(series.capacity()).show(ui, rect, series.values());
+    }
+
     /// The vertical extent the chart shows for `values`.
     pub fn bounds(&self, values: &[f32]) -> (f32, f32) {
         match self.range {
@@ -516,6 +551,9 @@ impl AreaChart {
 
     pub fn show(&self, ui: &mut Ui, rect: Rect, values: &[f32]) {
         let p = ui.theme.palette;
+        if let Some(fill) = self.background {
+            panel(ui, rect, fill, [0.0; 4], 4.0);
+        }
         let guide = super::theme::with_alpha(p.border, 0.7);
         if self.guides > 0 {
             for i in 0..=self.guides {
@@ -528,17 +566,30 @@ impl AreaChart {
                 );
             }
         }
-        if values.len() < 2 || rect.width <= 0.0 || rect.height <= 0.0 {
+        if rect.width <= 0.0 || rect.height <= 0.0 {
             return;
         }
         let (min, max) = self.bounds(values);
         let span = (max - min).max(f32::EPSILON);
-        let last = (values.len() - 1) as f32;
         let y_of = |v: f32| rect.bottom() - ((v - min) / span).clamp(0.0, 1.0) * rect.height;
+        if let Some((value, color)) = self.reference.filter(|(v, _)| (min..=max).contains(v)) {
+            let y = y_of(value);
+            polyline(ui, &[Point::new(rect.x, y), Point::new(rect.right(), y)], 1.0, color);
+        }
+        if values.len() < 2 {
+            return;
+        }
+        let last = (values.len() - 1) as f32;
+        // In a window, the values keep its pace from the right edge.
+        let width = match self.window {
+            Some(window) => rect.width * (last / (window - 1) as f32).min(1.0),
+            None => rect.width,
+        };
+        let left = rect.right() - width;
         let points: Vec<Point> = values
             .iter()
             .enumerate()
-            .map(|(i, v)| Point::new(rect.x + i as f32 / last * rect.width, y_of(*v)))
+            .map(|(i, v)| Point::new(left + i as f32 / last * width, y_of(*v)))
             .collect();
         let color = self.color.unwrap_or(p.accent);
         let mut area = Vec::with_capacity(points.len() * 6);
@@ -555,6 +606,135 @@ impl AreaChart {
         if let Some(end) = points.last() {
             crate::vector::circle(ui, *end, self.line_width + 1.5, color);
         }
+    }
+}
+
+/// How the values pushed within one sample period make the sample.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Reduce {
+    Mean,
+    Max,
+    Sum,
+}
+
+/// The last seconds of a value that changes too fast to read as a number,
+/// sampled at a steady rate however often it is pushed, for an
+/// [`AreaChart`] to draw ([`AreaChart::show_series`]) and a readout to
+/// hold ([`TimeSeries::held_mean`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct TimeSeries {
+    values: Vec<f32>,
+    capacity: usize,
+    period: f32,
+    reduce: Reduce,
+    /// When the sample being gathered closes; None before the first push.
+    next: Option<f32>,
+    sum: f32,
+    max: f32,
+    count: u32,
+    /// Samples taken since the start, to hold readouts on whole blocks.
+    taken: u64,
+}
+
+impl TimeSeries {
+    fn new(seconds: f32, rate: f32, reduce: Reduce) -> Self {
+        let capacity = (seconds * rate).round().max(2.0) as usize;
+        Self {
+            values: Vec::with_capacity(capacity + 1),
+            capacity,
+            period: 1.0 / rate.max(f32::EPSILON),
+            reduce,
+            next: None,
+            sum: 0.0,
+            max: f32::MIN,
+            count: 0,
+            taken: 0,
+        }
+    }
+
+    /// `seconds` of a value, `rate` samples a second, each the mean of what
+    /// was pushed in its period.
+    pub fn mean(seconds: f32, rate: f32) -> Self {
+        Self::new(seconds, rate, Reduce::Mean)
+    }
+
+    /// As [`mean`](Self::mean), each sample the most pushed in its period:
+    /// peaks are kept.
+    pub fn max(seconds: f32, rate: f32) -> Self {
+        Self::new(seconds, rate, Reduce::Max)
+    }
+
+    /// As [`mean`](Self::mean), each sample the sum of what was pushed in
+    /// its period: counts of events.
+    pub fn sum(seconds: f32, rate: f32) -> Self {
+        Self::new(seconds, rate, Reduce::Sum)
+    }
+
+    /// Add what the value is at `time`, in seconds. A value that is not
+    /// finite is not counted. Pushed after a gap longer than the series,
+    /// it starts over.
+    pub fn push(&mut self, time: f32, value: f32) {
+        let next = *self.next.get_or_insert(time + self.period);
+        if time - next > self.period * self.capacity as f32 {
+            self.clear();
+            self.next = Some(time + self.period);
+        }
+        if value.is_finite() {
+            self.sum += value;
+            self.max = self.max.max(value);
+            self.count += 1;
+        }
+        while let Some(next) = self.next.filter(|&n| time >= n) {
+            let sample = match (self.count, self.reduce) {
+                (0, Reduce::Sum) => 0.0,
+                // Nothing came in the period: the value stayed as it was.
+                (0, _) => self.values.last().copied().unwrap_or(0.0),
+                (n, Reduce::Mean) => self.sum / n as f32,
+                (_, Reduce::Max) => self.max,
+                (_, Reduce::Sum) => self.sum,
+            };
+            self.values.push(sample);
+            if self.values.len() > self.capacity {
+                self.values.remove(0);
+            }
+            self.taken += 1;
+            (self.sum, self.max, self.count) = (0.0, f32::MIN, 0);
+            self.next = Some(next + self.period);
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.values.clear();
+        (self.next, self.sum, self.max, self.count) = (None, 0.0, f32::MIN, 0);
+    }
+
+    /// The samples, oldest first.
+    pub fn values(&self) -> &[f32] {
+        &self.values
+    }
+
+    /// How many samples it holds when full.
+    pub fn capacity(&self) -> usize {
+        self.capacity
+    }
+
+    /// The largest sample, if any.
+    pub fn peak(&self) -> Option<f32> {
+        self.values.iter().copied().reduce(f32::max)
+    }
+
+    /// The mean of the last whole block of `block` samples: a readout that
+    /// changes a few times a second, however fast the value does.
+    pub fn held_mean(&self, block: usize) -> Option<f32> {
+        let block = block.max(1) as u64;
+        let end = self.taken - self.taken % block;
+        let behind = (self.taken - end) as usize;
+        let len = self.values.len();
+        if end == 0 || len < behind + block as usize {
+            return self.values.last().copied();
+        }
+        let window = &self.values[len - behind - block as usize..len - behind];
+        Some(window.iter().sum::<f32>() / window.len() as f32)
     }
 }
 
@@ -740,5 +920,58 @@ impl SlotLane {
                 badge.show(ui, cell.center_vertically(22.0), &text);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_time_series_samples_at_a_steady_rate() {
+        let mut series = TimeSeries::mean(1.0, 10.0);
+        for i in 0..=63 {
+            series.push(i as f32 / 60.0, 5.0);
+        }
+        assert_eq!(series.values().len(), 10);
+        assert!(series.values().iter().all(|&v| v == 5.0));
+    }
+
+    #[test]
+    fn a_time_series_sums_events_and_holds_readouts() {
+        let mut events = TimeSeries::sum(1.0, 10.0);
+        events.push(0.0, 0.0);
+        events.push(0.05, 2.0);
+        events.push(0.12, 0.0);
+        assert_eq!(events.values(), &[2.0]);
+        let mut rising = TimeSeries::mean(2.0, 10.0);
+        for i in 0..=100 {
+            rising.push(i as f32 * 0.01, i as f32);
+        }
+        // Held on the last whole block of five samples, not the latest.
+        let held = rising.held_mean(5).unwrap();
+        assert!(held < *rising.values().last().unwrap(), "{held}");
+    }
+
+    #[test]
+    fn a_time_series_starts_over_after_a_long_gap() {
+        let mut series = TimeSeries::max(1.0, 10.0);
+        for i in 0..20 {
+            series.push(i as f32 * 0.1, 1.0);
+        }
+        series.push(100.0, 3.0);
+        assert!(series.values().is_empty());
+    }
+
+    #[test]
+    fn a_windowed_chart_scrolls_in_from_the_right() {
+        let mut ui = Ui::default();
+        ui.begin(crate::Input::default());
+        let rect = Rect::new(0.0, 0.0, 100.0, 20.0);
+        AreaChart::new().guides(0).window(11).show(&mut ui, rect, &[1.0, 2.0]);
+        // Two values of a window of eleven: the last tenth of the width.
+        let left = ui.commands.iter().map(|c| c.rect.x).fold(f32::INFINITY, f32::min);
+        assert!((left - 90.0).abs() < 1.0, "{left}");
+        let _ = ui.end();
     }
 }

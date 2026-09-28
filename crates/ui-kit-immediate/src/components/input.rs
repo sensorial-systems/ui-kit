@@ -155,6 +155,7 @@ impl NumberField {
 pub struct Select<'a> {
     value: &'a str,
     disabled: bool,
+    font_size: Option<f32>,
 }
 
 impl<'a> Select<'a> {
@@ -162,6 +163,7 @@ impl<'a> Select<'a> {
         Self {
             value,
             disabled: false,
+            font_size: None,
         }
     }
 
@@ -170,13 +172,23 @@ impl<'a> Select<'a> {
         self
     }
 
+    /// The size of the chosen value's text; a button's by default.
+    pub fn font_size(mut self, size: f32) -> Self {
+        self.font_size = Some(size);
+        self
+    }
+
     /// Draw the closed select; `clicked` means it should open.
     pub fn show(&self, ui: &mut Ui, id: &str, rect: Rect) -> Response {
-        Button::new(self.value)
+        let button = Button::new(self.value)
             .variant(ButtonVariant::Outline)
             .trailing(Icon::ChevronDown)
-            .disabled(self.disabled)
-            .show(ui, id, rect)
+            .disabled(self.disabled);
+        match self.font_size {
+            Some(size) => button.font_size(size),
+            None => button,
+        }
+        .show(ui, id, rect)
     }
 }
 

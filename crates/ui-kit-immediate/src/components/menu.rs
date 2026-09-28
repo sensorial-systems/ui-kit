@@ -67,8 +67,15 @@ const MARGIN: f32 = super::popup::MARGIN;
 
 /// How tall a popup of `rows` rows is.
 pub fn popup_height(rows: usize) -> f32 {
-    rows as f32 * (ROW + ROW_GAP) - ROW_GAP + PADDING * 2.0
+    popup_height_with(rows, ROW)
 }
+
+fn popup_height_with(rows: usize, row: f32) -> f32 {
+    rows as f32 * (row + ROW_GAP) - ROW_GAP + PADDING * 2.0
+}
+
+/// The text size a popup row is made for.
+const ROW_FONT: f32 = 14.0;
 
 use super::popup::{keep_inside, viewport};
 
@@ -292,6 +299,7 @@ impl<'a> Menu<'a> {
 pub struct Dropdown<'a> {
     options: &'a [&'a str],
     disabled: bool,
+    font_size: Option<f32>,
 }
 
 impl<'a> Dropdown<'a> {
@@ -299,6 +307,7 @@ impl<'a> Dropdown<'a> {
         Self {
             options,
             disabled: false,
+            font_size: None,
         }
     }
 
@@ -307,12 +316,23 @@ impl<'a> Dropdown<'a> {
         self
     }
 
+    /// The size of the options' text, closed and in the list; the list's
+    /// rows grow with it.
+    pub fn font_size(mut self, size: f32) -> Self {
+        self.font_size = Some(size);
+        self
+    }
+
     /// Draw the dropdown; `changed` means `selected` was changed.
     pub fn show(&self, ui: &mut Ui, id: &str, rect: Rect, selected: &mut usize) -> crate::Response {
         let label = self.options.get(*selected).copied().unwrap_or("");
-        let mut response = super::Select::new(label)
-            .disabled(self.disabled)
-            .show(ui, id, rect);
+        let select = super::Select::new(label).disabled(self.disabled);
+        let mut response = match self.font_size {
+            Some(size) => select.font_size(size),
+            None => select,
+        }
+        .show(ui, id, rect);
+        let row = ROW * (self.font_size.unwrap_or(ROW_FONT) / ROW_FONT).max(1.0);
         let popup_id = format!("{id}-options");
         if response.clicked {
             ui.toggle_popup(&popup_id);
@@ -325,7 +345,7 @@ impl<'a> Dropdown<'a> {
                 rect.x,
                 rect.bottom() + OFFSET,
                 rect.width,
-                popup_height(self.options.len()),
+                popup_height_with(self.options.len(), row),
             ),
             viewport(ui),
         );
@@ -341,9 +361,13 @@ impl<'a> Dropdown<'a> {
                     } else {
                         ButtonVariant::Text
                     };
-                    let clicked = Button::new(option)
-                        .variant(variant)
-                        .show(ui, &format!("{popup_id}-{i}"), rows.row(ROW))
+                    let button = Button::new(option).variant(variant);
+                    let button = match self.font_size {
+                        Some(size) => button.font_size(size),
+                        None => button,
+                    };
+                    let clicked = button
+                        .show(ui, &format!("{popup_id}-{i}"), rows.row(row))
                         .clicked;
                     if clicked {
                         response.changed = i != *selected;
