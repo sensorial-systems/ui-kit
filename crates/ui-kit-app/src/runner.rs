@@ -178,6 +178,11 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
                         window.focus_window();
                     }
                 }
+                WindowCommand::Redraw => {
+                    if let (Some(window), true) = (&self.window, self.visible) {
+                        window.request_redraw();
+                    }
+                }
                 WindowCommand::Exit => event_loop.exit(),
             }
         }

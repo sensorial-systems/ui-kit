@@ -19,6 +19,9 @@ pub enum WindowCommand {
     Hide,
     /// Bring an already visible window to the front.
     Focus,
+    /// Draw the window again: something it shows changed without any input
+    /// -- a status the application keeps, a result from elsewhere.
+    Redraw,
     /// Leave the event loop.
     Exit,
 }
