@@ -154,6 +154,22 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         self.error.as_deref()
     }
 
+    /// The window, once the event loop has made it: for a host running
+    /// several, to tell their events apart, and to place it.
+    pub fn window(&self) -> Option<&Arc<Window>> {
+        self.window.as_ref()
+    }
+
+    /// Draw the window, or stop drawing it, without showing or hiding it --
+    /// for a host that shows it itself: without taking the keyboard from
+    /// the window that has it, say.
+    pub fn set_drawn(&mut self, drawn: bool) {
+        self.visible = drawn;
+        if let (Some(window), true) = (&self.window, drawn) {
+            window.request_redraw();
+        }
+    }
+
     /// Do what the application asked of its window since the last update.
     fn apply_window_commands(&mut self, event_loop: &ActiveEventLoop) {
         for command in self.app.window_commands() {
@@ -296,21 +312,27 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         let elapsed = self.start.elapsed().as_secs_f32();
         let dark = self.config.dark;
         let bounds = self.chrome.bounds(window);
-        let input = self.collector.take(bounds);
-        let mut commands = if self.config.chrome {
-            self.chrome
-                .frame(window, input, &style, |mut input, width, height| {
-                    input.viewport = Some(Rect::new(0.0, 0.0, width, height));
-                    let ctx = FrameContext::new(input, width, height, elapsed, scale, dark);
-                    self.app.frame(&ctx)
-                })
-        } else {
-            let ctx = FrameContext::new(input, bounds.width, bounds.height, elapsed, scale, dark);
-            self.app.frame(&ctx)
-        };
-        // The cursor, input method and clipboard follow what the frame asked for.
-        if let Some(output) = self.app.output() {
-            self.collector.apply(window, &output);
+        // The UI steps through the input in the order it came -- each
+        // stretch between button changes a step of its own, so a click is
+        // seen where it was made, however slow the frame -- and the last
+        // step is the one drawn.
+        let mut commands = Vec::new();
+        for input in self.collector.take(bounds) {
+            commands = if self.config.chrome {
+                self.chrome
+                    .frame(window, input, &style, |mut input, width, height| {
+                        input.viewport = Some(Rect::new(0.0, 0.0, width, height));
+                        let ctx = FrameContext::new(input, width, height, elapsed, scale, dark);
+                        self.app.frame(&ctx)
+                    })
+            } else {
+                let ctx = FrameContext::new(input, bounds.width, bounds.height, elapsed, scale, dark);
+                self.app.frame(&ctx)
+            };
+            // The cursor, input method and clipboard follow what the step asked for.
+            if let Some(output) = self.app.output() {
+                self.collector.apply(window, &output);
+            }
         }
 
         scale_commands(&mut commands, scale);
