@@ -1,4 +1,4 @@
-use super::theme::{base, faded, with_alpha};
+use super::theme::{base, faded, on, with_alpha};
 use crate::icon::Icon;
 use crate::layout::{HorizontalAlignment, VerticalAlignment};
 use crate::{Response, Ui};
@@ -127,7 +127,7 @@ impl<'a> Button<'a> {
             ButtonVariant::Primary => {
                 style.fill = p.accent;
                 style.stroke = p.accent;
-                style.foreground = [1.0; 4];
+                style.foreground = on(p.accent);
             }
             ButtonVariant::Secondary => {
                 style.fill = p.raised;
@@ -141,7 +141,7 @@ impl<'a> Button<'a> {
             ButtonVariant::Danger => {
                 style.fill = p.danger;
                 style.stroke = p.danger;
-                style.foreground = [1.0; 4];
+                style.foreground = on(p.danger);
             }
             ButtonVariant::Selected => {
                 style.fill = with_alpha(p.accent, 0.15);

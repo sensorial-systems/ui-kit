@@ -3,7 +3,7 @@
 use super::button::{Button, ButtonVariant};
 use super::card::panel;
 use super::input::TextInput;
-use super::theme::{with_alpha, INFO};
+use super::theme::{on, with_alpha, INFO};
 use super::Label;
 use crate::icon::Icon;
 use crate::vector::{center, fill_triangles, line};
@@ -225,7 +225,7 @@ impl GraphNode {
                 );
                 Label::new()
                     .weight(500)
-                    .color(if self.selected { [1.0; 4] } else { p.text })
+                    .color(if self.selected { on(p.accent) } else { p.text })
                     .align(TextAlign::Center)
                     .show(ui, rect, label);
                 response.clicked

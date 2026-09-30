@@ -18,6 +18,9 @@ use ui_kit_core::{Color, Rect, TextAlign};
 pub enum JobStatus {
     /// Doing its work.
     Running,
+    /// Running, but on groundwork before its real work can go at full speed:
+    /// compiling, tuning, warming a cache.
+    Preparing,
     /// Running, and asked to pause; it has not stopped yet.
     Pausing,
     /// Waiting its turn.
@@ -45,6 +48,7 @@ impl JobStatus {
     pub fn label(self) -> &'static str {
         match self {
             Self::Running => "Running",
+            Self::Preparing => "Preparing",
             Self::Pausing => "Pausing",
             Self::Queued => "Queued",
             Self::Paused => "Paused",
@@ -58,7 +62,7 @@ impl JobStatus {
     pub fn color(self, ui: &Ui) -> Color {
         match self {
             Self::Running | Self::Completed => SUCCESS,
-            Self::Pausing => INFO,
+            Self::Pausing | Self::Preparing => INFO,
             Self::Queued => WARNING,
             Self::Failed => DANGER,
             Self::Paused | Self::Pending | Self::Stopped => ui.theme.palette.muted,
@@ -68,7 +72,7 @@ impl JobStatus {
     fn variant(self) -> StatusVariant {
         match self {
             Self::Running | Self::Completed => StatusVariant::Success,
-            Self::Pausing => StatusVariant::Info,
+            Self::Pausing | Self::Preparing => StatusVariant::Info,
             Self::Queued => StatusVariant::Warning,
             Self::Failed => StatusVariant::Error,
             Self::Paused | Self::Pending | Self::Stopped => StatusVariant::Default,
@@ -79,6 +83,7 @@ impl JobStatus {
     pub fn hint(self) -> &'static str {
         match self {
             Self::Running => "Doing its work.",
+            Self::Preparing => "Getting ready before its real work can run at full speed.",
             Self::Pausing => "Asked to pause. It stops at its next checkpoint.",
             Self::Queued => "Waiting its turn, in priority order.",
             Self::Paused => "Held until resumed. It keeps its place.",
@@ -116,8 +121,14 @@ pub struct Job {
     /// last said.
     pub detail: String,
     pub status: JobStatus,
+    /// Says the status in the job's own words -- "Tuning" rather than
+    /// "Preparing" -- with its tooltip. `None` uses the status's own.
+    pub status_text: Option<(String, String)>,
     /// From 0 to 1, when known.
     pub progress: Option<f32>,
+    /// Under way with no way to say how far: drawn as a bar that moves rather
+    /// than fills. Ignored when [`Self::progress`] is known.
+    pub working: bool,
     /// Drawn in columns of their own, in order.
     pub badges: Vec<JobBadge>,
     /// How long, as a person reads it: "running 1 min 12 s".
@@ -135,7 +146,9 @@ impl Job {
             title: title.into(),
             detail: String::new(),
             status,
+            status_text: None,
             progress: None,
+            working: false,
             badges: Vec::new(),
             time: String::new(),
             time_detail: String::new(),
@@ -150,6 +163,18 @@ impl Job {
 
     pub fn progress(mut self, progress: f32) -> Self {
         self.progress = Some(progress.clamp(0.0, 1.0));
+        self
+    }
+
+    /// Draws as under way without saying how far.
+    pub fn working(mut self) -> Self {
+        self.working = true;
+        self
+    }
+
+    /// Names the status in the job's own words, with what it means.
+    pub fn status_text(mut self, label: impl Into<String>, hint: impl Into<String>) -> Self {
+        self.status_text = Some((label.into(), hint.into()));
         self
     }
 
@@ -465,7 +490,7 @@ impl<'a> JobList<'a> {
 
         // Status, breathing while running.
         let badge = inset(cells[0]).center_vertically(if active { 24.0 } else { 22.0 });
-        if job.status == JobStatus::Running {
+        if matches!(job.status, JobStatus::Running | JobStatus::Preparing) {
             let pulse = 0.6 + 0.4 * (time * 3.0).sin().abs();
             panel(
                 ui,
@@ -475,17 +500,23 @@ impl<'a> JobList<'a> {
                 6.0,
             );
         }
-        Badge::new(job.status.variant()).show(ui, badge, job.status.label());
+        let (label, hint) = match &job.status_text {
+            Some((label, hint)) => (label.as_str(), hint.as_str()),
+            None => (job.status.label(), job.status.hint()),
+        };
+        Badge::new(job.status.variant()).show(ui, badge, label);
         let status_id = format!("{key}.status");
         ui.interact(&status_id, badge);
-        ui.tooltip(&status_id, job.status.hint());
+        ui.tooltip(&status_id, hint);
 
         // Title and detail; progress under them while there is work left.
         let main = inset(cells[1]);
         if active {
-            let (lines, bar) = match job.progress {
-                Some(_) => main.center_vertically(46.0).split_bottom(6.0, 4.0),
-                None => (main.center_vertically(40.0), Rect::new(0.0, 0.0, 0.0, 0.0)),
+            let barred = job.progress.is_some() || job.working;
+            let (lines, bar) = if barred {
+                main.center_vertically(46.0).split_bottom(6.0, 4.0)
+            } else {
+                (main.center_vertically(40.0), Rect::new(0.0, 0.0, 0.0, 0.0))
             };
             let mut lines = Strip::column(lines, 2.0);
             Label::new().size(14.0).weight(600).ellipsis().show(
@@ -497,8 +528,10 @@ impl<'a> JobList<'a> {
                 .size(12.0)
                 .ellipsis()
                 .show(ui, lines.rest(), &job.detail);
-            if let Some(progress) = job.progress {
-                ProgressBar::new().color(color).show(ui, bar, progress);
+            match job.progress {
+                Some(progress) => ProgressBar::new().color(color).show(ui, bar, progress),
+                None if job.working => ProgressBar::new().color(color).show_working(ui, bar, time),
+                None => {}
             }
         } else {
             let mut line = Strip::row(main, 8.0);
@@ -566,7 +599,10 @@ impl<'a> JobList<'a> {
         }
         ui.tooltip(
             &stop_id,
-            if job.status == JobStatus::Running || job.status == JobStatus::Pausing {
+            if matches!(
+                job.status,
+                JobStatus::Running | JobStatus::Preparing | JobStatus::Pausing
+            ) {
                 "Stop: abandon the work"
             } else {
                 "Stop: withdraw it before it runs"

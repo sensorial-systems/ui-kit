@@ -1,10 +1,11 @@
 use anyhow::Result;
 use immediate_gallery::Gallery;
 use std::sync::Arc;
-use ui_kit_app::{App, AppConfig, FrameContext};
+use ui_kit_app::{App, AppConfig, Fonts, FrameContext};
 use ui_kit_core::Point;
 use ui_kit_immediate::composition::UiRenderer;
 use ui_kit_immediate::{DrawCommand, Input};
+use ui_kit_sensorial::SensorialRenderer;
 use ui_kit_wgpu::{GpuContext, TextureTarget, VectorRenderer, WgpuFrame, WgpuRenderer};
 
 struct GalleryApp {
@@ -14,6 +15,7 @@ struct GalleryApp {
 impl App for GalleryApp {
     fn frame(&mut self, ctx: &FrameContext) -> Vec<DrawCommand> {
         self.gallery.shift = ctx.input.extend_selection;
+        self.gallery.scale = ctx.scale;
         self.gallery
             .frame(ctx.input.clone(), ctx.width, ctx.height, ctx.elapsed)
     }
@@ -24,6 +26,17 @@ impl App for GalleryApp {
 
     fn on_focus_lost(&mut self) {
         self.gallery.cancel_drag();
+    }
+
+    fn fonts_ready(&mut self, fonts: &dyn Fonts) {
+        // Sensorial's face, when the gallery opens in its look.
+        if self.gallery.sensorial {
+            fonts.load_font(ui_kit_sensorial::FONT.to_vec());
+            fonts.prefer_family(
+                ui_kit_immediate::FontFamily::SansSerif,
+                &ui_kit_sensorial::FAMILIES,
+            );
+        }
     }
 }
 
@@ -37,14 +50,20 @@ pub fn run() -> Result<()> {
         );
     }
 
-    let gallery = Gallery::default();
+    let mut gallery = Gallery::default();
+    gallery.sensorial = args.iter().any(|a| a == "--sensorial");
+    gallery.dark = gallery.sensorial || args.iter().any(|a| a == "--dark");
+    let atmosphere = gallery.atmosphere.clone();
     let bg = gallery.background();
     let config = AppConfig::new("UI Kit Component Gallery — Immediate / wgpu")
         .with_size(1200.0, 850.0)
         .with_background([bg.r as f32, bg.g as f32, bg.b as f32, bg.a as f32]);
 
-    ui_kit_app::run_with_custom(GalleryApp { gallery }, config, |gpu, format| {
-        VectorRenderer::new(gpu, format)
+    ui_kit_app::run_with_custom(GalleryApp { gallery }, config, move |gpu, format| {
+        (
+            SensorialRenderer::new(gpu, atmosphere),
+            VectorRenderer::new(gpu, format),
+        )
     })
 }
 
@@ -53,15 +72,26 @@ fn snapshot(path: &str, args: &[String]) -> Result<()> {
     let adapter = pollster::block_on(instance.request_adapter(&Default::default()))?;
     let (device, queue) = pollster::block_on(adapter.request_device(&Default::default()))?;
     let gpu = GpuContext::new(Arc::new(device), Arc::new(queue));
+    let mut gallery = Gallery::default();
     let mut renderer = WgpuRenderer::with_custom(
         &gpu,
         wgpu::TextureFormat::Rgba8Unorm,
-        VectorRenderer::new(&gpu, wgpu::TextureFormat::Rgba8Unorm),
+        (
+            SensorialRenderer::new(&gpu, gallery.atmosphere.clone()),
+            VectorRenderer::new(&gpu, wgpu::TextureFormat::Rgba8Unorm),
+        ),
     )?;
-    let mut gallery = Gallery::default();
+    gallery.sensorial = args.iter().any(|a| a == "--sensorial");
+    if gallery.sensorial {
+        renderer.load_font(ui_kit_sensorial::FONT.to_vec());
+        renderer.prefer_family(
+            ui_kit_immediate::FontFamily::SansSerif,
+            &ui_kit_sensorial::FAMILIES,
+        );
+    }
     let measure = renderer.text_measurer();
     gallery.set_text_measure(move |text, style| measure.width(text, style));
-    gallery.dark = args.iter().any(|a| a == "--dark");
+    gallery.dark = gallery.sensorial || args.iter().any(|a| a == "--dark");
     gallery.frame(Input::default(), 1200.0, 850.0, 0.0);
     if let Some(i) = args.iter().position(|a| a == "--scroll") {
         gallery.scroll_by(

@@ -1,7 +1,7 @@
 //! A kanban board: cards in columns, moved by dragging.
 use super::card::panel;
 use super::feedback::Badge;
-use super::theme::{is_dark, with_alpha};
+use super::theme::{is_dark, on, with_alpha};
 use super::Label;
 use crate::{CursorIcon, Flex, Insets, Layer, Size, Stack, Ui};
 use ui_kit_core::{Color, Point, Rect, TextAlign};
@@ -292,7 +292,7 @@ impl<'a> PipelineBoard<'a> {
                             Label::new()
                                 .size(12.0)
                                 .weight(700)
-                                .color([1.0; 4])
+                                .color(on(p.accent))
                                 .align(TextAlign::Center)
                                 .show(ui, chip, &text);
                         }

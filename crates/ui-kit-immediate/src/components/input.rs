@@ -1,6 +1,6 @@
 use super::button::{Button, ButtonVariant};
 use super::card::panel;
-use super::theme::{base, faded, with_alpha};
+use super::theme::{base, faded, on, with_alpha};
 use super::Label;
 use crate::icon::Icon;
 use crate::layout::{HorizontalAlignment, VerticalAlignment};
@@ -247,9 +247,10 @@ fn toggle(
             },
             VerticalAlignment::Center,
         );
-        panel(ui, knob, [1.0; 4], [0.0; 4], 8.0);
+        let knob_color = if *value { on(p.accent) } else { [1.0; 4] };
+        panel(ui, knob, faded(knob_color, fade), [0.0; 4], 8.0);
     } else if *value {
-        Icon::Check.paint(ui, control.inset(2.0), [1.0, 1.0, 1.0, fade]);
+        Icon::Check.paint(ui, control.inset(2.0), faded(on(p.accent), fade));
     }
     Label::new()
         .color(faded(p.text, fade))

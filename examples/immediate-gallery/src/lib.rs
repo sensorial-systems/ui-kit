@@ -29,6 +29,7 @@ use ui_kit_immediate::{
     DrawCommand, Flex, Grid, HorizontalAlignment, Input, Insets, Size, Stack, Strip, Ui,
     VerticalAlignment,
 };
+use ui_kit_sensorial::{Atmosphere, SharedAtmosphere};
 
 /// Space before each section's title, on top of the page's gap.
 const SECTION_SPACE: f32 = 24.0;
@@ -74,6 +75,13 @@ pub struct Gallery {
     ui: Ui,
     pub shift: bool,
     pub dark: bool,
+    /// Drawn in Sensorial's look, over its living world: the theme
+    /// dropdown's third choice.
+    pub sensorial: bool,
+    /// The world behind the Sensorial look, shared with its renderer.
+    pub atmosphere: SharedAtmosphere,
+    /// Pixels per point, for the Sensorial look's glass.
+    pub scale: f32,
     pub scroll: f32,
     scrollbar_grab: Option<f32>,
     pub content_height: f32,
@@ -128,6 +136,9 @@ pub struct Gallery {
     pub survey_result: Option<SurveyResult>,
     pub section_positions: HashMap<String, f32>,
     time: f32,
+    /// Whether the pointer was down last frame: a press flashes the
+    /// Sensorial world.
+    was_down: bool,
     pub reel: Reel,
     /// Where the reel is, in seconds from its first downbeat.
     pub reel_time: f32,
@@ -333,6 +344,9 @@ impl Default for Gallery {
             ui: Ui::default(),
             shift: false,
             dark: false,
+            sensorial: false,
+            atmosphere: ui_kit_sensorial::shared(Atmosphere::new(0.55)),
+            scale: 1.0,
             scroll: 0.0,
             scrollbar_grab: None,
             content_height: 10000.0,
@@ -406,6 +420,7 @@ impl Default for Gallery {
             survey_result: None,
             section_positions: HashMap::new(),
             time: 0.0,
+            was_down: false,
             reel: Reel::default(),
             reel_time: 0.0,
             reel_playing: true,
@@ -423,7 +438,11 @@ fn group(ui: &mut Ui, rows: &mut Stack, title: &str, height: f32) -> Rect {
 
 impl Gallery {
     pub fn background(&self) -> wgpu::Color {
-        let c = kit::theme::palette(self.dark).background;
+        let c = if self.sensorial {
+            ui_kit_sensorial::palette().background
+        } else {
+            kit::theme::palette(self.dark).background
+        };
         wgpu::Color {
             r: c[0] as f64,
             g: c[1] as f64,
@@ -470,6 +489,7 @@ impl Gallery {
         time: f32,
     ) -> Vec<DrawCommand> {
         self.viewport = height;
+        let dt = (time - self.time).clamp(0.0, 0.1);
         self.time = time;
         if self.timeout.is_some_and(|t| time >= t) {
             self.timeout = None;
@@ -478,8 +498,28 @@ impl Gallery {
         input.viewport = Some(input.viewport.unwrap_or(window));
         let scrollbar = window.split_right(14.0, 0.0).1;
         let mut ui = std::mem::take(&mut self.ui);
-        ui.theme = kit::theme::theme(self.dark);
+        ui.theme = if self.sensorial {
+            ui_kit_sensorial::theme()
+        } else {
+            kit::theme::theme(self.dark)
+        };
         ui.begin(input.clone());
+        if self.sensorial {
+            let mut atmosphere = self.atmosphere.borrow_mut();
+            let scrolled = self.scroll;
+            let velocity = if dt > 0.0 {
+                (scrolled - atmosphere.scroll) / dt
+            } else {
+                0.0
+            };
+            atmosphere.advance(dt, [width, height], self.scale, input.pointer);
+            atmosphere.scrolled(scrolled, velocity);
+            if input.down && !self.was_down {
+                atmosphere.flash();
+            }
+            ui_kit_sensorial::paint_backdrop(&mut ui, window);
+        }
+        self.was_down = input.down;
         // Capture before content so a drag cannot activate an underlying control.
         if self.content_height > height && self.dialog.is_none() {
             let thumb = (height * height / self.content_height)
@@ -544,7 +584,10 @@ impl Gallery {
             );
         }
         self.dialog(&mut ui, window);
-        let commands = ui.end().to_vec();
+        let mut commands = ui.end().to_vec();
+        if self.sensorial {
+            commands = ui_kit_sensorial::lower(commands, &ui.theme.palette);
+        }
         self.ui = ui;
         commands
     }
@@ -585,12 +628,17 @@ impl Gallery {
             .size(13.0)
             .weight(500)
             .show(ui, theme.leading(20.0), "Select Theme");
-        let mut dark = usize::from(self.dark);
-        if Dropdown::new(&["White", "Black"])
-            .show(ui, "theme", theme.leading(38.0), &mut dark)
+        let mut choice = if self.sensorial {
+            2
+        } else {
+            usize::from(self.dark)
+        };
+        if Dropdown::new(&["White", "Black", "Sensorial"])
+            .show(ui, "theme", theme.leading(38.0), &mut choice)
             .changed
         {
-            self.dark = dark == 1;
+            self.dark = choice >= 1;
+            self.sensorial = choice == 2;
         }
         let (caption, slider) = glass.split_top(32.0, 0.0);
         let [caption, value] = Flex::row(4.0).split(

@@ -7,6 +7,7 @@ publish = false
 ui-kit-core = { path = "../../crates/ui-kit-core" }
 ui-kit-immediate = { path = "../../crates/ui-kit-immediate" }
 ui-kit-wgpu = { path = "../../crates/ui-kit-wgpu" }
+ui-kit-sensorial = { path = "../../crates/ui-kit-sensorial" }
 winit = "0.30"
 wgpu = { version = "30", default-features = false }
 pollster = "0.4"

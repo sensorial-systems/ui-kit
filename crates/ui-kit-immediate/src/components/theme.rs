@@ -27,6 +27,17 @@ pub const fn with_alpha(color: Color, alpha: f32) -> Color {
     [color[0], color[1], color[2], alpha]
 }
 
+/// What reads on `color`: white on a dark or saturated fill, near-black on
+/// a light one -- the label of a button filled in the accent, say.
+pub fn on(color: Color) -> Color {
+    let [r, g, b, _] = color;
+    if 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.6 {
+        [0.02, 0.02, 0.03, 1.0]
+    } else {
+        [1.0; 4]
+    }
+}
+
 /// `color` with its opacity scaled, as a disabled control draws.
 pub fn faded(color: Color, factor: f32) -> Color {
     [color[0], color[1], color[2], color[3] * factor]

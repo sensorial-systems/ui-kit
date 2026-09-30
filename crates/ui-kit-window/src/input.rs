@@ -3,7 +3,6 @@
 
 use std::time::Instant;
 use ui_kit_core::{Point, Rect};
-use ui_kit_immediate::host::ButtonLatch;
 use ui_kit_immediate::{
     AccessAction, CursorIcon, Input, Key, Modifiers, Output, TextNavigation, Touch,
 };
@@ -20,7 +19,7 @@ const LINE: f32 = 48.0;
 /// pressure rather than reporting a constant.
 const PRESSURE_EPSILON: f32 = 0.01;
 
-/// Collects a window's events between frames into one [`Input`].
+/// Collects a window's events between frames into [`Input`]s.
 ///
 /// Feed it every [`WindowEvent`], take the input once per frame, and hand
 /// the frame's [`Output`] back with [`InputCollector::apply`] so the cursor,
@@ -29,12 +28,20 @@ const PRESSURE_EPSILON: f32 = 0.01;
 /// Where the pointer is and which buttons are held carry over from frame to
 /// frame; keys, text, wheel movement and clipboard requests belong to the
 /// frame they happened before.
+///
+/// The input between two frames is cut at every button change, as the web
+/// host cuts it: a press and a release are each seen where the pointer was
+/// when they happened, however slow the frame and however quickly the
+/// pointer moved on. A click let go over a button, the pointer then moved
+/// off it before the next frame, is still a click on the button.
 pub struct InputCollector {
     input: Input,
+    /// What came before a button change, closed into inputs of their own.
+    queue: Vec<Input>,
     pointer: Option<Point>,
-    down: ButtonLatch,
-    secondary_down: ButtonLatch,
-    middle_down: ButtonLatch,
+    down: bool,
+    secondary_down: bool,
+    middle_down: bool,
     modifiers: ModifiersState,
     composing: bool,
     /// Fingers down, in the order they touched.
@@ -66,10 +73,11 @@ impl InputCollector {
     pub fn new() -> Self {
         Self {
             input: Input::default(),
+            queue: Vec::new(),
             pointer: None,
-            down: ButtonLatch::default(),
-            secondary_down: ButtonLatch::default(),
-            middle_down: ButtonLatch::default(),
+            down: false,
+            secondary_down: false,
+            middle_down: false,
             modifiers: ModifiersState::default(),
             composing: false,
             touches: Vec::new(),
@@ -108,16 +116,16 @@ impl InputCollector {
             }
             WindowEvent::CursorLeft { .. } => {
                 // A drag that leaves the window still ends where it is let go.
-                if !(self.down.held() || self.secondary_down.held() || self.middle_down.held()) {
+                if !(self.down || self.secondary_down || self.middle_down) {
                     self.pointer = None;
                 }
             }
             WindowEvent::MouseInput { state, button, .. } => {
                 let pressed = *state == ElementState::Pressed;
                 match button {
-                    MouseButton::Left => self.down.set(pressed),
-                    MouseButton::Right => self.secondary_down.set(pressed),
-                    MouseButton::Middle => self.middle_down.set(pressed),
+                    MouseButton::Left | MouseButton::Right | MouseButton::Middle => {
+                        self.button(*button, pressed)
+                    }
                     _ => return false,
                 }
             }
@@ -143,9 +151,9 @@ impl InputCollector {
                 if self.pointer_locked {
                     self.release_pointer(window);
                 }
-                self.down.reset();
-                self.secondary_down.reset();
-                self.middle_down.reset();
+                self.down = false;
+                self.secondary_down = false;
+                self.middle_down = false;
                 self.pointer = None;
                 self.modifiers = ModifiersState::default();
                 self.touches.clear();
@@ -209,7 +217,7 @@ impl InputCollector {
                 if self.primary_touch.is_none() {
                     self.primary_touch = Some(id);
                     self.pointer = Some(position);
-                    self.down.press();
+                    self.button(MouseButton::Left, true);
                 }
             }
             TouchPhase::Moved => {
@@ -225,14 +233,57 @@ impl InputCollector {
                 self.touches.retain(|t| t.id != id);
                 self.first_force.retain(|(i, _)| *i != id);
                 if self.primary_touch == Some(id) {
-                    self.down.release();
                     self.pointer = Some(position);
+                    self.button(MouseButton::Left, false);
                 }
                 if self.touches.is_empty() {
                     self.primary_touch = None;
                 }
             }
         }
+    }
+
+    /// `button` went down or up. What was gathered before is closed into an
+    /// input of its own with the buttons as they were, and the change into
+    /// another with the pointer where it is now: each is a step of the next
+    /// frame, so a press lands where it was made and a release where it let
+    /// go, before the pointer moves on.
+    fn button(&mut self, button: MouseButton, pressed: bool) {
+        let held = match button {
+            MouseButton::Left => self.down,
+            MouseButton::Right => self.secondary_down,
+            MouseButton::Middle => self.middle_down,
+            _ => return,
+        };
+        if held == pressed {
+            return;
+        }
+        self.segment();
+        match button {
+            MouseButton::Left => self.down = pressed,
+            MouseButton::Right => self.secondary_down = pressed,
+            _ => self.middle_down = pressed,
+        }
+        self.segment();
+    }
+
+    /// Close the input gathered so far into a step of its own, with what
+    /// lasts across frames as it is now.
+    fn segment(&mut self) {
+        let mut input = std::mem::take(&mut self.input);
+        input.pointer = self.pointer;
+        input.down = self.down;
+        input.secondary_down = self.secondary_down;
+        input.middle_down = self.middle_down;
+        input.touches = self.touches.clone();
+        input.pressure_sensing = self.pressure_sensing;
+        input.held = self.held.clone();
+        input.modifiers = modifiers(self.modifiers);
+        input.extend_selection = self.modifiers.shift_key();
+        input.pointer_locked = self.pointer_locked;
+        // A composition in progress stays on screen until it is committed.
+        self.input.preedit = input.preedit.clone();
+        self.queue.push(input);
     }
 
     fn key(&mut self, key: &WinitKey, text: Option<&str>) {
@@ -307,25 +358,18 @@ impl InputCollector {
         self.input.access_actions.extend(actions);
     }
 
-    /// The input for a frame laid out over `viewport`, clearing what belongs
-    /// to this frame only.
-    pub fn take(&mut self, viewport: Rect) -> Input {
-        let mut input = std::mem::take(&mut self.input);
-        input.pointer = self.pointer;
-        input.down = self.down.sample();
-        input.secondary_down = self.secondary_down.sample();
-        input.middle_down = self.middle_down.sample();
-        input.touches = self.touches.clone();
-        input.pressure_sensing = self.pressure_sensing;
-        input.held = self.held.clone();
-        input.modifiers = modifiers(self.modifiers);
-        input.extend_selection = self.modifiers.shift_key();
-        input.pointer_locked = self.pointer_locked;
-        input.time = Some(self.start.elapsed().as_secs_f64());
-        input.viewport = Some(viewport);
-        // A composition in progress stays on screen until it is committed.
-        self.input.preedit = input.preedit.clone();
-        input
+    /// The input since the last frame laid out over `viewport`: one input
+    /// for each stretch between button changes, in the order they came, for
+    /// the UI to step through. The last is the one to draw. Never empty.
+    pub fn take(&mut self, viewport: Rect) -> Vec<Input> {
+        self.segment();
+        let time = self.start.elapsed().as_secs_f64();
+        let mut inputs = std::mem::take(&mut self.queue);
+        for input in &mut inputs {
+            input.time = Some(time);
+            input.viewport = Some(viewport);
+        }
+        inputs
     }
 
     /// Make the window follow what the frame asked for: its cursor, where
@@ -470,6 +514,48 @@ pub fn cursor(icon: CursorIcon) -> WinitCursor {
 mod tests {
     use super::*;
 
+    impl InputCollector {
+        /// The input a frame draws with: its last step.
+        fn last(&mut self, viewport: Rect) -> Input {
+            self.take(viewport).pop().expect("a frame always has input")
+        }
+    }
+
+    fn press(c: &mut InputCollector, at: Point, pressed: bool) {
+        c.pointer = Some(at);
+        c.button(MouseButton::Left, pressed);
+    }
+
+    #[test]
+    fn a_click_between_frames_is_seen_where_it_happened() {
+        let mut c = InputCollector::new();
+        let button = Point::new(10.0, 10.0);
+        c.pointer = Some(Point::new(200.0, 200.0));
+        press(&mut c, button, true);
+        press(&mut c, button, false);
+        // The pointer moved on before the frame was made.
+        c.pointer = Some(Point::new(300.0, 300.0));
+        let steps = c.take(Rect::default());
+        let seen: Vec<(bool, Option<Point>)> = steps.iter().map(|i| (i.down, i.pointer)).collect();
+        let pressed_at = seen.iter().position(|(down, _)| *down).expect("the press is seen");
+        assert_eq!(seen[pressed_at].1, Some(button), "pressed where it was pressed");
+        let released = seen[pressed_at..].iter().find(|(down, _)| !*down);
+        assert_eq!(released, Some(&(false, Some(button))), "let go where it was let go");
+        assert_eq!(steps.last().unwrap().pointer, Some(Point::new(300.0, 300.0)), "and drawn where it is now");
+    }
+
+    #[test]
+    fn a_held_button_carries_over_frames() {
+        let mut c = InputCollector::new();
+        press(&mut c, Point::new(1.0, 1.0), true);
+        assert!(c.last(Rect::default()).down);
+        let next = c.take(Rect::default());
+        assert_eq!(next.len(), 1, "no change, one step");
+        assert!(next[0].down);
+        press(&mut c, Point::new(1.0, 1.0), false);
+        assert!(!c.last(Rect::default()).down);
+    }
+
     #[test]
     fn keys_become_shortcuts_navigation_and_text() {
         let mut collector = InputCollector::new();
@@ -477,7 +563,7 @@ mod tests {
         collector.key(&WinitKey::Character("a".into()), Some("a"));
         collector.modifiers = ModifiersState::CONTROL;
         collector.key(&WinitKey::Character("C".into()), Some("\u{3}"));
-        let input = collector.take(Rect::new(0.0, 0.0, 100.0, 100.0));
+        let input = collector.last(Rect::new(0.0, 0.0, 100.0, 100.0));
         assert_eq!(
             input.keys,
             vec![Key::Left, Key::Character('a'), Key::Character('c')]
@@ -487,7 +573,7 @@ mod tests {
         assert!(input.copy && input.modifiers.control);
         assert!(input.time.is_some());
 
-        let next = collector.take(Rect::new(0.0, 0.0, 100.0, 100.0));
+        let next = collector.last(Rect::new(0.0, 0.0, 100.0, 100.0));
         assert!(
             next.keys.is_empty() && !next.copy,
             "keys belong to one frame"
@@ -500,7 +586,7 @@ mod tests {
         c.touch(7, Point::new(10.0, 20.0), None, TouchPhase::Started);
         c.touch(9, Point::new(300.0, 40.0), None, TouchPhase::Started);
         c.touch(9, Point::new(310.0, 50.0), None, TouchPhase::Moved);
-        let input = c.take(Rect::default());
+        let input = c.last(Rect::default());
         assert!(input.down);
         assert_eq!(
             input.pointer,
@@ -513,16 +599,16 @@ mod tests {
         // The first finger lifts: the press ends, and the other finger stays
         // a touch without taking over the pointer mid-gesture.
         c.touch(7, Point::new(12.0, 22.0), None, TouchPhase::Ended);
-        let input = c.take(Rect::default());
+        let input = c.last(Rect::default());
         assert!(!input.down);
         assert_eq!(input.touches.iter().map(|t| t.id).collect::<Vec<_>>(), vec![9]);
         c.touch(9, Point::new(320.0, 50.0), None, TouchPhase::Moved);
-        assert_eq!(c.take(Rect::default()).pointer, Some(Point::new(12.0, 22.0)));
+        assert_eq!(c.last(Rect::default()).pointer, Some(Point::new(12.0, 22.0)));
 
         // Once every finger is up, the next one leads a new gesture.
         c.touch(9, Point::new(320.0, 50.0), None, TouchPhase::Ended);
         c.touch(3, Point::new(5.0, 5.0), None, TouchPhase::Started);
-        let input = c.take(Rect::default());
+        let input = c.last(Rect::default());
         assert!(input.down);
         assert_eq!(input.pointer, Some(Point::new(5.0, 5.0)));
     }
@@ -534,11 +620,11 @@ mod tests {
         c.touch(1, Point::new(0.0, 0.0), Some(1.0), TouchPhase::Started);
         c.touch(1, Point::new(1.0, 0.0), Some(1.0), TouchPhase::Moved);
         c.touch(1, Point::new(1.0, 0.0), Some(1.0), TouchPhase::Ended);
-        assert!(!c.take(Rect::default()).pressure_sensing);
+        assert!(!c.last(Rect::default()).pressure_sensing);
         // A finger pressing harder.
         c.touch(2, Point::new(0.0, 0.0), Some(0.2), TouchPhase::Started);
         c.touch(2, Point::new(0.0, 0.0), Some(0.6), TouchPhase::Moved);
-        let input = c.take(Rect::default());
+        let input = c.last(Rect::default());
         assert!(input.pressure_sensing);
         assert_eq!(input.touches[0].force, Some(0.6));
     }
@@ -547,16 +633,16 @@ mod tests {
     fn held_keys_last_until_released() {
         let mut c = InputCollector::new();
         c.held.push(Key::Up);
-        let input = c.take(Rect::default());
+        let input = c.last(Rect::default());
         assert_eq!(input.held, vec![Key::Up]);
-        assert_eq!(c.take(Rect::default()).held, vec![Key::Up], "held keys carry over frames");
+        assert_eq!(c.last(Rect::default()).held, vec![Key::Up], "held keys carry over frames");
     }
 
     #[test]
     fn text_from_a_key_with_no_name_is_still_typed() {
         let mut collector = InputCollector::new();
         collector.key(&WinitKey::Unidentified(winit::keyboard::NativeKey::Unidentified), Some("v"));
-        let input = collector.take(Rect::default());
+        let input = collector.last(Rect::default());
         assert_eq!(input.text, "v");
         assert!(input.keys.is_empty());
     }
@@ -567,11 +653,11 @@ mod tests {
         collector.composing = true;
         collector.input.preedit = Some("\u{304b}".into());
         collector.key(&WinitKey::Named(NamedKey::Enter), None);
-        let input = collector.take(Rect::default());
+        let input = collector.last(Rect::default());
         assert!(input.keys.is_empty() && !input.activate);
         assert_eq!(input.preedit.as_deref(), Some("\u{304b}"));
         assert_eq!(
-            collector.take(Rect::default()).preedit.as_deref(),
+            collector.last(Rect::default()).preedit.as_deref(),
             Some("\u{304b}")
         );
     }

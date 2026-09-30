@@ -1,0 +1,18 @@
+[package]
+name = "ui-kit-sensorial"
+version = "0.1.0"
+edition = "2021"
+description = "Sensorial's look for UI Kit: black, lit by light split as through a prism, with glass over it"
+
+[features]
+default = ["wgpu"]
+# The shaders that draw the world and the glass: `SensorialRenderer`.
+wgpu = ["dep:ui-kit-wgpu", "dep:wgpu", "dep:bytemuck", "dep:anyhow"]
+
+[dependencies]
+ui-kit-core = { path = "../ui-kit-core" }
+ui-kit-immediate = { path = "../ui-kit-immediate" }
+ui-kit-wgpu = { path = "../ui-kit-wgpu", optional = true }
+wgpu = { version = "30", default-features = false, features = ["wgsl"], optional = true }
+bytemuck = { version = "1.16", features = ["derive"], optional = true }
+anyhow = { version = "1", optional = true }

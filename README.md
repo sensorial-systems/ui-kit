@@ -10,6 +10,7 @@ existing Dioxus component library.
 | `ui-kit-immediate` | Pointer/focus state, semantic actions, clipped drawing commands |
 | `ui-kit-wgpu` | Shared device/queue, texture targets, materials and rendering extensions |
 | `ui-kit-window` | Custom window chrome, optional immediate/Dioxus rendering, and reusable winit integration |
+| `ui-kit-sensorial` | Sensorial's look for immediate/wgpu apps: the living backdrop, glass, palette, type, springs and the look's own controls |
 | `ui-kit` | Existing Dioxus components, plus `shared` and `SharedView` exports |
 
 The new core and hosts have no dependency on Prism. The Prism implementation is
@@ -197,6 +198,61 @@ run's shapes and one for its text -- instead of a pass apiece.
 `load_font` adds a font to both. Honor the command clip and record into the provided
 encoder. Unknown kinds/materials are errors; the Dioxus host displays an alert for
 unsupported custom materials. Native GPU shaders are not translated into CSS.
+
+### Sensorial's look
+
+`ui-kit-sensorial` is the look of the Sensorial pages, for any immediate/wgpu
+application and every component: black, lit by light split as through a
+prism, with everything on it made of glass that frosts what is behind it,
+bends it at the rim and splits it into colours there.
+
+```rust
+use ui_kit_sensorial::{Atmosphere, SensorialRenderer};
+
+// Once: the world's state, shared with the renderer, and the renderer
+// before the vector one (the look draws its hairlines and icons as meshes).
+let atmosphere = ui_kit_sensorial::shared(Atmosphere::new(0.55)); // the brand's hue
+let renderers = (SensorialRenderer::new(&gpu, atmosphere.clone()),
+                 VectorRenderer::new(&gpu, format));
+fonts.load_font(ui_kit_sensorial::FONT.to_vec());
+fonts.prefer_family(FontFamily::SansSerif, &ui_kit_sensorial::FAMILIES);
+
+// Each frame:
+atmosphere.borrow_mut().advance(dt, [width, height], scale, input.pointer);
+atmosphere.borrow_mut().scrolled(scroll, velocity);
+ui.theme = ui_kit_sensorial::theme();
+ui.begin(input);
+ui_kit_sensorial::paint_backdrop(&mut ui, screen);
+// ... any components ...
+let commands = ui_kit_sensorial::lower(ui.end().to_vec(), &ui.theme.palette);
+```
+
+- `paint_backdrop` paints the world: a fan of faint spectral rays from above,
+  pools of coloured light drifting far away, a haze, and dust at three depths
+  that streaks and splits into colours as the page scrolls fast. It drifts with
+  time, rises with the scroll, leans to the pointer and flashes on
+  `Atmosphere::flash`; `lit` fades it from black. `SensorialRenderer::with_light`
+  adds a layer of light the application renders into it (the pages' 3D logo).
+- `theme()` is the palette -- black, white at a few strengths, a white accent
+  with near-black on it -- and glass for the built-in widgets' panes, cards,
+  popups, fields and buttons.
+- `lower` makes every component glass: a surface filled in the palette's
+  `surface` or `raised` colour, or in `Material::Glass`, becomes a pane of glass
+  with the rest of the command (label, value, focus ring) over it, buttons
+  become pills, and popups and dialogs dark frosted glass. The primary button
+  stays the one solid white thing; disabled, square or tiny surfaces stay flat.
+- `GlassLook` is glass of any kind (`control`, `card`, `pane`, `bar`, `chip`,
+  `popup`), painted with `GlassLook::paint`; `AT_POINTER` makes its highlight
+  follow the pointer.
+- `Type` and `scale` set type in Prism Sans (`FONT`): display, headings, lead,
+  body, eyebrow capitals; `spectral_line` is the hairline of spectrum things
+  are underlined with.
+- `Springs` with the `motion` feels (`HOVER`, `PRESS`, `ENTRANCE`, `REVEAL`) are
+  how things move; `Pill`, `Link`, `GlassCard` and `eyebrow` are the look's own
+  controls, moving by them.
+
+The target must allow `COPY_SRC` and be viewed in its own format, for glass to
+read what is behind it. Glass costs a copy and a few blur passes per surface.
 
 ## Current coverage and layout
 
@@ -415,7 +471,9 @@ texture before presenting. `Gallery::frame` builds commands separately from
 the window host from `ui_kit_immediate::components`; `VectorRenderer` composes
 vector drawing with the standard renderer through `CommandRenderer`. Snapshot a
 state with `cargo run -p immediate-gallery -- --snapshot out.png`, adding
-`--click LABEL`, `--drag FROM TO`, `--section NAME` or `--dark`.
+`--click LABEL`, `--drag FROM TO`, `--section NAME`, `--dark` or `--sensorial`.
+The theme dropdown's "Sensorial" shows every component in Sensorial's look,
+over its living backdrop; `--sensorial` opens the window in it, in its face.
 
 The existing Dioxus gallery is still its own DOM/CSS renderer:
 

@@ -3429,6 +3429,7 @@ dependencies = [
  "ui-kit-app",
  "ui-kit-core",
  "ui-kit-immediate",
+ "ui-kit-sensorial",
  "ui-kit-wgpu",
  "ui-kit-window",
  "wgpu",
@@ -7431,6 +7432,18 @@ dependencies = [
  "ui-kit-core",
  "usvg",
  "wasm-bindgen-futures",
+]
+
+[[package]]
+name = "ui-kit-sensorial"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "ui-kit-core",
+ "ui-kit-immediate",
+ "ui-kit-wgpu",
+ "wgpu",
 ]
 
 [[package]]

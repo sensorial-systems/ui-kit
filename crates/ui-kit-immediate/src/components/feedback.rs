@@ -165,6 +165,35 @@ impl ProgressBar {
             radius,
         );
     }
+
+    /// Draw work under way with no telling how far: a segment that sweeps
+    /// across the track, as it is `time` seconds in.
+    pub fn show_working(&self, ui: &mut Ui, rect: Rect, time: f32) {
+        const SEGMENT: f32 = 0.3;
+        const PERIOD: f32 = 1.6;
+
+        let p = ui.theme.palette;
+        let radius = (rect.height * 0.5).min(4.0);
+        panel(ui, rect, p.raised, [0.0; 4], radius);
+        // Enters from the left edge and leaves by the right, clipped to the track.
+        let phase = (time / PERIOD).fract() * (1.0 + SEGMENT) - SEGMENT;
+        let start = phase.max(0.0);
+        let end = (phase + SEGMENT).min(1.0);
+        if end <= start {
+            return;
+        }
+        panel(
+            ui,
+            Rect {
+                x: rect.x + rect.width * start,
+                width: rect.width * (end - start),
+                ..rect
+            },
+            self.color.unwrap_or(p.accent),
+            [0.0; 4],
+            radius,
+        );
+    }
 }
 
 /// A ring of fading dots that turns with time.
