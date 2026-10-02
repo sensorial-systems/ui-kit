@@ -544,14 +544,22 @@ impl State {
     /// the pointer, pressed while it is down, so every widget answers to
     /// touch; the others are only in [`Input::touches`].
     fn finger(&mut self, id: u64, position: Point, force: Option<f32>, phase: Phase) {
+        // The first finger and the press it makes come and go together: no
+        // frame has the pointer pressed by a finger that is not in
+        // `touches`, or that finger without the press, which would read as
+        // the mouse.
         match phase {
             Phase::Start => {
                 self.touches.retain(|t| t.id != id);
-                self.touches.push(Touch { id, position, force });
-                if self.primary_touch.is_none() {
+                if self.primary_touch.is_none() && !self.down {
                     self.primary_touch = Some(id);
+                    self.segment();
+                    self.touches.push(Touch { id, position, force });
                     self.pointer = Some(position);
-                    self.button(0, true);
+                    self.down = true;
+                    self.segment();
+                } else {
+                    self.touches.push(Touch { id, position, force });
                 }
             }
             Phase::Move => {
@@ -564,10 +572,18 @@ impl State {
                 }
             }
             Phase::End => {
-                self.touches.retain(|t| t.id != id);
-                if self.primary_touch == Some(id) {
+                if self.primary_touch == Some(id) && self.down {
+                    // Seen down where it lifts, then gone with the press.
+                    if let Some(t) = self.touches.iter_mut().find(|t| t.id == id) {
+                        t.position = position;
+                    }
                     self.pointer = Some(position);
-                    self.button(0, false);
+                    self.segment();
+                    self.touches.retain(|t| t.id != id);
+                    self.down = false;
+                    self.segment();
+                } else {
+                    self.touches.retain(|t| t.id != id);
                 }
                 if self.touches.is_empty() {
                     self.primary_touch = None;

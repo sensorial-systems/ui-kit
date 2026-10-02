@@ -210,14 +210,21 @@ impl InputCollector {
                 None => self.first_force.push((id, f)),
             }
         }
+        // The first finger and the press it makes come and go together: no
+        // step has the pointer pressed by a finger that is not in `touches`,
+        // or that finger without the press, which would read as the mouse.
         match phase {
             TouchPhase::Started => {
                 self.touches.retain(|t| t.id != id);
-                self.touches.push(Touch { id, position, force });
-                if self.primary_touch.is_none() {
+                if self.primary_touch.is_none() && !self.down {
                     self.primary_touch = Some(id);
+                    self.segment();
+                    self.touches.push(Touch { id, position, force });
                     self.pointer = Some(position);
-                    self.button(MouseButton::Left, true);
+                    self.down = true;
+                    self.segment();
+                } else {
+                    self.touches.push(Touch { id, position, force });
                 }
             }
             TouchPhase::Moved => {
@@ -230,12 +237,20 @@ impl InputCollector {
                 }
             }
             TouchPhase::Ended | TouchPhase::Cancelled => {
-                self.touches.retain(|t| t.id != id);
-                self.first_force.retain(|(i, _)| *i != id);
-                if self.primary_touch == Some(id) {
+                if self.primary_touch == Some(id) && self.down {
+                    // Seen down where it lifts, then gone with the press.
+                    if let Some(t) = self.touches.iter_mut().find(|t| t.id == id) {
+                        t.position = position;
+                    }
                     self.pointer = Some(position);
-                    self.button(MouseButton::Left, false);
+                    self.segment();
+                    self.touches.retain(|t| t.id != id);
+                    self.down = false;
+                    self.segment();
+                } else {
+                    self.touches.retain(|t| t.id != id);
                 }
+                self.first_force.retain(|(i, _)| *i != id);
                 if self.touches.is_empty() {
                     self.primary_touch = None;
                 }
@@ -611,6 +626,51 @@ mod tests {
         let input = c.last(Rect::default());
         assert!(input.down);
         assert_eq!(input.pointer, Some(Point::new(5.0, 5.0)));
+    }
+
+    /// No step has the pointer pressed by a finger that is not listed, nor
+    /// a lone finger listed without its press: either reads as the mouse,
+    /// and a tap becomes two.
+    #[test]
+    fn a_finger_and_its_press_come_and_go_together() {
+        use ui_kit_immediate::{ContactEvent, ContactId, Contacts, Tap};
+        let mut c = InputCollector::new();
+        let mut contacts = Contacts::new(Tap::default());
+        let mut events = Vec::new();
+        let mut follow = |c: &mut InputCollector, events: &mut Vec<ContactEvent<()>>| {
+            for step in c.take(Rect::default()) {
+                assert_eq!(step.down, !step.touches.is_empty(), "one finger: pressed exactly while listed");
+                events.extend(contacts.update(&step, |_| Some(())));
+            }
+        };
+        // A tap, all between two frames.
+        c.touch(4, Point::new(10.0, 10.0), None, TouchPhase::Started);
+        c.touch(4, Point::new(11.0, 10.0), None, TouchPhase::Ended);
+        follow(&mut c, &mut events);
+        // A drag lifted far from where it began, over several frames.
+        c.touch(5, Point::new(100.0, 10.0), None, TouchPhase::Started);
+        follow(&mut c, &mut events);
+        c.touch(5, Point::new(20.0, 10.0), None, TouchPhase::Moved);
+        follow(&mut c, &mut events);
+        c.touch(5, Point::new(5.0, 10.0), None, TouchPhase::Ended);
+        follow(&mut c, &mut events);
+        let seen: Vec<(bool, ContactId)> = events
+            .iter()
+            .map(|e| match e {
+                ContactEvent::Pressed { id, .. } => (true, *id),
+                ContactEvent::Released { id, .. } => (false, *id),
+            })
+            .collect();
+        assert_eq!(
+            seen,
+            vec![
+                (true, ContactId::Touch(4)),
+                (false, ContactId::Touch(4)),
+                (true, ContactId::Touch(5)),
+                (false, ContactId::Touch(5)),
+            ],
+            "each finger is one press and one release, and never the mouse"
+        );
     }
 
     #[test]

@@ -1,5 +1,6 @@
 //! Immediate host: interaction state and rendering commands, independent of wgpu.
 pub mod components;
+pub mod contacts;
 pub mod easing {
     pub use prism_ui::immediate::easing::*;
 }
@@ -55,6 +56,7 @@ pub mod xy_graph {
 // Everything else the immediate layer has: widgets, theming, input and
 // output types, accessibility and the test harness.
 pub use combobox::Combobox;
+pub use contacts::{Contact, ContactEvent, ContactId, Contacts, Tap};
 pub use immediate::{DrawCommand, Input, Layer, Response, RichTextPaint, TextMeasure, Ui};
 pub use layout::{
     Axis, Flex, Grid, HorizontalAlignment, Insets, Justify, Size, Strip, VerticalAlignment,
