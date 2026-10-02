@@ -298,6 +298,12 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         let bg = self.config.background;
         style.frame.fill = bg;
         style.bar.fill = bg;
+        // A faint edge in the window's own light, not the default style's blue.
+        style.frame.stroke = if self.config.dark {
+            [1.0, 1.0, 1.0, 0.12]
+        } else {
+            [0.0, 0.0, 0.0, 0.14]
+        };
         style.title.foreground = if self.config.dark {
             [0.96, 0.96, 0.96, 1.0]
         } else {

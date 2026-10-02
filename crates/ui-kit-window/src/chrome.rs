@@ -129,6 +129,9 @@ pub struct WindowChrome {
     pub control_width: f32,
     /// How far in from an edge a press starts a resize instead of a click.
     pub resize_border: f32,
+    /// How far along an edge from a corner a press on that edge resizes
+    /// both ways, so a corner is easy to catch.
+    pub resize_corner: f32,
     pub radius: f32,
     pub maximized: bool,
     pub resizable: bool,
@@ -142,7 +145,8 @@ impl Default for WindowChrome {
             title: String::new(),
             title_bar_height: 38.0,
             control_width: 46.0,
-            resize_border: 6.0,
+            resize_border: 8.0,
+            resize_corner: 16.0,
             radius: 10.0,
             maximized: false,
             resizable: true,
@@ -236,22 +240,32 @@ impl WindowChrome {
         }
         let border = self.effective_border();
         if border > 0.0 {
-            let horizontal = if point.x < bounds.x + border {
-                -1
-            } else if point.x >= bounds.x + bounds.width - border {
-                1
-            } else {
-                0
+            // -1 near the start of an axis, 1 near its end, 0 between.
+            let side = |at: f32, start: f32, length: f32, reach: f32| {
+                if at < start + reach {
+                    -1
+                } else if at >= start + length - reach {
+                    1
+                } else {
+                    0
+                }
             };
-            let vertical = if point.y < bounds.y + border {
-                -1
-            } else if point.y >= bounds.y + bounds.height - border {
-                1
-            } else {
-                0
-            };
-            if let Some(edge) = ResizeEdge::from_axes(horizontal, vertical) {
-                return WindowRegion::Resize(edge);
+            let horizontal = side(point.x, bounds.x, bounds.width, border);
+            let vertical = side(point.y, bounds.y, bounds.height, border);
+            if horizontal != 0 || vertical != 0 {
+                // On an edge: near enough a corner, it is the corner.
+                let corner = self.resize_corner.max(border);
+                let horizontal = match horizontal {
+                    0 => side(point.x, bounds.x, bounds.width, corner),
+                    h => h,
+                };
+                let vertical = match vertical {
+                    0 => side(point.y, bounds.y, bounds.height, corner),
+                    v => v,
+                };
+                if let Some(edge) = ResizeEdge::from_axes(horizontal, vertical) {
+                    return WindowRegion::Resize(edge);
+                }
             }
         }
         for control in &self.controls {
@@ -318,6 +332,24 @@ mod tests {
         assert_eq!(
             chrome.hit(bounds(), Point::new(400.0, 599.5)),
             WindowRegion::Resize(ResizeEdge::South)
+        );
+        assert_eq!(
+            chrome.hit(bounds(), Point::new(400.0, 593.0)),
+            WindowRegion::Resize(ResizeEdge::South),
+            "the edge is wide enough to catch"
+        );
+        assert_eq!(
+            chrome.hit(bounds(), Point::new(788.0, 598.0)),
+            WindowRegion::Resize(ResizeEdge::SouthEast),
+            "a corner reaches along both its edges"
+        );
+        assert_eq!(
+            chrome.hit(bounds(), Point::new(2.0, 586.0)),
+            WindowRegion::Resize(ResizeEdge::SouthWest)
+        );
+        assert_eq!(
+            chrome.hit(bounds(), Point::new(2.0, 300.0)),
+            WindowRegion::Resize(ResizeEdge::West)
         );
         let close = chrome.control_rect(bounds(), WindowControl::Close).unwrap();
         assert_eq!(

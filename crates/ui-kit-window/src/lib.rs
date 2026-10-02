@@ -4,7 +4,9 @@ pub use chrome::{ResizeEdge, WindowAction, WindowChrome, WindowControl, WindowRe
 #[cfg(feature = "immediate")]
 pub mod immediate;
 #[cfg(feature = "immediate")]
-pub use immediate::{window_chrome, window_chrome_with, WindowResponse, WindowStyle};
+pub use immediate::{
+    window_chrome, window_chrome_with, window_outline, WindowResponse, WindowStyle,
+};
 #[cfg(feature = "dioxus")]
 mod dioxus;
 #[cfg(feature = "dioxus")]

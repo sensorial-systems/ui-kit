@@ -174,7 +174,11 @@ impl WinitWindow {
             pointer: self.pointer,
             ..Default::default()
         });
-        crate::window_chrome(&mut ui, &self.chrome, bounds, style);
+        // The outline goes on after the content, which would cover it where
+        // it reaches the window's edge.
+        let mut body = style.clone();
+        body.frame.stroke_width = 0.0;
+        crate::window_chrome(&mut ui, &self.chrome, bounds, &body);
         ui.end();
         for command in &mut ui.commands {
             if let Some(WindowRegion::Control(control)) = self.pressed {
@@ -213,6 +217,11 @@ impl WinitWindow {
             });
         }
         ui.commands.extend(commands);
+        let mut outline = ui_kit_immediate::Ui::default();
+        outline.begin(ui_kit_immediate::Input::default());
+        crate::window_outline(&mut outline, &self.chrome, bounds, style);
+        outline.end();
+        ui.commands.extend(outline.commands);
         ui.commands
     }
 }
@@ -287,8 +296,12 @@ mod tests {
                 ui.commands
             },
         );
-        let content = commands.last().unwrap();
+        let content = commands.iter().rev().find(|c| c.text == "Client").unwrap();
         assert_eq!(content.rect.y, 48.0);
+        // The outline is drawn last, over the content, round the whole window.
+        let outline = commands.last().unwrap();
+        assert_eq!(outline.rect, bounds);
+        assert_eq!(outline.style.fill[3], 0.0);
         assert_eq!(content.clip.unwrap(), frame.chrome.client(bounds));
         frame.frame_in_bounds(
             bounds,

@@ -6,7 +6,7 @@
 //! painting and the frame-to-frame press bookkeeping an immediate host needs.
 use crate::{WindowAction, WindowChrome, WindowControl, WindowRegion};
 use ui_kit_core::{Material, Point, Rect, Style, TextAlign, Theme};
-use ui_kit_immediate::Ui;
+use ui_kit_immediate::{Layer, Ui};
 
 /// A window control's mark, drawn as lines 10px across in the middle of its
 /// button rather than as a font's glyph.
@@ -45,7 +45,9 @@ fn paint_control(ui: &mut Ui, control: WindowControl, maximized: bool, rect: Rec
 /// override individual fields for an application with its own title bar look.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WindowStyle {
-    /// The window body, which also draws the rounded outline and the border.
+    /// The window body. Its stroke is the window's outline, drawn over
+    /// everything else in the window -- the bar, its buttons -- so it reads
+    /// as one edge all the way round.
     pub frame: Style,
     pub bar: Style,
     pub title: Style,
@@ -60,9 +62,11 @@ impl Default for WindowStyle {
 }
 impl WindowStyle {
     pub fn from_theme(theme: &Theme) -> Self {
+        // The bar is part of the body: the frame's outline goes round both.
         let bar = Style {
             radius: 0.0,
             material: Material::Solid,
+            stroke_width: 0.0,
             ..theme.panel.clone()
         };
         let control = Style {
@@ -146,6 +150,7 @@ pub fn window_chrome_with(
         &mut ui.style,
         Style {
             radius,
+            stroke_width: 0.0,
             ..style.frame.clone()
         },
     );
@@ -226,6 +231,7 @@ pub fn window_chrome_with(
     }
     ui.style = previous_style;
     ui.clip = previous_clip;
+    window_outline(ui, chrome, bounds, style);
 
     // A press that lands on a button belongs to the button, and a press that is
     // already dragging something else is not the frame's to take.
@@ -240,6 +246,34 @@ pub fn window_chrome_with(
         },
         client: chrome.client(bounds),
     }
+}
+
+/// The window's outline, over everything drawn in it so far and above every
+/// layer, so a host can paint it after its content and keep the edge whole
+/// where the content reaches it. [`window_chrome`] paints it as well; a host
+/// that paints it again after its content gives the frame a style without a
+/// stroke.
+pub fn window_outline(ui: &mut Ui, chrome: &WindowChrome, bounds: Rect, style: &WindowStyle) {
+    if style.frame.stroke_width <= 0.0 || style.frame.stroke[3] <= 0.0 {
+        return;
+    }
+    let previous_style = std::mem::replace(
+        &mut ui.style,
+        Style {
+            radius: chrome.effective_radius(),
+            fill: [0.0; 4],
+            gradient_end: None,
+            material: Material::Solid,
+            ..style.frame.clone()
+        },
+    );
+    let previous_clip = ui.clip.replace(bounds);
+    ui.panel(bounds);
+    if let Some(command) = ui.commands.last_mut() {
+        command.layer = Layer(i32::MAX);
+    }
+    ui.style = previous_style;
+    ui.clip = previous_clip;
 }
 
 /// Whether `point` is on a control on the title bar other than the window's
