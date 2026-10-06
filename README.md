@@ -11,6 +11,7 @@ existing Dioxus component library.
 | `ui-kit-wgpu` | Shared device/queue, texture targets, materials and rendering extensions |
 | `ui-kit-window` | Custom window chrome, optional immediate/Dioxus rendering, and reusable winit integration |
 | `ui-kit-sensorial` | Sensorial's look for immediate/wgpu apps: the living backdrop, glass, palette, type, springs and the look's own controls |
+| `ui-kit-code-editor` | A code editor for immediate apps: syntax colours (syntect), line numbers and a language picker over the text area, with its look as data |
 | `ui-kit` | Existing Dioxus components, plus `shared` and `SharedView` exports |
 
 The new core and hosts have no dependency on Prism. The Prism implementation is

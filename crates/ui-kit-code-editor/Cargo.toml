@@ -1,0 +1,12 @@
+[package]
+name = "ui-kit-code-editor"
+version = "0.1.0"
+edition = "2024"
+description = "A code editor for the immediate UI: line numbers, syntax colours and a language picker over a text area"
+
+[dependencies]
+ui-kit-immediate = { path = "../ui-kit-immediate" }
+serde = { version = "1", features = ["derive"] }
+ropey = "1.6"
+# `default-fancy`: the pure Rust regex engine, so it builds for the web too.
+syntect = { version = "5.2", default-features = false, features = ["default-fancy"] }
