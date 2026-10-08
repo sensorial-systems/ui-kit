@@ -212,7 +212,10 @@ impl SensorialRenderer {
         self.backdrop.as_ref().expect("made above").pipeline.clone()
     }
 
-    fn draw_backdrop(&mut self, frame: &mut WgpuFrame<'_>) {
+    /// The world, over the command's clip (or its rect): the whole target
+    /// when the application has the window to itself, and only its client
+    /// area under a window's own chrome, which was drawn before it.
+    fn draw_backdrop(&mut self, frame: &mut WgpuFrame<'_>, command: &DrawCommand) {
         let size = frame.target.size();
         let format = frame.target.format;
         let pipeline = self.backdrop(format);
@@ -285,7 +288,7 @@ impl SensorialRenderer {
                     resolve_target: None,
                     depth_slice: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -294,6 +297,15 @@ impl SensorialRenderer {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
+        let area = command.clip.map_or(command.rect, |clip| clip.intersect(command.rect));
+        let x0 = area.x.max(0.0).floor() as u32;
+        let y0 = area.y.max(0.0).floor() as u32;
+        let x1 = (area.x + area.width).ceil().clamp(0.0, size.0 as f32) as u32;
+        let y1 = (area.y + area.height).ceil().clamp(0.0, size.1 as f32) as u32;
+        if x1 <= x0 || y1 <= y0 {
+            return;
+        }
+        pass.set_scissor_rect(x0, y0, x1 - x0, y1 - y0);
         pass.set_pipeline(&pipeline);
         pass.set_bind_group(0, &group, &[]);
         pass.draw(0..3, 0..1);
@@ -312,7 +324,7 @@ impl CommandRenderer for SensorialRenderer {
         command: &DrawCommand,
     ) -> Result<bool> {
         if command.kind == BACKDROP {
-            self.draw_backdrop(frame);
+            self.draw_backdrop(frame, command);
             return Ok(true);
         }
         let Some(look) = GlassLook::of(&command.style.material) else {
