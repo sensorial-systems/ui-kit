@@ -20,6 +20,13 @@ pub struct AppConfig {
     /// Draw ui-kit's own title bar and window controls around the content.
     /// Off on Android, where the application owns the whole screen.
     pub chrome: bool,
+    /// The application draws the title bar itself, this tall: its content
+    /// runs to the top of the window, under the bar, and only the window's
+    /// buttons are painted over it (see [`with_custom_title_bar`](Self::with_custom_title_bar)).
+    pub custom_title_bar: Option<f32>,
+    /// Put a button on the bar that takes the whole screen and gives it back,
+    /// before the others.
+    pub fullscreen_button: bool,
     /// Take the whole screen: on Android, hide the status and navigation bars
     /// (a swipe from the edge shows them for a moment); on desktop, a
     /// borderless fullscreen window.
@@ -48,6 +55,8 @@ impl Default for AppConfig {
             // Android owns the screen, and a page is already inside the
             // browser's window.
             chrome: !cfg!(any(target_os = "android", target_arch = "wasm32")),
+            custom_title_bar: None,
+            fullscreen_button: false,
             fullscreen: false,
             canvas: None,
         }
@@ -111,7 +120,28 @@ impl AppConfig {
         self
     }
 
+    /// Draw the title bar in the application, `height` tall, and leave the
+    /// window only its buttons, over the bar's trailing end -- as a store, a
+    /// browser or an editor with tabs in its bar does.
+    ///
+    /// Each frame's [`FrameContext::title_bar`](crate::FrameContext::title_bar)
+    /// says where the bar is and where the buttons are; the application lays
+    /// its bar out around them and says, through
+    /// [`App::title_bar`](crate::App::title_bar), where its own controls on it
+    /// are, so the rest of the bar still moves the window.
+    pub fn with_custom_title_bar(mut self, height: f32) -> Self {
+        self.custom_title_bar = Some(height);
+        self
+    }
+
+    /// Put a full-screen button on the bar (see [`AppConfig::fullscreen_button`]).
+    pub fn with_fullscreen_button(mut self, shown: bool) -> Self {
+        self.fullscreen_button = shown;
+        self
+    }
+
     /// Take the whole screen (see [`AppConfig::fullscreen`]).
+
     pub fn with_fullscreen(mut self, fullscreen: bool) -> Self {
         self.fullscreen = fullscreen;
         self

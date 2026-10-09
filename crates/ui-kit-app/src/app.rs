@@ -2,6 +2,7 @@ use crate::context::FrameContext;
 use crate::fonts::Fonts;
 use crate::gpu::Gpu;
 use crate::images::ImageStore;
+use ui_kit_core::Rect;
 use ui_kit_immediate::{DrawCommand, Output, TextMeasure};
 
 /// Something an application asks the runner to do to its window.
@@ -22,8 +23,24 @@ pub enum WindowCommand {
     /// Draw the window again: something it shows changed without any input
     /// -- a status the application keeps, a result from elsewhere.
     Redraw,
+    /// Take the whole screen, or give it back.
+    ToggleFullscreen,
     /// Leave the event loop.
     Exit,
+}
+
+/// How a title bar the application draws is laid out now
+/// ([`App::title_bar`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct TitleBarLayout {
+    /// How tall the bar is now, when not as configured: an interface that
+    /// scales with the window keeps its bar in proportion.
+    pub height: Option<f32>,
+    /// Where the application has controls on the bar, in its coordinates.
+    /// Presses there are the application's; the rest of the bar moves the
+    /// window. Rectangles off the bar are ignored, so every widget of the
+    /// frame will do: `ui.widget_rects().map(|(_, rect)| rect).collect()`.
+    pub controls: Vec<Rect>,
 }
 
 /// Interface for applications driven by the `ui-kit-app` runner.
@@ -97,8 +114,16 @@ pub trait App {
         true
     }
 
+    /// For an application that draws its own title bar
+    /// ([`AppConfig::with_custom_title_bar`](crate::AppConfig::with_custom_title_bar)):
+    /// how it is laid out after the last frame. Asked after every frame.
+    fn title_bar(&self) -> TitleBarLayout {
+        TitleBarLayout::default()
+    }
+
     /// What the application wants done to its window, drained after each
     /// update.
+
     fn window_commands(&mut self) -> Vec<WindowCommand> {
         Vec::new()
     }

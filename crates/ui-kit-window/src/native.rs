@@ -1,4 +1,5 @@
 use crate::{ResizeEdge, WindowAction, WindowChrome, WindowRegion};
+use std::time::{Duration, Instant};
 use ui_kit_core::{Point, Rect};
 use winit::{
     event::{ElementState, MouseButton, WindowEvent},
@@ -17,25 +18,85 @@ pub struct WinitWindow {
     pub chrome: WindowChrome,
     pointer: Option<Point>,
     pressed: Option<WindowRegion>,
+    /// Where the application has controls of its own on a bar it draws, in
+    /// window coordinates: presses there are its, not the window's.
+    bar_controls: Vec<Rect>,
+    /// When the bar was last pressed, to tell a double press.
+    bar_pressed_at: Option<Instant>,
 }
+
+/// Two presses on the bar this close together maximize or restore the window.
+const DOUBLE_PRESS: Duration = Duration::from_millis(450);
 
 impl WinitWindow {
     pub fn new(title: impl Into<String>) -> Self {
+        // Windows rounds the corners itself (see `attributes`), by its own
+        // radius: the outline follows it.
+        let radius = if cfg!(windows) { 8.0 } else { 10.0 };
         Self {
-            chrome: WindowChrome::new(title),
+            chrome: WindowChrome {
+                radius,
+                ..WindowChrome::new(title)
+            },
             pointer: None,
             pressed: None,
+            bar_controls: Vec::new(),
+            bar_pressed_at: None,
+        }
+    }
+
+    /// Where the application has controls on a bar it draws
+    /// ([`WindowChrome::custom_bar`]), in window coordinates: the bar moves
+    /// the window everywhere else. Rectangles whose middle is off the bar are
+    /// not on it, and are left out. The application's last frame says.
+    pub fn set_bar_controls(&mut self, bounds: Rect, controls: impl IntoIterator<Item = Rect>) {
+        let bar = self.chrome.drag_area(bounds);
+        self.bar_controls.clear();
+        self.bar_controls.extend(controls.into_iter().filter(|rect| {
+            bar.contains(Point::new(rect.x + rect.width * 0.5, rect.y + rect.height * 0.5))
+        }));
+    }
+
+    /// What `point` is on: the frame's own answer, except that the
+    /// application's controls on the bar are the application's.
+    pub fn region(&self, bounds: Rect, point: Point) -> WindowRegion {
+        match self.chrome.hit(bounds, point) {
+            WindowRegion::Drag if self.bar_controls.iter().any(|r| r.contains(point)) => {
+                WindowRegion::Client
+            }
+            region => region,
         }
     }
 
     /// Compose with the caller's size, platform options, and other attributes.
+    ///
+    /// On Windows 11 the window manager rounds the window's corners, as it
+    /// does a decorated window's, and gives it its shadow and edge: an opaque
+    /// window is rounded too, and it is square again maximized or fullscreen.
     pub fn attributes(&self, attributes: WindowAttributes) -> WindowAttributes {
-        attributes
+        let attributes = attributes
             .with_title(&self.chrome.title)
             .with_decorations(false)
             .with_resizable(self.chrome.resizable)
-            .with_transparent(self.chrome.transparent)
+            .with_transparent(self.chrome.transparent);
+        #[cfg(windows)]
+        let attributes = {
+            use winit::platform::windows::{CornerPreference, WindowAttributesExtWindows};
+            attributes.with_corner_preference(if self.chrome.radius > 0.0 {
+                CornerPreference::Round
+            } else {
+                CornerPreference::DoNotRound
+            })
+        };
+        attributes
     }
+
+    /// Whether the window manager rounds the corners itself. Where it does
+    /// not, a host with a transparent surface rounds them as it presents.
+    pub fn rounded_by_system(&self) -> bool {
+        cfg!(windows)
+    }
+
 
     pub fn bounds(&self, window: &Window) -> Rect {
         let size = window.inner_size().to_logical::<f32>(window.scale_factor());
@@ -49,6 +110,7 @@ impl WinitWindow {
 
     pub fn sync(&mut self, window: &Window) {
         self.chrome.maximized = window.is_maximized();
+        self.chrome.fullscreen = window.fullscreen().is_some();
         self.chrome.resizable = window.is_resizable();
     }
 
@@ -66,7 +128,7 @@ impl WinitWindow {
             WindowEvent::CursorMoved { position, .. } => {
                 let p = position.to_logical::<f32>(window.scale_factor());
                 self.pointer = Some(Point::new(p.x, p.y));
-                let region = self.chrome.hit(bounds, self.pointer.unwrap());
+                let region = self.region(bounds, self.pointer.unwrap());
                 window.set_cursor(match region {
                     WindowRegion::Resize(ResizeEdge::North | ResizeEdge::South) => {
                         CursorIcon::NsResize
@@ -95,7 +157,7 @@ impl WinitWindow {
             } => {
                 let region = self
                     .pointer
-                    .map(|p| self.chrome.hit(bounds, p))
+                    .map(|p| self.region(bounds, p))
                     .unwrap_or(WindowRegion::Client);
                 if *state == ElementState::Pressed {
                     self.pressed = Some(region);
@@ -103,7 +165,17 @@ impl WinitWindow {
                     match region {
                         WindowRegion::Drag => {
                             self.pressed = None;
-                            window.drag_window()?;
+                            let now = Instant::now();
+                            let double = self
+                                .bar_pressed_at
+                                .is_some_and(|at| now.duration_since(at) < DOUBLE_PRESS);
+                            if double && self.chrome.resizable && !self.chrome.fullscreen {
+                                self.bar_pressed_at = None;
+                                self.action(window, WindowAction::ToggleMaximize);
+                            } else {
+                                self.bar_pressed_at = Some(now);
+                                window.drag_window()?;
+                            }
                         }
                         WindowRegion::Resize(edge) => {
                             self.pressed = None;
@@ -123,7 +195,7 @@ impl WinitWindow {
             WindowEvent::MouseWheel { .. } => {
                 result.consumed = self
                     .pointer
-                    .is_some_and(|p| self.chrome.hit(bounds, p) != WindowRegion::Client);
+                    .is_some_and(|p| self.region(bounds, p) != WindowRegion::Client);
             }
             _ => {}
         }
@@ -136,6 +208,10 @@ impl WinitWindow {
     /// Also usable by another renderer's title-bar buttons.
     pub fn action(&mut self, window: &Window, action: WindowAction) -> bool {
         match action {
+            WindowAction::ToggleFullscreen => window.set_fullscreen(match window.fullscreen() {
+                Some(_) => None,
+                None => Some(winit::window::Fullscreen::Borderless(None)),
+            }),
             WindowAction::Minimize => window.set_minimized(true),
             WindowAction::ToggleMaximize => window.set_maximized(!window.is_maximized()),
             WindowAction::Close => return true,
@@ -180,10 +256,10 @@ impl WinitWindow {
         body.frame.stroke_width = 0.0;
         crate::window_chrome(&mut ui, &self.chrome, bounds, &body);
         ui.end();
-        for command in &mut ui.commands {
-            if let Some(WindowRegion::Control(control)) = self.pressed {
-                command.active =
-                    command.hovered && command.text == control.glyph(self.chrome.maximized);
+        if let Some(WindowRegion::Control(control)) = self.pressed {
+            let pressed = self.chrome.control_rect(bounds, control);
+            for command in &mut ui.commands {
+                command.active = command.hovered && Some(command.rect) == pressed;
             }
         }
         let client = self.chrome.client(bounds);
@@ -216,7 +292,19 @@ impl WinitWindow {
                     .max(0.0),
             });
         }
+        // On a bar the application draws, the window's buttons go over what
+        // it drew there: after its content, which is drawn in order.
+        let buttons: Vec<_> = if self.chrome.custom_bar {
+            let (buttons, body) = std::mem::take(&mut ui.commands)
+                .into_iter()
+                .partition(|command| command.layer == crate::immediate::BUTTONS);
+            ui.commands = body;
+            buttons
+        } else {
+            Vec::new()
+        };
         ui.commands.extend(commands);
+        ui.commands.extend(buttons);
         let mut outline = ui_kit_immediate::Ui::default();
         outline.begin(ui_kit_immediate::Input::default());
         crate::window_outline(&mut outline, &self.chrome, bounds, style);
@@ -243,8 +331,46 @@ fn direction(edge: ResizeEdge) -> ResizeDirection {
 mod tests {
     use super::*;
 
+    /// The window's buttons are over what the application draws on its bar.
+    #[cfg(feature = "immediate")]
+    #[test]
+    fn the_buttons_are_drawn_over_an_application_drawn_bar() {
+        use ui_kit_immediate::Ui;
+        let mut frame = WinitWindow::new("Store");
+        frame.chrome = frame.chrome.clone().custom_bar(64.0);
+        let bounds = Rect::new(0.0, 0.0, 800.0, 600.0);
+        let commands = frame.frame_in_bounds(bounds, Default::default(), &crate::WindowStyle::default(), |input, width, height| {
+            assert_eq!((width, height), (800.0, 600.0), "the application has the whole window");
+            let mut ui = Ui::default();
+            ui.begin(input);
+            ui.label(Rect::new(0.0, 0.0, 800.0, 64.0), "Bar");
+            ui.end();
+            ui.commands
+        });
+        let bar = commands.iter().position(|c| c.text == "Bar").unwrap();
+        let close = frame.chrome.control_rect(bounds, crate::WindowControl::Close).unwrap();
+        let button = commands.iter().rposition(|c| c.rect == close).unwrap();
+        assert!(button > bar, "the close button is under the bar");
+    }
+
+    /// On a bar the application draws, its tabs and buttons take presses and
+    /// the rest of the bar still moves the window.
+    #[test]
+    fn the_applications_controls_on_its_bar_are_not_dragged_by() {
+        let mut frame = WinitWindow::new("Store");
+        frame.chrome = frame.chrome.clone().custom_bar(64.0);
+        let bounds = Rect::new(0.0, 0.0, 800.0, 600.0);
+        let tab = Rect::new(300.0, 16.0, 80.0, 32.0);
+        let tile = Rect::new(300.0, 200.0, 80.0, 32.0);
+        frame.set_bar_controls(bounds, [tab, tile]);
+        assert_eq!(frame.region(bounds, Point::new(320.0, 30.0)), WindowRegion::Client);
+        assert_eq!(frame.region(bounds, Point::new(120.0, 30.0)), WindowRegion::Drag);
+        assert_eq!(frame.bar_controls, vec![tab], "only what is on the bar counts");
+    }
+
     #[test]
     fn attributes_preserve_host_configuration() {
+
         let frame = WinitWindow::new("Example");
         let attributes = frame.attributes(
             Window::default_attributes()

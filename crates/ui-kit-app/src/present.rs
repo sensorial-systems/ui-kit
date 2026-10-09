@@ -26,6 +26,9 @@ pub(crate) struct Presenter<C> {
     transparent: bool,
     /// What the target shows, to draw only what changes.
     damage: Damage,
+    /// How round the window's corners are cut out of what is presented,
+    /// physical pixels: 0 leaves them square.
+    corner_radius: f32,
     /// The pictures the application renders into itself.
     live_images: HashSet<ImageId>,
     /// Whether a picture changed since the last frame drawn.
@@ -56,6 +59,7 @@ impl<C: CommandRenderer> Presenter<C> {
             blit: None,
             transparent,
             damage: Damage::default(),
+            corner_radius: 0.0,
             live_images: HashSet::new(),
             images_changed: false,
         })
@@ -76,6 +80,13 @@ impl<C: CommandRenderer> Presenter<C> {
         self.config = Some(config);
         self.surface = Some(surface);
         Ok(())
+    }
+
+    /// Cut the window's corners round, `radius` physical pixels, out of what
+    /// is presented: for a window that shows through where nothing is drawn.
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    pub fn set_corner_radius(&mut self, radius: f32) {
+        self.corner_radius = radius.max(0.0);
     }
 
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
@@ -198,7 +209,8 @@ impl<C: CommandRenderer> Presenter<C> {
             }
             None => self.renderer.render(&mut { frame }, &commands)?,
         }
-        if config.usage.contains(wgpu::TextureUsages::COPY_DST) {
+        let rounded = self.corner_radius > 0.0;
+        if config.usage.contains(wgpu::TextureUsages::COPY_DST) && !rounded {
             encoder.copy_texture_to_texture(
                 target.texture.as_ref().unwrap().as_image_copy(),
                 output.texture.as_image_copy(),
@@ -211,10 +223,13 @@ impl<C: CommandRenderer> Presenter<C> {
             let surface_view = output.texture.create_view(&Default::default());
             blit.draw(
                 &self.gpu.device,
+                &self.gpu.queue,
                 &mut encoder,
                 target.view.as_ref().unwrap(),
                 &surface_view,
+                (width, height, self.corner_radius),
             );
+
         }
         self.gpu.queue.submit([encoder.finish()]);
         self.damage.shown(commands);

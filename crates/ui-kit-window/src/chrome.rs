@@ -15,14 +15,17 @@ use ui_kit_core::{button, row, text, Point, Rect, View};
 /// exact strings, which is what lets one description drive either of them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WindowControl {
+    /// Take the whole screen, or give it back.
+    Fullscreen,
     Minimize,
     Maximize,
     Close,
 }
 impl WindowControl {
-    pub const ALL: [Self; 3] = [Self::Minimize, Self::Maximize, Self::Close];
+    pub const ALL: [Self; 4] = [Self::Fullscreen, Self::Minimize, Self::Maximize, Self::Close];
     pub fn id(self) -> &'static str {
         match self {
+            Self::Fullscreen => "window.fullscreen",
             Self::Minimize => "window.minimize",
             Self::Maximize => "window.maximize",
             Self::Close => "window.close",
@@ -31,9 +34,11 @@ impl WindowControl {
     pub fn from_id(id: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|c| c.id() == id)
     }
-    /// The accessible name, which changes with the window state.
+    /// The accessible name, which changes with the window state. A
+    /// [`WindowChrome`] knows all of it: [`WindowChrome::label`].
     pub fn label(self, maximized: bool) -> &'static str {
         match self {
+            Self::Fullscreen => "Full screen",
             Self::Minimize => "Minimize",
             Self::Maximize if maximized => "Restore",
             Self::Maximize => "Maximize",
@@ -43,6 +48,7 @@ impl WindowControl {
     /// A glyph from the system font, so no icon set has to ship with the kit.
     pub fn glyph(self, maximized: bool) -> &'static str {
         match self {
+            Self::Fullscreen => "\u{26f6}",
             Self::Minimize => "\u{2013}",
             Self::Maximize if maximized => "\u{2750}",
             Self::Maximize => "\u{25a1}",
@@ -107,6 +113,7 @@ pub enum WindowRegion {
 /// What a host should do with a title bar activation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WindowAction {
+    ToggleFullscreen,
     Minimize,
     ToggleMaximize,
     Close,
@@ -114,6 +121,7 @@ pub enum WindowAction {
 impl From<WindowControl> for WindowAction {
     fn from(control: WindowControl) -> Self {
         match control {
+            WindowControl::Fullscreen => Self::ToggleFullscreen,
             WindowControl::Minimize => Self::Minimize,
             WindowControl::Maximize => Self::ToggleMaximize,
             WindowControl::Close => Self::Close,
@@ -134,8 +142,20 @@ pub struct WindowChrome {
     pub resize_corner: f32,
     pub radius: f32,
     pub maximized: bool,
+    /// Whether the window takes the whole screen. Like a maximized one, it
+    /// sits flush with the screen's edges.
+    pub fullscreen: bool,
     pub resizable: bool,
     pub transparent: bool,
+    /// The application draws the title bar itself: its content runs to the
+    /// top of the window, under the bar, and only the window's buttons are
+    /// painted over it. The bar still moves the window, except where the
+    /// application has controls of its own on it.
+    pub custom_bar: bool,
+    /// How tall the buttons are, centred on the bar: the bar's height when
+    /// `None`. A tall bar an application draws reads better with buttons of
+    /// the usual height in its middle than with buttons as tall as it.
+    pub control_height: Option<f32>,
     /// Buttons, laid out left to right at the trailing end of the bar.
     pub controls: Vec<WindowControl>,
 }
@@ -149,9 +169,12 @@ impl Default for WindowChrome {
             resize_corner: 16.0,
             radius: 10.0,
             maximized: false,
+            fullscreen: false,
             resizable: true,
             transparent: true,
-            controls: WindowControl::ALL.into(),
+            custom_bar: false,
+            control_height: None,
+            controls: vec![WindowControl::Minimize, WindowControl::Maximize, WindowControl::Close],
         }
     }
 }
@@ -174,21 +197,44 @@ impl WindowChrome {
         self.transparent = value;
         self
     }
+    pub fn fullscreen(mut self, value: bool) -> Self {
+        self.fullscreen = value;
+        self
+    }
+    /// Leave the bar to the application (see [`WindowChrome::custom_bar`]),
+    /// `height` tall.
+    pub fn custom_bar(mut self, height: f32) -> Self {
+        self.custom_bar = true;
+        self.title_bar_height = height;
+        self
+    }
     pub fn controls(mut self, value: impl IntoIterator<Item = WindowControl>) -> Self {
         self.controls = value.into_iter().collect();
         self
     }
-    /// A maximized window has no rounded corners and no resize border: it sits
-    /// flush with the screen, where both would leave a gap or swallow clicks.
+    /// Whether the window sits flush with the screen's edges.
+    fn flush(&self) -> bool {
+        self.maximized || self.fullscreen
+    }
+    /// A maximized or fullscreen window has no rounded corners and no resize
+    /// border: it sits flush with the screen, where both would leave a gap or
+    /// swallow clicks.
     pub fn effective_radius(&self) -> f32 {
-        if self.maximized {
+        if self.flush() {
             0.0
         } else {
             self.radius
         }
     }
+    /// The accessible name of `control`, as the window is now.
+    pub fn label(&self, control: WindowControl) -> &'static str {
+        match control {
+            WindowControl::Fullscreen if self.fullscreen => "Exit full screen",
+            control => control.label(self.maximized),
+        }
+    }
     fn effective_border(&self) -> f32 {
-        if self.resizable && !self.maximized {
+        if self.resizable && !self.flush() {
             self.resize_border.max(0.0)
         } else {
             0.0
@@ -200,8 +246,12 @@ impl WindowChrome {
             ..bounds
         }
     }
-    /// Everything below the title bar: where the application draws.
+    /// Where the application draws: everything below the title bar, or the
+    /// whole window when the application draws the bar.
     pub fn client(&self, bounds: Rect) -> Rect {
+        if self.custom_bar {
+            return bounds;
+        }
         let bar = self.title_bar(bounds);
         Rect {
             x: bounds.x,
@@ -218,10 +268,12 @@ impl WindowChrome {
         let index = self.controls.iter().position(|c| *c == control)?;
         let bar = self.title_bar(bounds);
         let width = self.control_width.max(0.0);
+        let height = self.control_height.map_or(bar.height, |h| h.clamp(0.0, bar.height));
         Some(Rect {
             x: bar.x + bar.width - self.controls_width() + index as f32 * width,
+            y: bar.y + (bar.height - height) * 0.5,
             width,
-            ..bar
+            height,
         })
     }
     /// The part of the bar that moves the window when pressed.
@@ -313,12 +365,12 @@ mod tests {
     }
     #[test]
     fn controls_sit_at_the_trailing_end_in_order() {
-        let chrome = WindowChrome::new("Explorer");
+        let chrome = WindowChrome::new("Explorer").controls(WindowControl::ALL);
         let x: Vec<f32> = WindowControl::ALL
             .iter()
             .map(|c| chrome.control_rect(bounds(), *c).unwrap().x)
             .collect();
-        assert!(x[0] < x[1] && x[1] < x[2]);
+        assert!(x.windows(2).all(|pair| pair[0] < pair[1]));
         let close = chrome.control_rect(bounds(), WindowControl::Close).unwrap();
         assert_eq!(close.x + close.width, 800.0);
     }
@@ -366,6 +418,24 @@ mod tests {
         );
     }
     #[test]
+    fn an_application_drawn_bar_leaves_the_whole_window_to_the_application() {
+        let chrome = WindowChrome::new("Store")
+            .custom_bar(72.0)
+            .controls(WindowControl::ALL);
+        assert_eq!(chrome.client(bounds()), bounds());
+        // Still moved from the bar, and resized from the edges.
+        assert_eq!(chrome.hit(bounds(), Point::new(300.0, 40.0)), WindowRegion::Drag);
+        assert_eq!(chrome.hit(bounds(), Point::new(300.0, 100.0)), WindowRegion::Client);
+        let centred = WindowChrome {
+            control_height: Some(40.0),
+            ..chrome.clone()
+        };
+        let close = centred.control_rect(bounds(), WindowControl::Close).unwrap();
+        assert_eq!((close.y, close.height), (16.0, 40.0));
+        assert_eq!(chrome.controls_width(), 4.0 * chrome.control_width);
+    }
+
+    #[test]
     fn a_maximized_window_has_no_resize_border_or_rounding() {
         let chrome = WindowChrome::new("Explorer").maximized(true);
         assert_eq!(chrome.effective_radius(), 0.0);
@@ -373,6 +443,13 @@ mod tests {
             chrome.hit(bounds(), Point::new(0.0, 300.0)),
             WindowRegion::Client
         );
+        let fullscreen = WindowChrome::new("Explorer").fullscreen(true);
+        assert_eq!(fullscreen.effective_radius(), 0.0);
+        assert_eq!(
+            fullscreen.hit(bounds(), Point::new(0.0, 300.0)),
+            WindowRegion::Client
+        );
+        assert_eq!(fullscreen.label(WindowControl::Fullscreen), "Exit full screen");
         let fixed = WindowChrome::new("Explorer").resizable(false);
         assert_eq!(
             fixed.hit(bounds(), Point::new(0.0, 300.0)),
@@ -381,7 +458,7 @@ mod tests {
     }
     #[test]
     fn the_shared_description_is_valid_and_carries_the_control_ids() {
-        let chrome = WindowChrome::new("Explorer");
+        let chrome = WindowChrome::new("Explorer").controls(WindowControl::ALL);
         let view = chrome.view(|action| action);
         view.validate().unwrap();
         for control in WindowControl::ALL {

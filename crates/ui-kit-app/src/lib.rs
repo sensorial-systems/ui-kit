@@ -22,9 +22,9 @@ pub use ui_kit_immediate::task;
 #[cfg(target_arch = "wasm32")]
 pub mod web;
 
-pub use app::{App, ClosureApp, WindowCommand};
+pub use app::{App, ClosureApp, TitleBarLayout, WindowCommand};
 pub use config::AppConfig;
-pub use context::FrameContext;
+pub use context::{FrameContext, TitleBar};
 pub use fonts::Fonts;
 pub use gpu::Gpu;
 pub use images::ImageStore;

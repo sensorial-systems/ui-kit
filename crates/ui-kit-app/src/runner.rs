@@ -1,6 +1,6 @@
 use crate::app::{App, WindowCommand};
 use crate::config::AppConfig;
-use crate::context::FrameContext;
+use crate::context::{FrameContext, TitleBar};
 use crate::damage::Region;
 use crate::gpu;
 use crate::present::Presenter;
@@ -12,7 +12,7 @@ use std::{
 };
 use ui_kit_core::Rect;
 use ui_kit_wgpu::{CommandRenderer, GpuContext, NoCustom};
-use ui_kit_window::{InputCollector, WindowStyle, WinitWindow};
+use ui_kit_window::{InputCollector, WindowAction, WindowControl, WindowStyle, WinitWindow};
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
@@ -54,7 +54,12 @@ pub struct AppRunner<A, C = NoCustom> {
     redraw_at: Option<Instant>,
 }
 
+/// How tall the window's buttons are on a bar the application draws, at
+/// most: centred on a taller bar.
+const CONTROL_HEIGHT: f32 = 40.0;
+
 /// How long the display shows a frame.
+
 fn refresh_interval(window: &Window) -> Duration {
     let millihertz = window
         .current_monitor()
@@ -123,6 +128,13 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         let mut chrome = WinitWindow::new(title);
         chrome.chrome.transparent = transparent;
         chrome.chrome.resizable = resizable;
+        if let Some(height) = config.custom_title_bar {
+            chrome.chrome = chrome.chrome.clone().custom_bar(height);
+            chrome.chrome.control_height = Some(height.min(CONTROL_HEIGHT));
+        }
+        if config.fullscreen_button {
+            chrome.chrome.controls.insert(0, WindowControl::Fullscreen);
+        }
 
         Self {
             app,
@@ -196,6 +208,12 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
                 }
                 WindowCommand::Redraw => {
                     if let (Some(window), true) = (&self.window, self.visible) {
+                        window.request_redraw();
+                    }
+                }
+                WindowCommand::ToggleFullscreen => {
+                    if let Some(window) = &self.window {
+                        self.chrome.action(window, WindowAction::ToggleFullscreen);
                         window.request_redraw();
                     }
                 }
@@ -318,6 +336,20 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         let elapsed = self.start.elapsed().as_secs_f32();
         let dark = self.config.dark;
         let bounds = self.chrome.bounds(window);
+        let custom_bar = self.config.chrome && self.chrome.chrome.custom_bar;
+        // Where the application's bar is, and the buttons on it.
+        self.chrome.sync(window);
+        let title_bar = custom_bar.then(|| {
+            let chrome = &self.chrome.chrome;
+            let rect = chrome.title_bar(bounds);
+            let width = chrome.controls_width();
+            TitleBar {
+                rect,
+                buttons: Rect::new(rect.x + rect.width - width, rect.y, width, rect.height),
+                maximized: chrome.maximized,
+                fullscreen: chrome.fullscreen,
+            }
+        });
         // The UI steps through the input in the order it came -- each
         // stretch between button changes a step of its own, so a click is
         // seen where it was made, however slow the frame -- and the last
@@ -328,7 +360,8 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
                 self.chrome
                     .frame(window, input, &style, |mut input, width, height| {
                         input.viewport = Some(Rect::new(0.0, 0.0, width, height));
-                        let ctx = FrameContext::new(input, width, height, elapsed, scale, dark);
+                        let ctx = FrameContext::new(input, width, height, elapsed, scale, dark)
+                            .with_title_bar(title_bar);
                         self.app.frame(&ctx)
                     })
             } else {
@@ -340,6 +373,26 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
                 self.collector.apply(window, &output);
             }
         }
+        if custom_bar {
+            // The application's bar as it laid it out: its height, and where
+            // it has controls the bar must not take as a move. Its
+            // coordinates are the window's, the content filling it.
+            let layout = self.app.title_bar();
+            if let Some(height) = layout.height.filter(|h| *h > 0.0) {
+                self.chrome.chrome.title_bar_height = height;
+                self.chrome.chrome.control_height = Some(height.min(CONTROL_HEIGHT));
+            }
+            self.chrome.set_bar_controls(bounds, layout.controls);
+        }
+        // Where the system does not round the window, the corners are cut
+        // out of what is presented, on a surface that shows through.
+        presenter.set_corner_radius(
+            if self.config.chrome && self.config.transparent && !self.chrome.rounded_by_system() {
+                self.chrome.chrome.effective_radius() * scale
+            } else {
+                0.0
+            },
+        );
 
         scale_commands(&mut commands, scale);
         // A frame that changes nothing is not drawn: the window keeps

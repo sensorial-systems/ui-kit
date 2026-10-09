@@ -374,9 +374,11 @@ pub fn eyebrow(ui: &mut Ui, x: f32, y: f32, label: &str, a: f32, center_in: Opti
         }
         None => {
             spectral_line(ui, Point::new(x, y + 8.0), line_len, a, 1.5);
+            // As wide as the label: a long one is not cut short.
+            let w = typography::text_width(ui, label, kind).max(300.0);
             typography::text(
                 ui,
-                Rect::new(x + 42.0, y, 300.0, 16.0),
+                Rect::new(x + 42.0, y, w + 4.0, 16.0),
                 label,
                 kind.alpha(a),
             );

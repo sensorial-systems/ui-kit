@@ -8,9 +8,14 @@ use crate::{WindowAction, WindowChrome, WindowControl, WindowRegion};
 use ui_kit_core::{Material, Point, Rect, Style, TextAlign, Theme};
 use ui_kit_immediate::{Layer, Ui};
 
+/// The layer the window's buttons are painted on when the application draws
+/// the bar: over whatever it drew there, under the window's outline.
+pub(crate) const BUTTONS: Layer = Layer(i32::MAX - 1);
+
 /// A window control's mark, drawn as lines 10px across in the middle of its
 /// button rather than as a font's glyph.
-fn paint_control(ui: &mut Ui, control: WindowControl, maximized: bool, rect: Rect, color: ui_kit_core::Color) {
+fn paint_control(ui: &mut Ui, control: WindowControl, chrome: &WindowChrome, rect: Rect, color: ui_kit_core::Color) {
+    let maximized = chrome.maximized;
     use ui_kit_immediate::vector::{line, polyline};
     let (cx, cy, h) = (rect.x + rect.width * 0.5, rect.y + rect.height * 0.5, 5.0);
     let square = |x: f32, y: f32, size: f32| {
@@ -23,6 +28,20 @@ fn paint_control(ui: &mut Ui, control: WindowControl, maximized: bool, rect: Rec
         ]
     };
     match control {
+        // Four corners, pointing out to take the screen, in to give it back.
+        WindowControl::Fullscreen => {
+            let arm = 3.5;
+            for (sx, sy) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
+                let (x, y) = (cx + sx * h, cy + sy * h);
+                let corner = if chrome.fullscreen {
+                    let (x, y) = (cx + sx * 1.5, cy + sy * 1.5);
+                    [Point::new(x + sx * arm, y), Point::new(x, y), Point::new(x, y + sy * arm)]
+                } else {
+                    [Point::new(x - sx * arm, y), Point::new(x, y), Point::new(x, y - sy * arm)]
+                };
+                polyline(ui, &corner, 1.0, color);
+            }
+        }
         WindowControl::Minimize => line(ui, Point::new(cx - h, cy), Point::new(cx + h, cy), 1.0, color),
         WindowControl::Maximize if maximized => {
             polyline(ui, &square(cx - h, cy - h + 2.0, 2.0 * h - 2.0), 1.0, color);
@@ -138,6 +157,10 @@ pub fn window_chrome(
 /// Controls on the bar -- drawn here, or later in the frame -- keep their
 /// presses: a press on one never also starts a window move. Only the bar's
 /// empty space drags the window.
+///
+/// With a [custom bar](WindowChrome::custom_bar) no bar is painted: the
+/// application paints its own under the buttons, which go on a layer of their
+/// own over everything it draws.
 pub fn window_chrome_with(
     ui: &mut Ui,
     chrome: &WindowChrome,
@@ -157,25 +180,27 @@ pub fn window_chrome_with(
     let previous_clip = ui.clip.replace(bounds);
     ui.panel(bounds);
     let bar = chrome.title_bar(bounds);
-    ui.style = Style {
-        radius,
-        ..style.bar.clone()
-    };
-    ui.panel(bar);
-    // Square off the bottom two corners of the bar: it is the top of the body,
-    // not a rounded rectangle floating on it.
-    if let Some(command) = ui.commands.last_mut() {
-        command.rect.height += radius;
-        command.clip = Some(bar);
-    }
-    ui.style = Style {
-        radius: 0.0,
-        ..style.title.clone()
-    };
     let area = chrome.drag_area(bounds);
-    ui.clip = Some(area);
-    content(ui, area);
-    ui.clip = Some(bounds);
+    if !chrome.custom_bar {
+        ui.style = Style {
+            radius,
+            ..style.bar.clone()
+        };
+        ui.panel(bar);
+        // Square off the bottom two corners of the bar: it is the top of the
+        // body, not a rounded rectangle floating on it.
+        if let Some(command) = ui.commands.last_mut() {
+            command.rect.height += radius;
+            command.clip = Some(bar);
+        }
+        ui.style = Style {
+            radius: 0.0,
+            ..style.title.clone()
+        };
+        ui.clip = Some(area);
+        content(ui, area);
+        ui.clip = Some(bounds);
+    }
 
     let region = ui.input().pointer.map(|p| {
         let point = Point::new(p.x, p.y);
@@ -222,9 +247,15 @@ pub fn window_chrome_with(
                 rect
             },
         );
+        let painted = ui.commands.len();
         ui.paint("button", "", rect, 0.0, response, ui.focused(control.id()));
         let color = ui.style.foreground;
-        paint_control(ui, *control, chrome.maximized, rect, color);
+        paint_control(ui, *control, chrome, rect, color);
+        if chrome.custom_bar {
+            for command in &mut ui.commands[painted..] {
+                command.layer = BUTTONS;
+            }
+        }
         if response.clicked {
             action = Some(WindowAction::from(*control));
         }
@@ -415,8 +446,28 @@ mod tests {
         let (empty, _) = frame(&mut ui, Point::new(300.0, 18.0), true);
         assert!(empty.drag, "the bar around it still moves the window");
     }
+    /// An application drawing the bar gets the whole window, and the buttons
+    /// are painted over what it draws there.
+    #[test]
+    fn a_custom_bar_paints_only_the_buttons_and_puts_them_on_top() {
+        let chrome = WindowChrome::new("Store").custom_bar(64.0);
+        let mut ui = Ui::default();
+        let response = press(&mut ui, &chrome, Point::new(400.0, 300.0), false);
+        assert_eq!(response.client, bounds());
+        let close = chrome.control_rect(bounds(), WindowControl::Close).unwrap();
+        assert!(ui
+            .commands
+            .iter()
+            .filter(|c| c.rect == close)
+            .all(|c| c.layer == BUTTONS));
+        assert!(
+            !ui.commands.iter().any(|c| c.text == "Store"),
+            "the application's bar has no title of the window's"
+        );
+    }
     #[test]
     fn the_client_area_starts_below_the_bar() {
+
         let chrome = WindowChrome::new("Explorer");
         let mut ui = Ui::default();
         let response = press(&mut ui, &chrome, Point::new(400.0, 300.0), false);
