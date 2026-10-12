@@ -25,8 +25,9 @@ png = "0.17"
 winit = "0.30"
 tokio = { version = "1", features = ["rt-multi-thread", "time"], optional = true }
 
-# The system clipboard is desktop only (arboard has no Android backend).
-[target.'cfg(not(any(target_os = "android", target_arch = "wasm32")))'.dependencies]
+# The system clipboard is desktop only (arboard has no Android or iOS
+# backend), so the mobile targets take ui-kit-window without it.
+[target.'cfg(not(any(target_os = "android", target_os = "ios", target_arch = "wasm32")))'.dependencies]
 ui-kit-window = { path = "../ui-kit-window", features = ["winit", "immediate", "clipboard"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
@@ -34,6 +35,11 @@ ui-kit-window = { path = "../ui-kit-window", features = ["winit", "immediate"] }
 winit = { version = "0.30", features = ["android-native-activity"] }
 # The window's system bars are only reachable through the Java activity.
 jni = "0.22"
+
+# iOS: a winit window on a UIView; no system clipboard. winit's iOS backend
+# needs no extra feature (the base winit dependency above covers it).
+[target.'cfg(target_os = "ios")'.dependencies]
+ui-kit-window = { path = "../ui-kit-window", features = ["winit", "immediate"] }
 
 # In a browser the page is the window: a canvas, and the DOM's own events.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
