@@ -24,7 +24,7 @@ pub mod web;
 
 pub use app::{App, ClosureApp, TitleBarLayout, WindowCommand};
 pub use config::AppConfig;
-pub use context::{FrameContext, TitleBar};
+pub use context::{FrameContext, SafeArea, TitleBar};
 pub use fonts::Fonts;
 pub use gpu::Gpu;
 pub use images::ImageStore;

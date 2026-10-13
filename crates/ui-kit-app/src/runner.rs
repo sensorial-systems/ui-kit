@@ -1,6 +1,6 @@
 use crate::app::{App, WindowCommand};
 use crate::config::AppConfig;
-use crate::context::{FrameContext, TitleBar};
+use crate::context::{FrameContext, SafeArea, TitleBar};
 use crate::damage::Region;
 use crate::gpu;
 use crate::present::Presenter;
@@ -315,6 +315,16 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         }
 
         let scale = window.scale_factor() as f32;
+        // The device's safe-area insets (logical points): off the notch, the
+        // home indicator and the rounded corners. iOS only; zero elsewhere.
+        #[cfg(target_os = "ios")]
+        let safe_area = {
+            use winit::platform::ios::WindowExtIOS;
+            let (top, right, bottom, left) = window.safe_area_insets();
+            SafeArea { top: top as f32, right: right as f32, bottom: bottom as f32, left: left as f32 }
+        };
+        #[cfg(not(target_os = "ios"))]
+        let safe_area = SafeArea::default();
         let mut style = WindowStyle::default();
         let bg = self.config.background;
         style.frame.fill = bg;
@@ -364,11 +374,13 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
                     .frame(window, input, &style, |mut input, width, height| {
                         input.viewport = Some(Rect::new(0.0, 0.0, width, height));
                         let ctx = FrameContext::new(input, width, height, elapsed, scale, dark)
-                            .with_title_bar(title_bar);
+                            .with_title_bar(title_bar)
+                            .with_safe_area(safe_area);
                         self.app.frame(&ctx)
                     })
             } else {
-                let ctx = FrameContext::new(input, bounds.width, bounds.height, elapsed, scale, dark);
+                let ctx = FrameContext::new(input, bounds.width, bounds.height, elapsed, scale, dark)
+                    .with_safe_area(safe_area);
                 self.app.frame(&ctx)
             };
             // The cursor, input method and clipboard follow what the step asked for.

@@ -15,6 +15,19 @@ pub struct TitleBar {
     pub fullscreen: bool,
 }
 
+/// The device's safe-area insets, in logical points: the space along each
+/// edge the notch/Dynamic Island, the home indicator or the rounded corners
+/// take. Zero where there are none (desktop, and phones without them). An
+/// application keeps its controls clear of these so nothing hides behind the
+/// hardware.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct SafeArea {
+    pub top: f32,
+    pub right: f32,
+    pub bottom: f32,
+    pub left: f32,
+}
+
 /// Environmental information provided to the application every frame.
 #[derive(Clone, Debug)]
 pub struct FrameContext {
@@ -26,6 +39,8 @@ pub struct FrameContext {
     pub dark: bool,
     /// The title bar the application draws, when it draws one.
     pub title_bar: Option<TitleBar>,
+    /// The device's safe-area insets, in logical points.
+    pub safe_area: SafeArea,
 }
 
 impl FrameContext {
@@ -45,6 +60,7 @@ impl FrameContext {
             scale,
             dark,
             title_bar: None,
+            safe_area: SafeArea::default(),
         }
     }
 
@@ -54,4 +70,9 @@ impl FrameContext {
         self
     }
 
+    /// The same, with the device's safe-area insets.
+    pub fn with_safe_area(mut self, safe_area: SafeArea) -> Self {
+        self.safe_area = safe_area;
+        self
+    }
 }
