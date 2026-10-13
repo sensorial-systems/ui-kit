@@ -240,7 +240,10 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         };
 
         let window = Arc::new(event_loop.create_window(attributes)?);
-        window.set_ime_allowed(true);
+        // iOS shows (and keeps up) the on-screen keyboard whenever IME is
+        // allowed; apps with no text entry there must leave it off. Desktop
+        // and Android keep IME for text input.
+        window.set_ime_allowed(!cfg!(target_os = "ios"));
         #[cfg(not(target_os = "android"))]
         if self.config.fullscreen {
             window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(None)));
