@@ -52,9 +52,9 @@ impl Default for AppConfig {
             background: [0.07, 0.07, 0.08, 1.0],
             fps: 60,
             visible: true,
-            // Android owns the screen, and a page is already inside the
-            // browser's window.
-            chrome: !cfg!(any(target_os = "android", target_arch = "wasm32")),
+            // Android and iOS own the screen, and a page is already inside the
+            // browser's window; only desktop draws its own title bar.
+            chrome: !cfg!(any(target_os = "android", target_os = "ios", target_arch = "wasm32")),
             custom_title_bar: None,
             fullscreen_button: false,
             fullscreen: false,
