@@ -274,8 +274,18 @@ impl WinitWindow {
         }
         let mut commands = content(input, client.width, client.height);
         for command in &mut commands {
-            command.rect.x += client.x;
-            command.rect.y += client.y;
+            // A command drawn on a zoomed canvas is in the canvas's units:
+            // the client's offset goes on its way to the screen, unscaled.
+            match &mut command.transform {
+                Some(transform) => {
+                    transform.offset_x += client.x;
+                    transform.offset_y += client.y;
+                }
+                None => {
+                    command.rect.x += client.x;
+                    command.rect.y += client.y;
+                }
+            }
             let clip = command.clip.unwrap_or(Rect {
                 x: 0.0,
                 y: 0.0,
@@ -424,6 +434,31 @@ mod tests {
         );
         let content = commands.iter().rev().find(|c| c.text == "Client").unwrap();
         assert_eq!(content.rect.y, 48.0);
+        // Drawn on a canvas zoomed in, a control lands where the pointer
+        // finds it: the client's offset is not zoomed with the canvas.
+        let zoomed = frame.frame_in_bounds(
+            bounds,
+            Input {
+                pointer: Some(Point::new(30.0, 78.0)),
+                ..Default::default()
+            },
+            &crate::WindowStyle::default(),
+            |input, _, _| {
+                let mut ui = Ui::default();
+                ui.begin(input);
+                let canvas = ui_kit_immediate::immediate::Transform::new(Point::new(5.0, 5.0), 2.0);
+                let hovered = ui.with_transform(canvas, |ui| {
+                    ui.label(Rect::new(5.0, 5.0, 10.0, 10.0), "Zoomed");
+                    ui.interact("zoomed", Rect::new(5.0, 5.0, 10.0, 10.0)).hovered
+                });
+                assert!(hovered, "the pointer is over the control");
+                ui.end();
+                ui.commands
+            },
+        );
+        let zoomed = zoomed.iter().find(|c| c.text == "Zoomed").unwrap();
+        let on_screen = zoomed.transform.map_or(zoomed.rect, |t| t.apply_rect(zoomed.rect));
+        assert!(on_screen.contains(Point::new(30.0, 78.0)), "drawn at {on_screen:?}, away from the pointer");
         // The outline is drawn last, over the content, round the whole window.
         let outline = commands.last().unwrap();
         assert_eq!(outline.rect, bounds);
