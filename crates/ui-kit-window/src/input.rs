@@ -391,7 +391,13 @@ impl InputCollector {
     /// and whether the input method opens, and the clipboard. The output's
     /// rectangles are in logical pixels.
     pub fn apply(&mut self, window: &Window, output: &Output) {
-        window.set_cursor(cursor(output.cursor));
+        self.apply_with_cursor(window, output, cursor(output.cursor));
+    }
+
+    /// [`apply`](Self::apply), with `shape` for the cursor instead of the
+    /// output's: the window frame's own on its resize edges.
+    pub fn apply_with_cursor(&mut self, window: &Window, output: &Output, shape: WinitCursor) {
+        window.set_cursor(shape);
         if output.pointer_lock && !self.lock_asked {
             self.lock_asked = true;
             // Locked where the system can, kept in the window where it only

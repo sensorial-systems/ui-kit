@@ -384,8 +384,15 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
                 self.app.frame(&ctx)
             };
             // The cursor, input method and clipboard follow what the step asked for.
+            // On the frame's resize edges (and while one is dragged) its
+            // resize cursor stays: set the content's there and the two would
+            // take turns each frame.
             if let Some(output) = self.app.output() {
-                self.collector.apply(window, &output);
+                let shape = match self.config.chrome.then(|| self.chrome.cursor()).flatten() {
+                    Some(edge) => edge,
+                    None => ui_kit_window::cursor(output.cursor),
+                };
+                self.collector.apply_with_cursor(window, &output, shape);
             }
         }
         if custom_bar {

@@ -18,6 +18,10 @@ pub struct WinitWindow {
     pub chrome: WindowChrome,
     pointer: Option<Point>,
     pressed: Option<WindowRegion>,
+    /// The resize cursor last set for an edge, so the cursor changes only
+    /// when the pointer goes onto an edge or off it -- not at every move,
+    /// which would undo the cursor the content asked for.
+    edge_cursor: Option<CursorIcon>,
     /// Where the application has controls of its own on a bar it draws, in
     /// window coordinates: presses there are its, not the window's.
     bar_controls: Vec<Rect>,
@@ -40,6 +44,7 @@ impl WinitWindow {
             },
             pointer: None,
             pressed: None,
+            edge_cursor: None,
             bar_controls: Vec::new(),
             bar_pressed_at: None,
         }
@@ -59,6 +64,18 @@ impl WinitWindow {
 
     /// What `point` is on: the frame's own answer, except that the
     /// application's controls on the bar are the application's.
+    /// The cursor the frame itself shows now, over whatever the content
+    /// asks for: a resize cursor while the pointer is on an edge or
+    /// dragging one. A host applying the content's cursor after each frame
+    /// uses this one instead where there is one; otherwise the two take
+    /// turns at every frame and the cursor flickers on the edges.
+    pub fn cursor(&self) -> Option<CursorIcon> {
+        match self.pressed {
+            Some(region @ WindowRegion::Resize(_)) => resize_cursor(region),
+            _ => self.edge_cursor,
+        }
+    }
+
     pub fn region(&self, bounds: Rect, point: Point) -> WindowRegion {
         match self.chrome.hit(bounds, point) {
             WindowRegion::Drag if self.bar_controls.iter().any(|r| r.contains(point)) => {
@@ -128,24 +145,20 @@ impl WinitWindow {
             WindowEvent::CursorMoved { position, .. } => {
                 let p = position.to_logical::<f32>(window.scale_factor());
                 self.pointer = Some(Point::new(p.x, p.y));
-                let region = self.region(bounds, self.pointer.unwrap());
-                window.set_cursor(match region {
-                    WindowRegion::Resize(ResizeEdge::North | ResizeEdge::South) => {
-                        CursorIcon::NsResize
-                    }
-                    WindowRegion::Resize(ResizeEdge::East | ResizeEdge::West) => {
-                        CursorIcon::EwResize
-                    }
-                    WindowRegion::Resize(ResizeEdge::NorthEast | ResizeEdge::SouthWest) => {
-                        CursorIcon::NeswResize
-                    }
-                    WindowRegion::Resize(ResizeEdge::NorthWest | ResizeEdge::SouthEast) => {
-                        CursorIcon::NwseResize
-                    }
-                    _ => CursorIcon::Default,
-                });
+                let edge = resize_cursor(self.region(bounds, self.pointer.unwrap()));
+                if edge != self.edge_cursor {
+                    // Off an edge, the content's cursor shows again with
+                    // its next frame; until then, the plain one.
+                    window.set_cursor(edge.unwrap_or_default());
+                    self.edge_cursor = edge;
+                }
             }
-            WindowEvent::CursorLeft { .. } => self.pointer = None,
+            WindowEvent::CursorLeft { .. } => {
+                self.pointer = None;
+                if self.pressed.is_none() {
+                    self.edge_cursor = None;
+                }
+            }
             WindowEvent::Focused(false) => {
                 self.pointer = None;
                 self.pressed = None;
@@ -324,6 +337,21 @@ impl WinitWindow {
     }
 }
 
+/// The cursor for a resize edge; none elsewhere.
+fn resize_cursor(region: WindowRegion) -> Option<CursorIcon> {
+    match region {
+        WindowRegion::Resize(ResizeEdge::North | ResizeEdge::South) => Some(CursorIcon::NsResize),
+        WindowRegion::Resize(ResizeEdge::East | ResizeEdge::West) => Some(CursorIcon::EwResize),
+        WindowRegion::Resize(ResizeEdge::NorthEast | ResizeEdge::SouthWest) => {
+            Some(CursorIcon::NeswResize)
+        }
+        WindowRegion::Resize(ResizeEdge::NorthWest | ResizeEdge::SouthEast) => {
+            Some(CursorIcon::NwseResize)
+        }
+        _ => None,
+    }
+}
+
 fn direction(edge: ResizeEdge) -> ResizeDirection {
     match edge {
         ResizeEdge::North => ResizeDirection::North,
@@ -340,6 +368,30 @@ fn direction(edge: ResizeEdge) -> ResizeDirection {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// On an edge, and while one is dragged, the frame's resize cursor is
+    /// the window's: a host must not put the content's over it each frame.
+    /// Everywhere else the content's cursor shows.
+    #[test]
+    fn the_frame_keeps_its_resize_cursor_on_its_edges() {
+        let mut frame = WinitWindow::new("Store");
+        assert_eq!(frame.cursor(), None, "the content's cursor, before any edge");
+        let bounds = Rect::new(0.0, 0.0, 800.0, 600.0);
+        for (at, expected) in [
+            (Point::new(797.0, 300.0), Some(CursorIcon::EwResize)),
+            (Point::new(400.0, 598.0), Some(CursorIcon::NsResize)),
+            (Point::new(798.0, 598.0), Some(CursorIcon::NwseResize)),
+            (Point::new(2.0, 598.0), Some(CursorIcon::NeswResize)),
+            (Point::new(400.0, 300.0), None),
+        ] {
+            frame.edge_cursor = resize_cursor(frame.region(bounds, at));
+            assert_eq!(frame.cursor(), expected, "at {at:?}");
+        }
+        // Dragging an edge keeps its cursor wherever the pointer gets to.
+        frame.pressed = Some(WindowRegion::Resize(ResizeEdge::East));
+        frame.edge_cursor = None;
+        assert_eq!(frame.cursor(), Some(CursorIcon::EwResize));
+    }
 
     /// The window's buttons are over what the application draws on its bar.
     #[cfg(feature = "immediate")]
