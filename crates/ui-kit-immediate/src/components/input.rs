@@ -136,7 +136,7 @@ impl NumberField {
             if self.disabled {
                 // The same text the field would show, in a fill and a colour
                 // that say it is not to be typed into.
-                let text = format!("{:.*}", self.decimals.max(1) as usize, *value);
+                let text = format!("{:.*}", self.decimals as usize, *value);
                 ui.paint("text_input", &text, rect, 0.0, Response::default(), false);
                 if let Some(command) = ui.last_command_mut() {
                     command.style.fill = faded(command.style.fill, 0.5);
