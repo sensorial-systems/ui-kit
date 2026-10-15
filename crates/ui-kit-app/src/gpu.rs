@@ -25,17 +25,10 @@ impl Gpu {
     }
 }
 
-/// The instance surfaces and adapters come from. In a browser it prefers
-/// WebGPU and falls back to WebGL where WebGPU is missing.
+/// The instance surfaces and adapters come from: Prism's, which in a browser
+/// is WebGPU where the browser has it and WebGL2 where it does not.
 pub(crate) async fn instance() -> wgpu::Instance {
-    let descriptor = wgpu::InstanceDescriptor {
-        backends: wgpu::Backends::all(),
-        ..wgpu::InstanceDescriptor::new_without_display_handle()
-    };
-    #[cfg(target_arch = "wasm32")]
-    return wgpu::util::new_instance_with_webgpu_detection(descriptor).await;
-    #[cfg(not(target_arch = "wasm32"))]
-    return wgpu::Instance::new(descriptor);
+    prism_gpu::globals::WgpuContext::instance().await
 }
 
 /// An adapter that can present to `surface`, and the device the application

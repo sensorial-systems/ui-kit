@@ -84,11 +84,12 @@ pub trait App {
     /// longer will. Not called while the window is hidden.
     fn prepare(&mut self, _images: &mut dyn ImageStore) {}
 
-    /// What the device has to support: features and limits beyond wgpu's
-    /// defaults, for an application that runs its own GPU work on the
-    /// renderer's device. Called once, with the adapter chosen for the window.
-    fn device_descriptor(&self, _adapter: &wgpu::Adapter) -> wgpu::DeviceDescriptor<'static> {
-        wgpu::DeviceDescriptor::default()
+    /// What the device has to support, for an application that runs its own
+    /// GPU work on the renderer's device. Called once, with the adapter chosen
+    /// for the window. The default is what Prism asks of a device: limits a
+    /// browser's WebGL2 can meet, raised to what the adapter has.
+    fn device_descriptor(&self, adapter: &wgpu::Adapter) -> wgpu::DeviceDescriptor<'static> {
+        prism_gpu::globals::WgpuContext::device_descriptor(adapter)
     }
 
     /// Called once the device exists, before the renderer is made, with

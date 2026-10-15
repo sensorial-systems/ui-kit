@@ -13,6 +13,9 @@ tokio = ["dep:tokio"]
 ui-kit-core = { path = "../ui-kit-core" }
 ui-kit-immediate = { path = "../ui-kit-immediate" }
 ui-kit-wgpu = { path = "../ui-kit-wgpu" }
+# Which backend to draw with (in a browser: WebGPU, else WebGL2) and what to
+# ask of the device, so that it works on every one of them.
+prism-gpu = { path = "../../../../studio/prism/products/prism/libraries/gpu", default-features = false }
 wgpu = { version = "30", default-features = false }
 anyhow = "1"
 # `std::time::Instant` panics in a browser; this is the same type natively.
