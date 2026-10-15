@@ -1,4 +1,5 @@
 //! Immediate host: interaction state and rendering commands, independent of wgpu.
+pub mod autoscroll;
 pub mod components;
 pub mod contacts;
 pub mod easing {
@@ -55,6 +56,7 @@ pub mod xy_graph {
 }
 // Everything else the immediate layer has: widgets, theming, input and
 // output types, accessibility and the test harness.
+pub use autoscroll::Autoscroll;
 pub use combobox::Combobox;
 pub use contacts::{Contact, ContactEvent, ContactId, Contacts, Tap};
 pub use immediate::{DrawCommand, Input, Layer, Response, RichTextPaint, TextMeasure, Ui};
