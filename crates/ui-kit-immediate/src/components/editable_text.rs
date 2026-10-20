@@ -37,6 +37,9 @@ pub struct EditableText {
     last_click: f32,
     previous_down: bool,
     just_opened: bool,
+    /// The word a double press selected, which a drag after it grows from
+    /// a word at a time.
+    word: Option<(usize, usize)>,
 }
 
 /// How big the text is drawn.
@@ -65,6 +68,7 @@ impl EditableText {
             last_click: -10.0,
             previous_down: false,
             just_opened: false,
+            word: None,
         }
     }
 
@@ -209,8 +213,21 @@ impl EditableText {
                     pt.x - body.x,
                     pt.y - body.y,
                 );
-                self.draft
-                    .place(at, self.previous_down || input.extend_selection);
+                // A double press selects a word and a drag after it whole
+                // words; a triple press the line.
+                if ui.pressed() {
+                    self.word = None;
+                    match ui.click_count() {
+                        2 => self.word = Some(self.draft.select_word(at)),
+                        count if count >= 3 => self.draft.select_line(at),
+                        _ => self.draft.place(at, input.extend_selection),
+                    }
+                } else if let Some(word) = self.word {
+                    self.draft.select_words(word, at);
+                } else if ui.click_count() < 3 {
+                    self.draft
+                        .place(at, self.previous_down || input.extend_selection);
+                }
             }
         }
         self.previous_down = input.down;
