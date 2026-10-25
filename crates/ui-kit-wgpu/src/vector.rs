@@ -122,7 +122,7 @@ struct Vertex { @builtin(position) position:vec4<f32>, @location(0) color:vec4<f
                 depth_stencil: None,
                 multisample: Default::default(),
                 multiview_mask: None,
-                cache: None,
+                cache: gpu.pipeline_cache(),
             });
         let dots_shader = gpu
             .device
@@ -186,7 +186,7 @@ struct Vertex {
                 depth_stencil: None,
                 multisample: Default::default(),
                 multiview_mask: None,
-                cache: None,
+                cache: gpu.pipeline_cache(),
             });
         Self {
             pipeline,

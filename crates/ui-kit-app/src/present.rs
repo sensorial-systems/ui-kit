@@ -44,10 +44,11 @@ impl<C: CommandRenderer> Presenter<C> {
         width: u32,
         height: u32,
         transparent: bool,
+        pipeline_cache: Option<wgpu::PipelineCache>,
         make_custom: impl FnOnce(&ui_kit_wgpu::GpuContext, wgpu::TextureFormat) -> C,
     ) -> Result<Self> {
         let config = configure(gpu, &surface, width, height, transparent, None)?;
-        let context = gpu.context();
+        let context = gpu.context().with_pipeline_cache(pipeline_cache);
         let custom = make_custom(&context, config.format);
         let renderer = WgpuRenderer::with_custom(&context, config.format, custom)?;
         Ok(Self {

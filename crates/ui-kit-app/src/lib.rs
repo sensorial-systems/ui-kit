@@ -12,6 +12,8 @@ pub mod context;
 pub mod fonts;
 pub mod gpu;
 pub mod images;
+#[cfg(not(target_arch = "wasm32"))]
+mod pipeline_cache;
 mod present;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod runner;

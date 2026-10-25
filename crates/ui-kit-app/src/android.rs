@@ -41,6 +41,11 @@ pub fn event_loop_with(
     Ok(builder.build()?)
 }
 
+/// The activity's own files folder (`Context.getFilesDir`).
+pub(crate) fn files_dir() -> Option<std::path::PathBuf> {
+    ACTIVITY.lock().unwrap_or_else(|p| p.into_inner()).as_ref()?.internal_data_path()
+}
+
 /// Hides the status and navigation bars, the way a game does: they come back
 /// for a moment with a swipe from the edge of the screen, and the content
 /// also takes the area beside a camera cutout. Android shows the bars again

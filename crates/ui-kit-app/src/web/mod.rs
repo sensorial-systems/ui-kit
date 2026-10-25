@@ -75,7 +75,7 @@ where
         .map_err(|e| anyhow!("the canvas cannot be drawn to: {e}"))?;
     let gpu = gpu::request(instance, &surface, &app).await?;
     app.gpu_ready(&gpu);
-    let presenter = Presenter::new(&gpu, surface, width, height, config.transparent, make_custom)?;
+    let presenter = Presenter::new(&gpu, surface, width, height, config.transparent, None, make_custom)?;
     app.fonts_ready(&presenter.renderer);
     app.text_measure_ready(presenter.renderer.text_measure());
     app.on_resume();

@@ -3,6 +3,7 @@ use crate::config::AppConfig;
 use crate::context::{FrameContext, SafeArea, TitleBar};
 use crate::damage::Region;
 use crate::gpu;
+use crate::pipeline_cache::PipelineCache;
 use crate::present::Presenter;
 use crate::scale::scale_commands;
 use anyhow::Result;
@@ -34,6 +35,8 @@ pub struct AppRunner<A, C = NoCustom> {
     custom_renderer: Option<Box<dyn FnOnce(&GpuContext, wgpu::TextureFormat) -> C>>,
     window: Option<Arc<Window>>,
     presenter: Option<Presenter<C>>,
+    /// The pipelines compiled so far, kept for the next launch (Android).
+    pipeline_cache: Option<PipelineCache>,
     chrome: WinitWindow,
     collector: InputCollector,
     start: Instant,
@@ -142,6 +145,7 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
             custom_renderer: Some(Box::new(make_custom)),
             window: None,
             presenter: None,
+            pipeline_cache: None,
             chrome,
             collector: InputCollector::new(),
             start: Instant::now(),
@@ -253,6 +257,7 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         let surface = instance.create_surface(window.clone())?;
         let gpu = pollster::block_on(gpu::request(instance, &surface, &self.app))?;
         self.app.gpu_ready(&gpu);
+        self.pipeline_cache = PipelineCache::open(&gpu);
 
         let make_custom = self
             .custom_renderer
@@ -265,6 +270,7 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
             size.width,
             size.height,
             self.config.transparent,
+            self.pipeline_cache.as_ref().map(|c| c.cache().clone()),
             make_custom,
         )?;
         self.app.fonts_ready(&presenter.renderer);
@@ -466,7 +472,17 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
         if let Some(presenter) = self.presenter.as_mut() {
             presenter.drop_surface();
         }
+        // The app may be killed in the background without another word.
+        if let Some(cache) = self.pipeline_cache.as_mut() {
+            cache.save();
+        }
         self.app.on_suspend();
+    }
+
+    fn exiting(&mut self, _: &ActiveEventLoop) {
+        if let Some(cache) = self.pipeline_cache.as_mut() {
+            cache.save();
+        }
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
