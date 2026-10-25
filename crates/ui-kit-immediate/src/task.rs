@@ -98,7 +98,7 @@ pub fn run_ready() {
 /// round and poll it. The native runner installs it.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn set_wake_hook(hook: impl Fn() + Send + Sync + 'static) {
-    let _ = executor::WAKE_HOOK.set(Box::new(hook));
+    *executor::WAKE_HOOK.write().unwrap_or_else(|p| p.into_inner()) = Some(Box::new(hook));
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -107,10 +107,12 @@ mod executor {
     use std::future::Future;
     use std::pin::Pin;
     use std::rc::Rc;
-    use std::sync::{Arc, Mutex, OnceLock};
+    use std::sync::{Arc, Mutex, RwLock};
     use std::task::{Context, Wake, Waker};
 
-    pub(super) static WAKE_HOOK: OnceLock<Box<dyn Fn() + Send + Sync>> = OnceLock::new();
+    /// Replaced by each runner: a later event loop in the process (Android's
+    /// next activity) takes over from the one before.
+    pub(super) static WAKE_HOOK: RwLock<Option<Box<dyn Fn() + Send + Sync>>> = RwLock::new(None);
 
     struct Entry {
         future: Pin<Box<dyn Future<Output = ()>>>,
@@ -132,7 +134,7 @@ mod executor {
         }
         fn wake_by_ref(self: &Arc<Self>) {
             self.ready.0.lock().unwrap().push(self.id);
-            if let Some(hook) = WAKE_HOOK.get() {
+            if let Some(hook) = &*WAKE_HOOK.read().unwrap_or_else(|p| p.into_inner()) {
                 hook();
             }
         }
@@ -167,7 +169,7 @@ mod executor {
             };
             executor.ready.0.lock().unwrap().push(id);
         });
-        if let Some(hook) = WAKE_HOOK.get() {
+        if let Some(hook) = &*WAKE_HOOK.read().unwrap_or_else(|p| p.into_inner()) {
             hook();
         }
     }

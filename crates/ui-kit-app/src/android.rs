@@ -13,13 +13,15 @@
 //! application crate builds as a `cdylib`.
 use jni::objects::{JObject, JValue};
 use jni::{jni_sig, jni_str, Env, JavaVM};
-use std::sync::OnceLock;
+use std::sync::Mutex;
 use winit::event_loop::{EventLoop, EventLoopBuilder};
 pub use winit::platform::android::activity::{AndroidApp, WindowManagerFlags};
 pub use winit::platform::android::EventLoopBuilderExtAndroid;
 
 /// The activity the event loop was built for, for calls into its window.
-static ACTIVITY: OnceLock<AndroidApp> = OnceLock::new();
+/// Android may make another activity in the same process (after the user
+/// backs out and returns, say), and calls `android_main` again for it.
+static ACTIVITY: Mutex<Option<AndroidApp>> = Mutex::new(None);
 
 /// The event loop for an Android activity.
 pub fn event_loop(app: AndroidApp) -> anyhow::Result<EventLoop<()>> {
@@ -32,7 +34,7 @@ pub fn event_loop_with(
     app: AndroidApp,
     configure: impl FnOnce(&mut EventLoopBuilder<()>),
 ) -> anyhow::Result<EventLoop<()>> {
-    let _ = ACTIVITY.set(app.clone());
+    *ACTIVITY.lock().unwrap_or_else(|p| p.into_inner()) = Some(app.clone());
     let mut builder = EventLoop::builder();
     builder.with_android_app(app);
     configure(&mut builder);
@@ -45,7 +47,7 @@ pub fn event_loop_with(
 /// after the app leaves the screen, so the runner calls this again on every
 /// resume and focus when [`AppConfig::fullscreen`](crate::AppConfig) is set.
 pub fn hide_system_bars() {
-    let Some(app) = ACTIVITY.get().cloned() else {
+    let Some(app) = ACTIVITY.lock().unwrap_or_else(|p| p.into_inner()).clone() else {
         return;
     };
     // Views may only be touched from the Java UI thread.
