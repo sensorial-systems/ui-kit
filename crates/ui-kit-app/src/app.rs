@@ -62,6 +62,11 @@ pub trait App {
     /// Optional hook called when the window loses focus.
     fn on_focus_lost(&mut self) {}
 
+    /// Optional hook called when the window gains focus again: input that
+    /// does not come through the window (a gamepad read from its device)
+    /// is the app's again.
+    fn on_focus_gained(&mut self) {}
+
     /// The application is on screen: once at start, once the window and its
     /// surface exist, and again each time it comes back from
     /// [`on_suspend`](App::on_suspend). Start audio and other

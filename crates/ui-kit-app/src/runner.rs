@@ -531,7 +531,10 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
             WindowEvent::Focused(false) => self.app.on_focus_lost(),
             // Android shows the system bars again after a dialog or the
             // notification shade took focus.
-            WindowEvent::Focused(true) => self.hide_system_bars(),
+            WindowEvent::Focused(true) => {
+                self.hide_system_bars();
+                self.app.on_focus_gained();
+            }
             WindowEvent::MouseWheel { delta, .. } => {
                 let vertical = match delta {
                     MouseScrollDelta::LineDelta(_, y) => -y * 48.0,
