@@ -143,7 +143,8 @@ pub struct WindowChrome {
     pub radius: f32,
     pub maximized: bool,
     /// Whether the window takes the whole screen. Like a maximized one, it
-    /// sits flush with the screen's edges.
+    /// sits flush with the screen's edges, and it has no frame at all: no
+    /// title bar, buttons or outline, the application all of it.
     pub fullscreen: bool,
     pub resizable: bool,
     pub transparent: bool,
@@ -240,9 +241,11 @@ impl WindowChrome {
             0.0
         }
     }
+    /// The bar across the top: none on the whole screen.
     pub fn title_bar(&self, bounds: Rect) -> Rect {
+        let height = if self.fullscreen { 0.0 } else { self.title_bar_height };
         Rect {
-            height: self.title_bar_height.clamp(0.0, bounds.height.max(0.0)),
+            height: height.clamp(0.0, bounds.height.max(0.0)),
             ..bounds
         }
     }
@@ -450,6 +453,13 @@ mod tests {
             WindowRegion::Client
         );
         assert_eq!(fullscreen.label(WindowControl::Fullscreen), "Exit full screen");
+        assert_eq!(fullscreen.client(bounds()), bounds(), "the whole screen is the application's");
+        assert_eq!(fullscreen.hit(bounds(), Point::new(200.0, 20.0)), WindowRegion::Client, "nothing on it drags the window");
+        assert_eq!(
+            fullscreen.hit(bounds(), Point::new(799.0, 1.0)),
+            WindowRegion::Client,
+            "nor are there buttons in its corner"
+        );
         let fixed = WindowChrome::new("Explorer").resizable(false);
         assert_eq!(
             fixed.hit(bounds(), Point::new(0.0, 300.0)),

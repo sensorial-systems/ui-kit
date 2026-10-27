@@ -25,6 +25,9 @@ pub enum WindowCommand {
     Redraw,
     /// Take the whole screen, or give it back.
     ToggleFullscreen,
+    /// Take the whole screen (true), or give it back (false), whichever
+    /// the window has now.
+    Fullscreen(bool),
     /// Leave the event loop.
     Exit,
 }

@@ -27,6 +27,9 @@ pub struct WinitWindow {
     bar_controls: Vec<Rect>,
     /// When the bar was last pressed, to tell a double press.
     bar_pressed_at: Option<Instant>,
+    /// Whether the window manager's edge was last set for the whole screen
+    /// (see `sync`).
+    edge_fullscreen: Option<bool>,
 }
 
 /// Two presses on the bar this close together maximize or restore the window.
@@ -47,6 +50,7 @@ impl WinitWindow {
             edge_cursor: None,
             bar_controls: Vec::new(),
             bar_pressed_at: None,
+            edge_fullscreen: None,
         }
     }
 
@@ -129,6 +133,34 @@ impl WinitWindow {
         self.chrome.maximized = window.is_maximized();
         self.chrome.fullscreen = window.fullscreen().is_some();
         self.chrome.resizable = window.is_resizable();
+        if self.edge_fullscreen != Some(self.chrome.fullscreen) {
+            self.edge_fullscreen = Some(self.chrome.fullscreen);
+            self.set_edge(window);
+        }
+    }
+
+    /// On Windows 11 the window manager draws a thin edge round a window
+    /// whose corners it rounds, and keeps it on one without a frame even
+    /// when it covers the screen: there, the window has neither, and the
+    /// application every pixel. In a window again, both come back.
+    fn set_edge(&self, window: &Window) {
+        #[cfg(windows)]
+        {
+            use winit::platform::windows::{Color, CornerPreference, WindowExtWindows};
+            if self.chrome.fullscreen {
+                window.set_corner_preference(CornerPreference::DoNotRound);
+                window.set_border_color(None);
+            } else {
+                window.set_corner_preference(if self.chrome.radius > 0.0 {
+                    CornerPreference::Round
+                } else {
+                    CornerPreference::DoNotRound
+                });
+                window.set_border_color(Some(Color::SYSTEM_DEFAULT));
+            }
+        }
+        #[cfg(not(windows))]
+        let _ = window;
     }
 
     /// Call before application event handling. Move/resize must start during
@@ -258,6 +290,10 @@ impl WinitWindow {
         style: &crate::WindowStyle,
         content: impl FnOnce(ui_kit_immediate::Input, f32, f32) -> Vec<ui_kit_immediate::DrawCommand>,
     ) -> Vec<ui_kit_immediate::DrawCommand> {
+        // On the whole screen there is no frame: the application has it all.
+        if self.chrome.fullscreen {
+            return content(input, bounds.width, bounds.height);
+        }
         let mut ui = ui_kit_immediate::Ui::default();
         ui.begin(ui_kit_immediate::Input {
             pointer: self.pointer,

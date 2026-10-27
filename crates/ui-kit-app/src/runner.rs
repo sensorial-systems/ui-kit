@@ -221,6 +221,13 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
                         window.request_redraw();
                     }
                 }
+                WindowCommand::Fullscreen(on) => {
+                    if let Some(window) = &self.window {
+                        window.set_fullscreen(on.then_some(winit::window::Fullscreen::Borderless(None)));
+                        self.chrome.sync(window);
+                        window.request_redraw();
+                    }
+                }
                 WindowCommand::Exit => event_loop.exit(),
             }
         }
