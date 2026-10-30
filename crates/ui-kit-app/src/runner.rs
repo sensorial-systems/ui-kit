@@ -234,9 +234,12 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
     }
 
     fn initialize(&mut self, event_loop: &ActiveEventLoop) -> Result<()> {
-        let mut attributes = Window::default_attributes()
-            .with_inner_size(LogicalSize::new(self.config.width, self.config.height))
-            .with_visible(false);
+        let mut attributes = Window::default_attributes().with_visible(false);
+        // On iOS the window is the screen: winit makes a size asked for the
+        // window's frame, which neither fits the screen nor turns with it.
+        if !cfg!(target_os = "ios") {
+            attributes = attributes.with_inner_size(LogicalSize::new(self.config.width, self.config.height));
+        }
 
         if let (Some(w), Some(h)) = (self.config.min_width, self.config.min_height) {
             attributes = attributes.with_min_inner_size(LogicalSize::new(w, h));
