@@ -7,6 +7,7 @@ pub mod easing {
 }
 pub mod host;
 pub mod icon;
+pub mod scroller;
 pub mod svg;
 pub mod task;
 pub mod vector;
@@ -69,6 +70,7 @@ pub use prism_ui::immediate::*;
 pub use prism_ui::TextAlign;
 pub use scroll_card::{ScrollCard, ScrollCardResponse};
 pub use scroll_container::ScrollContainer;
+pub use scroller::{Scrolled, Scroller};
 pub use shadow::Shadow;
 pub use splitter::Splitter;
 pub use stack::Stack;
