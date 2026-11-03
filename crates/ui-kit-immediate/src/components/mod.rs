@@ -11,6 +11,7 @@ mod charts;
 mod color_picker;
 mod containers;
 mod curve_editor;
+mod dashboard;
 mod date_time_picker;
 mod editable_text;
 mod feedback;
@@ -45,6 +46,10 @@ pub use containers::{
 };
 pub use curve_editor::{
     shown, CurveEditor, CurveEditorResponse, CurveEditorState, CurveView, TrackOption, TRACK_COLORS,
+};
+pub use dashboard::{
+    divider, Breadcrumbs, Delta, LinkList, ListRow, PropertyList, Segmented, Stat, StatGrid,
+    StatPart, Surface, TabBar, TabBarState,
 };
 pub use date_time_picker::{days_in_month, Calendar, DateTimePicker, DateTimePickerState};
 pub use editable_text::{EditableText, RichTextMetrics};
