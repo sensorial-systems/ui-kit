@@ -9,7 +9,7 @@ use ui_kit_immediate::{
 use winit::{
     dpi::{LogicalPosition, LogicalSize},
     event::{ElementState, Ime, MouseButton, MouseScrollDelta, TouchPhase, WindowEvent},
-    keyboard::{Key as WinitKey, ModifiersState, NamedKey},
+    keyboard::{Key as WinitKey, ModifiersState, NamedKey, PhysicalKey},
     window::{CursorGrabMode, CursorIcon as WinitCursor, Window},
 };
 
@@ -52,7 +52,10 @@ pub struct InputCollector {
     /// pressure from one that reports a constant.
     first_force: Vec<(u64, f32)>,
     pressure_sensing: bool,
-    held: Vec<Key>,
+    /// The keys down, each by the physical key that went down: its release
+    /// lets it go even when it reads as another key by then (a modifier
+    /// pressed in between, the layout changed).
+    held: Vec<(PhysicalKey, Key)>,
     start: Instant,
     /// Whether the window holds the pointer for the UI.
     pointer_locked: bool,
@@ -182,14 +185,11 @@ impl InputCollector {
                 }
             },
             WindowEvent::KeyboardInput { event, .. } => {
-                let key = key_of(&event.logical_key);
                 if event.state != ElementState::Pressed {
-                    self.held.retain(|k| Some(*k) != key);
+                    self.release(event.physical_key, key_of(&event.logical_key));
                     return false;
                 }
-                if let Some(key) = key.filter(|k| !self.held.contains(k)) {
-                    self.held.push(key);
-                }
+                self.hold(event.physical_key, key_of(&event.logical_key));
                 self.key(&event.logical_key, event.text.as_deref());
             }
             _ => return false,
@@ -282,6 +282,31 @@ impl InputCollector {
         self.segment();
     }
 
+    /// `physical` went down, read as `key`.
+    fn hold(&mut self, physical: PhysicalKey, key: Option<Key>) {
+        if let Some(key) = key.filter(|_| !self.held.iter().any(|(p, _)| *p == physical)) {
+            self.held.push((physical, key));
+        }
+    }
+
+    /// `physical` came up: whatever it went down as is let go, and so is
+    /// `key` (as it reads now) where no physical key was told apart.
+    fn release(&mut self, physical: PhysicalKey, key: Option<Key>) {
+        let unidentified = matches!(physical, PhysicalKey::Unidentified(_));
+        self.held.retain(|(p, k)| *p != physical && !(unidentified && Some(*k) == key));
+    }
+
+    /// The keys down, each once.
+    fn held(&self) -> Vec<Key> {
+        let mut keys: Vec<Key> = Vec::with_capacity(self.held.len());
+        for (_, key) in &self.held {
+            if !keys.contains(key) {
+                keys.push(*key);
+            }
+        }
+        keys
+    }
+
     /// Close the input gathered so far into a step of its own, with what
     /// lasts across frames as it is now.
     fn segment(&mut self) {
@@ -292,7 +317,7 @@ impl InputCollector {
         input.middle_down = self.middle_down;
         input.touches = self.touches.clone();
         input.pressure_sensing = self.pressure_sensing;
-        input.held = self.held.clone();
+        input.held = self.held();
         input.modifiers = modifiers(self.modifiers);
         input.extend_selection = self.modifiers.shift_key();
         input.pointer_locked = self.pointer_locked;
@@ -534,6 +559,7 @@ pub fn cursor(icon: CursorIcon) -> WinitCursor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use winit::keyboard::KeyCode;
 
     impl InputCollector {
         /// The input a frame draws with: its last step.
@@ -698,10 +724,22 @@ mod tests {
     #[test]
     fn held_keys_last_until_released() {
         let mut c = InputCollector::new();
-        c.held.push(Key::Up);
+        c.held.push((PhysicalKey::Code(KeyCode::ArrowUp), Key::Up));
         let input = c.last(Rect::default());
         assert_eq!(input.held, vec![Key::Up]);
         assert_eq!(c.last(Rect::default()).held, vec![Key::Up], "held keys carry over frames");
+    }
+
+    /// A key let go reading as another than it went down as (Shift pressed
+    /// in between turns 1 into !) is still let go: it is the same key.
+    #[test]
+    fn a_key_is_let_go_by_the_key_that_went_down() {
+        let mut c = InputCollector::new();
+        let one = PhysicalKey::Code(KeyCode::Digit1);
+        c.hold(one, Some(Key::Character('1')));
+        assert_eq!(c.last(Rect::default()).held, vec![Key::Character('1')]);
+        c.release(one, Some(Key::Character('!')));
+        assert!(c.last(Rect::default()).held.is_empty(), "nothing left held");
     }
 
     #[test]
