@@ -527,12 +527,14 @@ impl<'a> Breadcrumbs<'a> {
 }
 
 /// What a [`TabBar`] keeps between frames: how far it's scrolled, and
-/// whether the pointer that holds it has dragged it (so letting go
-/// chooses nothing).
+/// whether a pointer holds it, how far that pointer has moved and whether
+/// it has gone far enough to drag it (so letting go chooses nothing).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct TabBarState {
     pub scroll: f32,
-    dragged: bool,
+    held: bool,
+    travel: f32,
+    dragging: bool,
 }
 
 /// Tabs in a row over a hairline, the chosen one in the page's ink and
@@ -546,6 +548,9 @@ pub struct TabBar<'a> {
 impl<'a> TabBar<'a> {
     pub const HEIGHT: f32 = 42.0;
     const PAD: f32 = 12.0;
+    /// How far a pointer moves before it drags the tabs instead of tapping
+    /// one: a finger never lands quite still.
+    const SLOP: f32 = 8.0;
 
     pub fn new(labels: &'a [&'a str]) -> Self {
         Self { labels }
@@ -584,6 +589,7 @@ impl<'a> TabBar<'a> {
         divider(ui, Rect::new(rect.x, rect.bottom() - 1.0, rect.width, 1.0));
         let mut response = Response::default();
         let mut held = false;
+        let mut delta = 0.0;
         let mut chosen = None;
         let scroll = state.scroll;
         ui.with_clip(rect, |ui| {
@@ -604,12 +610,11 @@ impl<'a> TabBar<'a> {
                 if r.hovered {
                     ui.set_cursor(CursorIcon::Pointer);
                 }
-                if r.drag_delta.x != 0.0 && overflow > 0.0 {
-                    state.scroll = (state.scroll - r.drag_delta.x).clamp(0.0, overflow);
-                    state.dragged = true;
+                if r.active {
+                    held = true;
+                    delta += r.drag_delta.x;
                 }
-                held |= r.active;
-                if r.clicked && !state.dragged {
+                if r.clicked && !state.dragging {
                     chosen = Some(i);
                 }
                 let on = *selected == i;
@@ -634,9 +639,23 @@ impl<'a> TabBar<'a> {
                 }
             }
         });
-        if !held {
-            state.dragged = false;
+        // The press's own frame moves nothing: on a touch screen the
+        // pointer jumps there from wherever the last touch ended.
+        if held && state.held && overflow > 0.0 {
+            state.travel += delta;
+            if state.dragging {
+                state.scroll -= delta;
+            } else if state.travel.abs() > Self::SLOP {
+                state.dragging = true;
+                state.scroll -= state.travel;
+            }
+            state.scroll = state.scroll.clamp(0.0, overflow);
         }
+        if !held {
+            state.travel = 0.0;
+            state.dragging = false;
+        }
+        state.held = held;
         if let Some(i) = chosen.filter(|i| i != selected) {
             *selected = i;
             response.changed = true;
@@ -1201,6 +1220,82 @@ impl<'a> PropertyList<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Input;
+    use ui_kit_core::Point;
+
+    const TABS: [&str; 6] = [
+        "Overview",
+        "Downloads",
+        "Purchases",
+        "Revenue",
+        "Players",
+        "Reviews",
+    ];
+
+    fn frame(ui: &mut Ui, state: &mut TabBarState, selected: &mut usize, at: Point, down: bool) {
+        ui.begin(Input {
+            pointer: Some(at),
+            down,
+            viewport: Some(Rect::new(0.0, 0.0, 800.0, 600.0)),
+            ..Default::default()
+        });
+        TabBar::new(&TABS).show(
+            ui,
+            "tabs",
+            Rect::new(0.0, 0.0, 240.0, 42.0),
+            selected,
+            state,
+        );
+        let _ = ui.end();
+    }
+
+    #[test]
+    fn a_tap_chooses_a_tab_though_the_finger_jumps_and_shakes() {
+        let mut ui = Ui::default();
+        let (mut state, mut selected) = (TabBarState::default(), 0);
+        // The last touch ended far off; this one lands on the second tab,
+        // moves a little and lifts.
+        frame(
+            &mut ui,
+            &mut state,
+            &mut selected,
+            Point::new(230.0, 300.0),
+            false,
+        );
+        let at = Point::new(TabBar::new(&TABS).widths(&ui)[0] + 20.0, 20.0);
+        frame(&mut ui, &mut state, &mut selected, at, true);
+        let moved = Point::new(at.x + 3.0, at.y + 1.0);
+        frame(&mut ui, &mut state, &mut selected, moved, true);
+        frame(&mut ui, &mut state, &mut selected, moved, false);
+        assert_eq!(selected, 1);
+    }
+
+    #[test]
+    fn a_drag_scrolls_the_tabs_and_chooses_none() {
+        let mut ui = Ui::default();
+        let (mut state, mut selected) = (TabBarState::default(), 0);
+        let at = Point::new(200.0, 20.0);
+        frame(&mut ui, &mut state, &mut selected, at, false);
+        frame(&mut ui, &mut state, &mut selected, at, true);
+        for x in [190.0, 170.0, 140.0] {
+            frame(
+                &mut ui,
+                &mut state,
+                &mut selected,
+                Point::new(x, 20.0),
+                true,
+            );
+        }
+        frame(
+            &mut ui,
+            &mut state,
+            &mut selected,
+            Point::new(140.0, 20.0),
+            false,
+        );
+        assert_eq!(selected, 0);
+        assert_eq!(state.scroll, 60.0);
+    }
 
     #[test]
     fn a_grid_balances_its_rows() {
