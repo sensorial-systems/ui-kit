@@ -260,7 +260,7 @@ fn configure(
     // resume takes the format the first one had.
     if let Some(format) = previous {
         config.format = format;
-    } else if let Some(format) = caps.formats.iter().copied().find(|f| !f.is_srgb()) {
+    } else if let Some(format) = caps.formats.iter().copied().find(|f| !f.has_srgb_suffix()) {
         config.format = format;
     }
     // Presenting waits for the display's refresh: a host that draws again

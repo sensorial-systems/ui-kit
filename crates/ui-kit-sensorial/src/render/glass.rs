@@ -450,7 +450,7 @@ impl Glass {
             ]
         };
         let divisor = (1 << level) as f32;
-        let linear = view_format.is_srgb() || view_format == wgpu::TextureFormat::Rgba16Float;
+        let linear = view_format.has_srgb_suffix() || view_format == wgpu::TextureFormat::Rgba16Float;
         let uniform = GlassUniform {
             rect: [rect.x, rect.y, rect.width, rect.height],
             shape: [

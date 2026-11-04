@@ -10,5 +10,18 @@ members = ["crates/*", "examples/gallery", "examples/shared-gallery", "examples/
 opt-level = 3
 
 [patch.crates-io]
-# prism's wgpu-hal: 30.0.1's fixes and its PowerVR change (prism's vendor/README.md).
-wgpu-hal = { path = "../../studio/prism/vendor/wgpu-hal" }
+# wgpu from sensorial-systems/wgpu: trunk with sensorial's changes (its
+# SENSORIAL.md). Every wgpu crate comes from it, as they depend on one
+# another by path.
+naga = { path = "../wgpu/naga" }
+naga-types = { path = "../wgpu/naga-types" }
+wgpu = { path = "../wgpu/wgpu" }
+wgpu-core = { path = "../wgpu/wgpu-core" }
+wgpu-core-deps-apple = { path = "../wgpu/wgpu-core/platform-deps/apple" }
+wgpu-core-deps-emscripten = { path = "../wgpu/wgpu-core/platform-deps/emscripten" }
+wgpu-core-deps-wasm = { path = "../wgpu/wgpu-core/platform-deps/wasm" }
+wgpu-core-deps-linux-android-bsd = { path = "../wgpu/wgpu-core/platform-deps/linux-android-bsd" }
+wgpu-core-deps-windows = { path = "../wgpu/wgpu-core/platform-deps/windows" }
+wgpu-hal = { path = "../wgpu/wgpu-hal" }
+wgpu-naga-bridge = { path = "../wgpu/wgpu-naga-bridge" }
+wgpu-types = { path = "../wgpu/wgpu-types" }

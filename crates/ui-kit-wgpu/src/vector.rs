@@ -368,7 +368,7 @@ fn screen(target: TargetInfo) -> Rect {
 
 /// Whether the target blends in linear light, so colours are given to it linear.
 fn is_linear(format: wgpu::TextureFormat) -> bool {
-    format.is_srgb() || format == wgpu::TextureFormat::Rgba16Float
+    format.has_srgb_suffix() || format == wgpu::TextureFormat::Rgba16Float
 }
 
 /// The whole pixels `clip` touches, if any.

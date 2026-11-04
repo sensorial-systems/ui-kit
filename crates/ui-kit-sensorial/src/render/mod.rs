@@ -232,7 +232,7 @@ impl SensorialRenderer {
             None => (&self.nothing, 0.0, 0.0),
         };
 
-        let linear = format.is_srgb() || format == wgpu::TextureFormat::Rgba16Float;
+        let linear = format.has_srgb_suffix() || format == wgpu::TextureFormat::Rgba16Float;
         let uniform = BackdropUniform {
             screen: [
                 size.0 as f32,
