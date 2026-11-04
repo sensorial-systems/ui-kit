@@ -9,6 +9,7 @@ mod blit;
 mod damage;
 pub mod config;
 pub mod context;
+pub mod embed;
 pub mod fonts;
 pub mod gpu;
 pub mod images;
