@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 [dependencies]
 ui-kit-core = { path = "../ui-kit-core" }
-prism-ui = { path = "../../../../studio/prism/products/prism/libraries/ui" }
+prism-ui = { path = "../../../../studio/prism/products/prism/libraries/ui/ui" }
 serde = { version = "1", features = ["derive"] }
 usvg = { version = "0.48.1", default-features = false }
 lyon_tessellation = "1.0.22"

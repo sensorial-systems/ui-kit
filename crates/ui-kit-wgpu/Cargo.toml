@@ -5,7 +5,7 @@ edition = "2021"
 [dependencies]
 ui-kit-core = { path = "../ui-kit-core" }
 ui-kit-immediate = { path = "../ui-kit-immediate" }
-prism-ui-render = { path = "../../../../studio/prism/products/prism/libraries/ui-render" }
+prism-ui-render = { path = "../../../../studio/prism/products/prism/libraries/ui/ui-render" }
 # The backends are prism-gpu's (through prism-ui-render): Vulkan and Metal
 # natively, WebGPU and WebGL2 in a browser.
 wgpu = { version = "30", default-features = false, features = ["std", "wgsl"] }
