@@ -5,7 +5,7 @@ edition = "2021"
 [dependencies]
 ui-kit-core = { path = "../ui-kit-core" }
 ui-kit-immediate = { path = "../ui-kit-immediate" }
-prism-ui-render = { git = "https://github.com/sensorial-studio/prism", rev = "c02870f1477b030f182a62fa72c5a0e8fbed360c" }
+prism-ui-render = { git = "https://github.com/sensorial-studio/prism", rev = "8ec8dabe168fe31f8a473685fb26551643187b9e" }
 # The backends are prism-gpu's (through prism-ui-render): Vulkan and Metal
 # natively, WebGPU and WebGL2 in a browser.
 wgpu = { version = "30", default-features = false, features = ["std", "wgsl"] }
