@@ -3011,7 +3011,7 @@ dependencies = [
 [[package]]
 name = "graph"
 version = "0.1.0"
-source = "git+https://github.com/sensorial-studio/prism?rev=f8ba6d28a974e9d66bc07b2438014455d705ed9f#f8ba6d28a974e9d66bc07b2438014455d705ed9f"
+source = "git+https://github.com/sensorial-studio/prism?rev=be6501e124d2de64e2aabc254ac7088fc532c244#be6501e124d2de64e2aabc254ac7088fc532c244"
 dependencies = [
  "anyhow",
  "enum-as-inner",
@@ -3024,7 +3024,7 @@ dependencies = [
 [[package]]
 name = "graph-runtime"
 version = "0.1.0"
-source = "git+https://github.com/sensorial-studio/prism?rev=f8ba6d28a974e9d66bc07b2438014455d705ed9f#f8ba6d28a974e9d66bc07b2438014455d705ed9f"
+source = "git+https://github.com/sensorial-studio/prism?rev=be6501e124d2de64e2aabc254ac7088fc532c244#be6501e124d2de64e2aabc254ac7088fc532c244"
 dependencies = [
  "anyhow",
  "enum-as-inner",
@@ -3039,7 +3039,7 @@ dependencies = [
 [[package]]
 name = "graph-runtime-macro"
 version = "0.1.0"
-source = "git+https://github.com/sensorial-studio/prism?rev=f8ba6d28a974e9d66bc07b2438014455d705ed9f#f8ba6d28a974e9d66bc07b2438014455d705ed9f"
+source = "git+https://github.com/sensorial-studio/prism?rev=be6501e124d2de64e2aabc254ac7088fc532c244#be6501e124d2de64e2aabc254ac7088fc532c244"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -5307,7 +5307,7 @@ checksum = "e8cf8e6a8aa66ce33f63993ffc4ea4271eb5b0530a9002db8455ea6050c77bfa"
 [[package]]
 name = "prism-color"
 version = "0.1.0"
-source = "git+https://github.com/sensorial-studio/prism?rev=f8ba6d28a974e9d66bc07b2438014455d705ed9f#f8ba6d28a974e9d66bc07b2438014455d705ed9f"
+source = "git+https://github.com/sensorial-studio/prism?rev=be6501e124d2de64e2aabc254ac7088fc532c244#be6501e124d2de64e2aabc254ac7088fc532c244"
 dependencies = [
  "bytemuck",
  "serde",
@@ -5318,7 +5318,7 @@ dependencies = [
 [[package]]
 name = "prism-gpu"
 version = "0.1.0"
-source = "git+https://github.com/sensorial-studio/prism?rev=f8ba6d28a974e9d66bc07b2438014455d705ed9f#f8ba6d28a974e9d66bc07b2438014455d705ed9f"
+source = "git+https://github.com/sensorial-studio/prism?rev=be6501e124d2de64e2aabc254ac7088fc532c244#be6501e124d2de64e2aabc254ac7088fc532c244"
 dependencies = [
  "anyhow",
  "async-lock",
@@ -5343,7 +5343,7 @@ dependencies = [
 [[package]]
 name = "prism-math"
 version = "0.1.0"
-source = "git+https://github.com/sensorial-studio/prism?rev=f8ba6d28a974e9d66bc07b2438014455d705ed9f#f8ba6d28a974e9d66bc07b2438014455d705ed9f"
+source = "git+https://github.com/sensorial-studio/prism?rev=be6501e124d2de64e2aabc254ac7088fc532c244#be6501e124d2de64e2aabc254ac7088fc532c244"
 dependencies = [
  "bytemuck",
  "graph-runtime",
@@ -5354,7 +5354,7 @@ dependencies = [
 [[package]]
 name = "prism-text"
 version = "0.1.0"
-source = "git+https://github.com/sensorial-studio/prism?rev=f8ba6d28a974e9d66bc07b2438014455d705ed9f#f8ba6d28a974e9d66bc07b2438014455d705ed9f"
+source = "git+https://github.com/sensorial-studio/prism?rev=be6501e124d2de64e2aabc254ac7088fc532c244#be6501e124d2de64e2aabc254ac7088fc532c244"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -5368,7 +5368,7 @@ dependencies = [
 [[package]]
 name = "prism-ui"
 version = "0.1.0"
-source = "git+https://github.com/sensorial-studio/prism?rev=f8ba6d28a974e9d66bc07b2438014455d705ed9f#f8ba6d28a974e9d66bc07b2438014455d705ed9f"
+source = "git+https://github.com/sensorial-studio/prism?rev=be6501e124d2de64e2aabc254ac7088fc532c244#be6501e124d2de64e2aabc254ac7088fc532c244"
 dependencies = [
  "anyhow",
  "graph-runtime",
@@ -5381,7 +5381,7 @@ dependencies = [
 [[package]]
 name = "prism-ui-render"
 version = "0.1.0"
-source = "git+https://github.com/sensorial-studio/prism?rev=f8ba6d28a974e9d66bc07b2438014455d705ed9f#f8ba6d28a974e9d66bc07b2438014455d705ed9f"
+source = "git+https://github.com/sensorial-studio/prism?rev=be6501e124d2de64e2aabc254ac7088fc532c244#be6501e124d2de64e2aabc254ac7088fc532c244"
 dependencies = [
  "anyhow",
  "bytemuck",

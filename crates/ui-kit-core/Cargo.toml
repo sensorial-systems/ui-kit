@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2021"
 description = "Backend-independent UI descriptions and semantic actions"
 [dependencies]
-prism-ui = { git = "https://github.com/sensorial-studio/prism", rev = "f8ba6d28a974e9d66bc07b2438014455d705ed9f" }
+prism-ui = { git = "https://github.com/sensorial-studio/prism", rev = "be6501e124d2de64e2aabc254ac7088fc532c244" }
 serde = { version = "1", features = ["derive"] }
 unicode-segmentation = "1"

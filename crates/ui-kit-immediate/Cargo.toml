@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 [dependencies]
 ui-kit-core = { path = "../ui-kit-core" }
-prism-ui = { git = "https://github.com/sensorial-studio/prism", rev = "f8ba6d28a974e9d66bc07b2438014455d705ed9f" }
+prism-ui = { git = "https://github.com/sensorial-studio/prism", rev = "be6501e124d2de64e2aabc254ac7088fc532c244" }
 serde = { version = "1", features = ["derive"] }
 usvg = { version = "0.48.1", default-features = false }
 lyon_tessellation = "1.0.22"
