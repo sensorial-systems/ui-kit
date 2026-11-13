@@ -15,7 +15,7 @@ ui-kit-immediate = { path = "../ui-kit-immediate" }
 ui-kit-wgpu = { path = "../ui-kit-wgpu" }
 # Which backend to draw with (in a browser: WebGPU, else WebGL2) and what to
 # ask of the device, so that it works on every one of them.
-prism-gpu = { git = "https://github.com/sensorial-studio/prism", rev = "be6501e124d2de64e2aabc254ac7088fc532c244", default-features = false }
+prism-gpu = { git = "https://github.com/sensorial-studio/prism", rev = "e09689c9dc2f44733202c741682070a0bf713d12", default-features = false }
 wgpu = { version = "30", default-features = false }
 anyhow = "1"
 # `std::time::Instant` panics in a browser; this is the same type natively.
