@@ -124,7 +124,13 @@ impl<C: CommandRenderer> Presenter<C> {
                 None
             }
             wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => None,
-            wgpu::CurrentSurfaceTexture::Lost => bail!("presentation surface lost"),
+            // Android loses a surface on its own (the window's buffers taken
+            // back behind a dialog, a driver resetting): the runner makes
+            // another for the same window before the next frame.
+            wgpu::CurrentSurfaceTexture::Lost => {
+                self.surface = None;
+                None
+            }
             wgpu::CurrentSurfaceTexture::Validation => bail!("surface validation error"),
         })
     }

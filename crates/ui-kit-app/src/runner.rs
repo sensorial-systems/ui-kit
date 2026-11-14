@@ -55,6 +55,9 @@ pub struct AppRunner<A, C = NoCustom> {
     unchanged_at: Option<Instant>,
     /// A frame put off until then.
     redraw_at: Option<Instant>,
+    /// Between `suspended` and `resumed`: the window has nothing a surface
+    /// can be made for (Android).
+    suspended: bool,
 }
 
 /// How tall the window's buttons are on a bar the application draws, at
@@ -155,6 +158,7 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
             stats: std::env::var_os("UI_KIT_FRAME_STATS").map(|_| FrameStats::default()),
             unchanged_at: None,
             redraw_at: None,
+            suspended: false,
         }
     }
 
@@ -307,12 +311,16 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
     }
 
     fn draw(&mut self) -> Result<()> {
-        let Some(window) = &self.window else {
-            return Ok(());
-        };
         if !self.visible {
             return Ok(());
         }
+        // A surface lost while the window stayed: another for it.
+        if !self.suspended && self.presenter.as_ref().is_some_and(|p| !p.has_surface()) {
+            self.recreate_surface()?;
+        }
+        let Some(window) = &self.window else {
+            return Ok(());
+        };
         let Some(presenter) = self.presenter.as_mut() else {
             return Ok(());
         };
@@ -461,6 +469,7 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
 
 impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        self.suspended = false;
         let result = if self.window.is_none() {
             self.initialize(event_loop)
         } else if self.presenter.as_ref().is_some_and(|p| !p.has_surface()) {
@@ -478,6 +487,7 @@ impl<A: App, C: CommandRenderer + 'static> ApplicationHandler for AppRunner<A, C
     }
 
     fn suspended(&mut self, _: &ActiveEventLoop) {
+        self.suspended = true;
         // The native window behind the surface is going away (Android).
         if let Some(presenter) = self.presenter.as_mut() {
             presenter.drop_surface();
