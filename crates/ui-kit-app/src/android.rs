@@ -16,22 +16,24 @@
 //!
 //! [`abort_on_panic`] and [`choose_backend`] are each a fix for what Google
 //! Play reported of an app on many phones: a panic that froze it, and
-//! Vulkan drivers that crash. An abort as it closed is fixed by the fork
-//! below; [`exit`] stands in for it in an app built without it.
+//! Vulkan drivers that crash. An abort as it closed is fixed by the
+//! android-activity below; [`exit`] stands in for it in an app built
+//! without it.
 //!
 //! The library is loaded by a `NativeActivity` (cargo-apk, xbuild), so the
 //! application crate builds as a `cdylib`.
 //!
-//! The application's workspace also takes android-activity from
-//! sensorial-systems' fork, whose lifecycle callbacks wait at most 2 s for
-//! `android_main` (Android reported a busy one as not responding) and which
-//! lets go of an input queue Android destroys once `android_main` has
-//! returned (detached later, it aborted). A patch applies only from the
-//! workspace being built, so each application adds it:
+//! The application's workspace also takes android-activity as vendored with
+//! cross-app (sensorial-systems/cross, its `SENSORIAL.md`), whose lifecycle
+//! callbacks wait at most 2 s for `android_main` (Android reported a busy
+//! one as not responding) and which lets go of an input queue Android
+//! destroys once `android_main` has returned (detached later, it aborted).
+//! A patch applies only from the workspace being built, so each application
+//! adds it:
 //!
 //! ```toml
 //! [patch.crates-io]
-//! android-activity = { git = "https://github.com/sensorial-systems/android-activity", rev = "20eb77339b725d29c3f726c4e9daf924c810652f" }
+//! android-activity = { git = "https://github.com/sensorial-systems/cross", rev = "6d97715db2b7d9d303a19dd2e474606239c7e12e" }
 //! ```
 use jni::objects::{JObject, JValue};
 use jni::{jni_sig, jni_str, Env, JavaVM};
@@ -112,7 +114,7 @@ pub fn finish(result: anyhow::Result<()>) {
 
 /// Ends the process once the event loop has, saying in logcat how it
 /// ended: the last call of `android_main`, which never returns. For an app
-/// built without the android-activity fork in this module's docs;
+/// built without the android-activity in this module's docs;
 /// [`finish`] otherwise.
 ///
 /// Once `android_main` returns, android-activity 0.6 stops following the
