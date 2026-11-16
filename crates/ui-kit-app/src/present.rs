@@ -5,7 +5,7 @@ use crate::blit::Blit;
 use crate::damage::{clip_to, Damage, Region};
 use crate::gpu::Gpu;
 use crate::images::TrackedImages;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use std::collections::HashSet;
 use ui_kit_core::{Color, Material, Rect};
 use ui_kit_immediate::composition::UiRenderer;
@@ -33,6 +33,9 @@ pub(crate) struct Presenter<C> {
     live_images: HashSet<ImageId>,
     /// Whether a picture changed since the last frame drawn.
     images_changed: bool,
+    /// Whether the last frame was skipped for a surface that is set right
+    /// for the next: another is drawn even when nothing changes.
+    retry: bool,
 }
 
 // Surfaces come and go only natively (Android's suspend and resume), so a
@@ -63,6 +66,7 @@ impl<C: CommandRenderer> Presenter<C> {
             corner_radius: 0.0,
             live_images: HashSet::new(),
             images_changed: false,
+            retry: false,
         })
     }
 
@@ -121,6 +125,7 @@ impl<C: CommandRenderer> Presenter<C> {
             wgpu::CurrentSurfaceTexture::Success(v) | wgpu::CurrentSurfaceTexture::Suboptimal(v) => Some(v),
             wgpu::CurrentSurfaceTexture::Outdated => {
                 surface.configure(&self.gpu.device, config);
+                self.retry = true;
                 None
             }
             wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => None,
@@ -129,10 +134,28 @@ impl<C: CommandRenderer> Presenter<C> {
             // another for the same window before the next frame.
             wgpu::CurrentSurfaceTexture::Lost => {
                 self.surface = None;
+                self.retry = true;
                 None
             }
-            wgpu::CurrentSurfaceTexture::Validation => bail!("surface validation error"),
+            // The error went to the device's handler first, which panics on
+            // a bug: here it let the app go on. A phone's driver out of
+            // memory for the swapchain's next image, under a heavy frame
+            // (`gpu::survive_out_of_memory`), is the one met so far. The
+            // frame is skipped and the surface configured anew, as when
+            // outdated; ending the event loop had the app close itself.
+            wgpu::CurrentSurfaceTexture::Validation => {
+                crate::log_error("graphics: the surface's next image could not be had; the frame is skipped");
+                surface.configure(&self.gpu.device, config);
+                self.retry = true;
+                None
+            }
         })
+    }
+
+    /// Whether the last frame was skipped for a surface set right since, so
+    /// that another is drawn: once, as it clears it.
+    pub fn take_retry(&mut self) -> bool {
+        std::mem::take(&mut self.retry)
     }
 
     /// The pictures the renderer draws, for [`App::prepare`](crate::App::prepare).

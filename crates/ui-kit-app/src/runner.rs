@@ -453,6 +453,9 @@ impl<A: App, C: CommandRenderer + 'static> AppRunner<A, C> {
         }
         // Suspended, minimized or occluded: there is nothing to draw on.
         let Some(surface_texture) = presenter.acquire(size.width, size.height)? else {
+            if presenter.take_retry() {
+                window.request_redraw();
+            }
             return Ok(());
         };
         presenter.present(&surface_texture, commands, bg, region)?;

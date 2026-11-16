@@ -10,13 +10,14 @@
 //!     android::choose_backend("debug.my_app.backend");
 //!     let result = android::event_loop(android)
 //!         .and_then(|event_loop| ui_kit_app::run_app_on(event_loop, MyApp::default(), AppConfig::new("My app")));
-//!     android::exit(result)
+//!     android::finish(result)
 //! }
 //! ```
 //!
-//! [`abort_on_panic`], [`choose_backend`] and [`exit`] are each a fix for
-//! what Google Play reported of an app on many phones: a panic that froze
-//! it, Vulkan drivers that crash, and an abort as it closed.
+//! [`abort_on_panic`] and [`choose_backend`] are each a fix for what Google
+//! Play reported of an app on many phones: a panic that froze it, and
+//! Vulkan drivers that crash. An abort as it closed is fixed by the fork
+//! below; [`exit`] stands in for it in an app built without it.
 //!
 //! The library is loaded by a `NativeActivity` (cargo-apk, xbuild), so the
 //! application crate builds as a `cdylib`.
@@ -102,27 +103,38 @@ pub fn abort_on_panic() {
     }));
 }
 
+/// Says in logcat how the event loop ended: the last call of
+/// `android_main`, which then returns. The activity finishes, and a launch
+/// after that starts `android_main` again in the same process.
+pub fn finish(result: anyhow::Result<()>) {
+    log_end(&result);
+}
+
 /// Ends the process once the event loop has, saying in logcat how it
-/// ended: the last call of `android_main`, which never returns.
+/// ended: the last call of `android_main`, which never returns. For an app
+/// built without the android-activity fork in this module's docs;
+/// [`finish`] otherwise.
 ///
-/// Once `android_main` returns, android-activity (0.6) stops following the
+/// Once `android_main` returns, android-activity 0.6 stops following the
 /// activity's input queue. Android then destroys that queue while the
 /// activity finishes, and the glue's last reference, dropped in onStop or
 /// onDestroy, detaches the dead queue from its looper: an abort
 /// ("pthread_mutex_lock called on a destroyed mutex"), among Google Play's
-/// commonest crashes of a Rust app. The fork in this module's docs fixes
-/// that; ending here also covers an app built without it. A second
-/// `android_main` in this process could not start anyway, as winit makes
-/// one event loop per process; the next launch starts afresh.
+/// commonest crashes of a Rust app. Ended here, the process is gone before
+/// that; the next launch starts it afresh.
 pub fn exit(result: anyhow::Result<()>) -> ! {
-    match &result {
-        Ok(()) => log(crate::log_tag(), "the event loop ended"),
-        Err(e) => log(crate::log_tag(), &format!("the event loop ended: {e}")),
-    }
+    log_end(&result);
     unsafe extern "C" {
         fn _exit(status: i32) -> !;
     }
     unsafe { _exit(if result.is_ok() { 0 } else { 1 }) }
+}
+
+fn log_end(result: &anyhow::Result<()>) {
+    match result {
+        Ok(()) => log(crate::log_tag(), "the event loop ended"),
+        Err(e) => log(crate::log_tag(), &format!("the event loop ended: {e}")),
+    }
 }
 
 /// Draws with OpenGL ES on the phones whose Vulkan drivers crash
