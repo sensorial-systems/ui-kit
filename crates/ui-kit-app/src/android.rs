@@ -4,10 +4,19 @@
 //! ```ignore
 //! #[unsafe(no_mangle)]
 //! fn android_main(android: ui_kit_app::android::AndroidApp) {
-//!     let event_loop = ui_kit_app::android::event_loop(android).unwrap();
-//!     ui_kit_app::run_app_on(event_loop, MyApp::default(), AppConfig::new("My app")).unwrap();
+//!     use ui_kit_app::android;
+//!     ui_kit_app::set_log_tag("my-app");
+//!     android::abort_on_panic();
+//!     android::choose_backend("debug.my_app.backend");
+//!     let result = android::event_loop(android)
+//!         .and_then(|event_loop| ui_kit_app::run_app_on(event_loop, MyApp::default(), AppConfig::new("My app")));
+//!     android::exit(result)
 //! }
 //! ```
+//!
+//! [`abort_on_panic`], [`choose_backend`] and [`exit`] are each a fix for
+//! what Google Play reported of an app on many phones: a panic that froze
+//! it, Vulkan drivers that crash, and an abort as it closed.
 //!
 //! The library is loaded by a `NativeActivity` (cargo-apk, xbuild), so the
 //! application crate builds as a `cdylib`.
@@ -39,6 +48,120 @@ pub fn event_loop_with(
     builder.with_android_app(app);
     configure(&mut builder);
     Ok(builder.build()?)
+}
+
+/// A line in logcat at error priority, under `tag` (stderr goes nowhere on
+/// Android).
+pub fn log(tag: &str, message: &str) {
+    #[link(name = "log")]
+    unsafe extern "C" {
+        fn __android_log_write(priority: i32, tag: *const std::ffi::c_char, text: *const std::ffi::c_char) -> i32;
+    }
+    const ERROR: i32 = 6;
+    let tag = std::ffi::CString::new(tag.replace('\0', " ")).unwrap_or_default();
+    let text = std::ffi::CString::new(message.replace('\0', " ")).unwrap_or_default();
+    unsafe { __android_log_write(ERROR, tag.as_ptr(), text.as_ptr()) };
+}
+
+/// A panic on this thread (`android_main`'s, which runs the event loop)
+/// ends the process, its message the crash's in Google Play. Call it first
+/// thing in `android_main`.
+///
+/// android-activity catches the panic otherwise and finishes the activity,
+/// but the process lives on with its last frame up and the input queue left
+/// to Android's teardown ([`exit`] is skipped): the app froze, and Google
+/// Play heard of it as not responding at best, never with the message.
+/// Other threads' panics are left as they were.
+pub fn abort_on_panic() {
+    unsafe extern "C" {
+        fn android_set_abort_message(message: *const std::ffi::c_char);
+    }
+    let main = std::thread::current().id();
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        previous(info);
+        if std::thread::current().id() == main {
+            let message = format!("{}: {info}", crate::log_tag());
+            log(crate::log_tag(), &message);
+            let text = std::ffi::CString::new(message.replace('\0', " ")).unwrap_or_default();
+            unsafe { android_set_abort_message(text.as_ptr()) };
+            std::process::abort();
+        }
+    }));
+}
+
+/// Ends the process once the event loop has, saying in logcat how it
+/// ended: the last call of `android_main`, which never returns.
+///
+/// Once `android_main` returns, android-activity (0.6) stops following the
+/// activity's input queue. Android then destroys that queue while the
+/// activity finishes, and the glue's last reference, dropped in onStop or
+/// onDestroy, detaches the dead queue from its looper: an abort
+/// ("pthread_mutex_lock called on a destroyed mutex"), among Google Play's
+/// commonest crashes of a Rust app. A second `android_main` in this process
+/// could not start anyway, as winit makes one event loop per process; the
+/// next launch starts afresh.
+pub fn exit(result: anyhow::Result<()>) -> ! {
+    match &result {
+        Ok(()) => log(crate::log_tag(), "the event loop ended"),
+        Err(e) => log(crate::log_tag(), &format!("the event loop ended: {e}")),
+    }
+    unsafe extern "C" {
+        fn _exit(status: i32) -> !;
+    }
+    unsafe { _exit(if result.is_ok() { 0 } else { 1 }) }
+}
+
+/// Draws with OpenGL ES on the phones whose Vulkan drivers crash
+/// ([`vulkan_crashes`](crate::gpu::vulkan_crashes)), Vulkan elsewhere, and
+/// says which in logcat. Call it in `android_main` before anything makes a
+/// wgpu instance: the choice is put in `WGPU_BACKEND`, which the instance
+/// reads.
+///
+/// For testing, the system property `property` chooses on any phone:
+///
+/// ```sh
+/// adb shell setprop debug.my_app.backend gl      # or vulkan; "" for the chip's
+/// ```
+pub fn choose_backend(property: &str) {
+    let forced = system_property(property).filter(|b| !b.is_empty());
+    let chip = vulkan_adapter();
+    let gl = match forced.as_deref() {
+        Some(backend) => backend.eq_ignore_ascii_case("gl"),
+        None => chip.as_deref().is_some_and(crate::gpu::vulkan_crashes),
+    };
+    let chip = chip.as_deref().unwrap_or("no Vulkan adapter");
+    let why = if forced.is_some() { format!("as {property} says") } else { "for this chip".into() };
+    log(crate::log_tag(), &format!("graphics: {} on {chip}, {why}", if gl { "OpenGL ES" } else { "Vulkan" }));
+    if gl {
+        // SAFETY: called before the event loop and the threads that read the
+        // environment; the Java threads alive now do not touch it.
+        unsafe { std::env::set_var("WGPU_BACKEND", "gl") };
+    }
+}
+
+/// The name of the first Vulkan adapter, if there is one. Enumerating is
+/// safe on the drivers that crash: they crash only compiling pipelines.
+fn vulkan_adapter() -> Option<String> {
+    let descriptor = wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::VULKAN,
+        ..wgpu::InstanceDescriptor::new_without_display_handle()
+    };
+    let instance = wgpu::Instance::new(descriptor);
+    let adapters = pollster::block_on(instance.enumerate_adapters(wgpu::Backends::VULKAN));
+    adapters.first().map(|a| a.get_info().name)
+}
+
+/// An Android system property (`getprop`), if it is set.
+pub fn system_property(name: &str) -> Option<String> {
+    unsafe extern "C" {
+        fn __system_property_get(name: *const std::ffi::c_char, value: *mut std::ffi::c_char) -> i32;
+    }
+    const PROP_VALUE_MAX: usize = 92;
+    let name = std::ffi::CString::new(name).ok()?;
+    let mut value = [0 as std::ffi::c_char; PROP_VALUE_MAX];
+    let len = unsafe { __system_property_get(name.as_ptr(), value.as_mut_ptr()) };
+    (len > 0).then(|| unsafe { std::ffi::CStr::from_ptr(value.as_ptr()) }.to_string_lossy().into_owned())
 }
 
 /// The activity's own files folder (`Context.getFilesDir`).

@@ -5,6 +5,8 @@
 //! canvas: [`run_app`] and [`run_with_custom`] pick the host for the target.
 
 pub mod app;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod background;
 mod blit;
 mod damage;
 pub mod config;
@@ -26,6 +28,10 @@ pub use ui_kit_immediate::task;
 pub mod web;
 
 pub use app::{App, ClosureApp, TitleBarLayout, WindowCommand};
+#[cfg(not(target_arch = "wasm32"))]
+pub use background::Background;
+#[cfg(not(target_arch = "wasm32"))]
+pub use gpu::Pace;
 pub use config::AppConfig;
 pub use context::{FrameContext, SafeArea, TitleBar};
 pub use fonts::Fonts;
@@ -115,6 +121,31 @@ where
 
 #[cfg(target_os = "android")]
 pub mod android;
+
+/// The tag the app's lines in logcat are under ([`set_log_tag`]).
+static LOG_TAG: std::sync::OnceLock<&'static str> = std::sync::OnceLock::new();
+
+/// Names the app in what [`log_error`] writes: logcat's tag on Android, a
+/// prefix elsewhere. "ui-kit-app" unless set; set once, before the first.
+pub fn set_log_tag(tag: &'static str) {
+    let _ = LOG_TAG.set(tag);
+}
+
+/// The app's name in what [`log_error`] writes.
+pub fn log_tag() -> &'static str {
+    LOG_TAG.get().copied().unwrap_or("ui-kit-app")
+}
+
+/// An error told where it is seen: logcat on Android (where stderr goes
+/// nowhere), the browser's console in a browser, stderr elsewhere.
+pub fn log_error(message: &str) {
+    #[cfg(target_os = "android")]
+    android::log(log_tag(), message);
+    #[cfg(target_arch = "wasm32")]
+    web_sys::console::error_1(&format!("{}: {message}", log_tag()).into());
+    #[cfg(not(any(target_os = "android", target_arch = "wasm32")))]
+    eprintln!("{}: {message}", log_tag());
+}
 
 /// Where `after` differs from `before` on a `size` target, and the commands
 /// that draw it there over `before`, the part cleared to `background` first.
