@@ -20,6 +20,18 @@
 //!
 //! The library is loaded by a `NativeActivity` (cargo-apk, xbuild), so the
 //! application crate builds as a `cdylib`.
+//!
+//! The application's workspace also takes android-activity from
+//! sensorial-systems' fork, whose lifecycle callbacks wait at most 2 s for
+//! `android_main` (Android reported a busy one as not responding) and which
+//! lets go of an input queue Android destroys once `android_main` has
+//! returned (detached later, it aborted). A patch applies only from the
+//! workspace being built, so each application adds it:
+//!
+//! ```toml
+//! [patch.crates-io]
+//! android-activity = { git = "https://github.com/sensorial-systems/android-activity", rev = "20eb77339b725d29c3f726c4e9daf924c810652f" }
+//! ```
 use jni::objects::{JObject, JValue};
 use jni::{jni_sig, jni_str, Env, JavaVM};
 use std::sync::Mutex;
@@ -98,9 +110,10 @@ pub fn abort_on_panic() {
 /// activity finishes, and the glue's last reference, dropped in onStop or
 /// onDestroy, detaches the dead queue from its looper: an abort
 /// ("pthread_mutex_lock called on a destroyed mutex"), among Google Play's
-/// commonest crashes of a Rust app. A second `android_main` in this process
-/// could not start anyway, as winit makes one event loop per process; the
-/// next launch starts afresh.
+/// commonest crashes of a Rust app. The fork in this module's docs fixes
+/// that; ending here also covers an app built without it. A second
+/// `android_main` in this process could not start anyway, as winit makes
+/// one event loop per process; the next launch starts afresh.
 pub fn exit(result: anyhow::Result<()>) -> ! {
     match &result {
         Ok(()) => log(crate::log_tag(), "the event loop ended"),
